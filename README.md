@@ -108,7 +108,7 @@ Fügt im Charaktermenü Details zum aktuellen Auftrag hinzu. Dazu zählen
 insbesondere dynamische Daten, wie z.B. die Position, oder auch andere
 Highlights aus der Auftragsbeschreibung.
 
-![Job Details](https://i.vgy.me/KqhyeH.jpg)
+![Job Details](https://i.vgy.me/bzAFIY.jpg)
 
 ### `job_frame_refresher`
 
