@@ -369,6 +369,34 @@ function getMainFrameJobDetails() {
         break;
       }
 
+      if (/^\d+$/.test(value)) {
+        var next = element.nextSibling;
+
+        while (next && next.nodeType !== 1) {
+          next = next.nextSibling;
+        }
+
+        if (next && next.tagName === 'B' &&
+            /^\d+$/.test(next.textContent.trim())) {
+          var separator = element.nextSibling;
+
+          while (separator && separator !== next) {
+            if (separator.nodeType === 3 &&
+                separator.textContent.trim() === 'von') {
+              element = next;
+              break;
+            }
+
+            separator = separator.nextSibling;
+          }
+
+          if (element === next) {
+            element = element.nextSibling;
+            continue;
+          }
+        }
+      }
+
       if (value) {
         result.highlights.push(value);
       }
