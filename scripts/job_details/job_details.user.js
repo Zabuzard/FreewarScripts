@@ -244,7 +244,7 @@ function getItemDocument() {
   }
 }
 
-function getMainFrameJobName() {
+function getMainFrameJobDetails() {
   var doc = getMainDocument();
   if (!doc) { return null; }
 
@@ -266,7 +266,47 @@ function getMainFrameJobName() {
   }
   if (!jobName) { return null; }
 
-  return jobName.textContent.trim();
+  var text = description.textContent;
+  var match = text.match(/Aktueller Auftrag:\s*([\s\S]*?)\s*Belohnung:/);
+  if (!match) { return null; }
+
+  var position = match[1].match(/Position X:\s*(-?\d+)\s*Y:\s*(-?\d+)/);
+
+  var result = {
+    name: jobName.textContent.trim(),
+    position: null,
+    area: null,
+    highlights: []
+  };
+
+  if (position) {
+    result.position = {
+      x: parseInt(position[1], 10),
+      y: parseInt(position[2], 10)
+    };
+
+    result.area = getAreaName(result.position);
+  }
+
+  var element = jobName.nextSibling;
+
+  while (element) {
+    if (element.nodeType === 1 && element.tagName === 'B') {
+      var value = element.textContent.trim();
+
+      if (value === 'Belohnung') {
+        break;
+      }
+
+      if (value) {
+        result.highlights.push(value);
+      }
+    }
+
+    element = element.nextSibling;
+  }
+
+  return result;
 }
 
 function getItemFrameJobName() {
@@ -281,33 +321,6 @@ function getItemFrameJobName() {
   return link.getAttribute('title');
 }
 
-function extractPosition() {
-  var doc = getMainDocument();
-  if (!doc) { return null; }
-
-  if (!doc.querySelector('a[href="?arrive_eval=cancelmission"]')) { return null; }
-
-  var description = doc.querySelector('td.areadescription');
-  if (!description) { return null; }
-
-  var text = description.textContent;
-  var match = text.match(/Aktueller Auftrag:\s*([\s\S]*?)\s*Belohnung:/);
-  if (!match) { return null; }
-
-  var jobText = match[1];
-  var position = jobText.match(/Position X:\s*(-?\d+)\s*Y:\s*(-?\d+)/);
-  if (!position) { return null; }
-
-  var result = {
-    x: parseInt(position[1], 10),
-    y: parseInt(position[2], 10)
-  };
-
-  result.area = getAreaName(result);
-
-  return result;
-}
-
 function displayJobDetails(jobDetails) {
   var doc = getItemDocument();
   if (!doc) { return; }
@@ -317,6 +330,28 @@ function displayJobDetails(jobDetails) {
 
   var display = doc.querySelector('#job-position');
   if (display) { return; }
+
+  var displayText = '';
+
+  if (jobDetails.position) {
+    displayText = 'Pos: ' +
+      jobDetails.position.x + '/' +
+      jobDetails.position.y;
+
+    if (jobDetails.area) {
+      displayText += ' (' + jobDetails.area + ')';
+    }
+  }
+
+  if (jobDetails.highlights.length) {
+    if (displayText) {
+      displayText += ', ';
+    }
+
+    displayText += jobDetails.highlights.join(', ');
+  }
+
+  if (!displayText) { return; }
 
   display = doc.createElement('span');
   display.id = 'job-position';
@@ -334,46 +369,25 @@ function displayJobDetails(jobDetails) {
   display.style.lineHeight = '1.5';
   display.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.45)';
 
-  display.textContent = 'Pos: ' +
-    jobDetails.position.x + '/' +
-    jobDetails.position.y;
-
-  if (jobDetails.area) {
-    display.textContent += ' (' + jobDetails.area + ')';
-  }
+  display.textContent = displayText;
 
   row.parentNode.insertBefore(display, row.nextSibling);
 }
 
 function routine() {
   try {
-    var jobName = getMainFrameJobName();
+    var jobDetails = getMainFrameJobDetails();
 
-    if (jobName) {
-      var position = extractPosition();
-
-      if (position) {
-        currentJobDetails = {
-          name: jobName,
-          position: {
-            x: position.x,
-            y: position.y
-          },
-          area: position.area
-        };
-      } else if (!currentJobDetails || currentJobDetails.name !== jobName) {
-        currentJobDetails = {
-          name: jobName,
-          position: null,
-          area: null
-        };
-      }
+    if (jobDetails) {
+      currentJobDetails = jobDetails;
     }
 
-    if (!currentJobDetails || !currentJobDetails.position) { return; }
+    if (!currentJobDetails) { return; }
 
     var itemFrameJobName = getItemFrameJobName();
-    if (!itemFrameJobName || itemFrameJobName !== currentJobDetails.name) { return; }
+    if (!itemFrameJobName || itemFrameJobName !== currentJobDetails.name) {
+      return;
+    }
 
     displayJobDetails(currentJobDetails);
   } catch (e) {
