@@ -6,8 +6,7 @@
 // @version     1
 // ==/UserScript==
 
-var currentJobName = null;
-var currentJobPosition = null;
+var currentJobDetails = null;
 
 // Update using https://www.fwwiki.de/index.php?title=Koordinaten_(Liste)&action=edit
 var coordinateResource = `
@@ -303,12 +302,13 @@ function extractPosition() {
     x: parseInt(position[1], 10),
     y: parseInt(position[2], 10)
   };
+
   result.area = getAreaName(result);
 
   return result;
 }
 
-function displayPosition(position) {
+function displayJobDetails(jobDetails) {
   var doc = getItemDocument();
   if (!doc) { return; }
 
@@ -334,9 +334,12 @@ function displayPosition(position) {
   display.style.lineHeight = '1.5';
   display.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.45)';
 
-  display.textContent = 'Pos: ' + position.x + '/' + position.y;
-  if (position.area) {
-    display.textContent += ' (' + position.area + ')';
+  display.textContent = 'Pos: ' +
+    jobDetails.position.x + '/' +
+    jobDetails.position.y;
+
+  if (jobDetails.area) {
+    display.textContent += ' (' + jobDetails.area + ')';
   }
 
   row.parentNode.insertBefore(display, row.nextSibling);
@@ -347,19 +350,32 @@ function routine() {
     var jobName = getMainFrameJobName();
 
     if (jobName) {
-      currentJobName = jobName;
-
       var position = extractPosition();
+
       if (position) {
-        currentJobPosition = position;
+        currentJobDetails = {
+          name: jobName,
+          position: {
+            x: position.x,
+            y: position.y
+          },
+          area: position.area
+        };
+      } else if (!currentJobDetails || currentJobDetails.name !== jobName) {
+        currentJobDetails = {
+          name: jobName,
+          position: null,
+          area: null
+        };
       }
     }
-    if (!currentJobName || !currentJobPosition) { return; }
+
+    if (!currentJobDetails || !currentJobDetails.position) { return; }
 
     var itemFrameJobName = getItemFrameJobName();
-    if (!itemFrameJobName || itemFrameJobName !== currentJobName) { return; }
+    if (!itemFrameJobName || itemFrameJobName !== currentJobDetails.name) { return; }
 
-    displayPosition(currentJobPosition);
+    displayJobDetails(currentJobDetails);
   } catch (e) {
     console.error("FreewarJobDetails routine error:", e);
   }
