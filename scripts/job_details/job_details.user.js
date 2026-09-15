@@ -245,7 +245,7 @@ function getItemDocument() {
   }
 }
 
-function extractJobName() {
+function getMainFrameJobName() {
   var doc = getMainDocument();
   if (!doc) { return null; }
 
@@ -326,7 +326,7 @@ function displayPosition(position) {
   display.style.padding = '5px 7px';
   display.style.background = '#464646';
   display.style.border = '1px solid #666';
-  display.style.borderLeft = '4px solid rgb(252, 252, 114)';
+  display.style.borderLeft = '4px solid rgb(255, 238, 112)';
   display.style.borderRadius = '5px';
   display.style.color = '#f5f5f5';
   display.style.fontSize = '12px';
@@ -344,7 +344,7 @@ function displayPosition(position) {
 
 function routine() {
   try {
-    var jobName = extractJobName();
+    var jobName = getMainFrameJobName();
 
     if (jobName) {
       currentJobName = jobName;
