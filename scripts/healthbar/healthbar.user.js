@@ -11,8 +11,10 @@ function doIt(rawLife, healthcritical, healthmed, healthok) {
     curLife = healthcritical.innerText;
   } else if (healthmed) {
     curLife = healthmed.innerText;
-  } else {
+  } else if (healthok) {
     curLife = healthok.innerText;
+  } else {
+    return;
   }
 
   curLife = parseInt(curLife.replace(/\./g, ""), 10);
