@@ -6,7 +6,7 @@
 // @version     2
 // ==/UserScript==
 
-function doIt() {
+function doIt(rawLife, healthcritical, healthmed, healthok) {
   if (healthcritical) {
     curLife = healthcritical.innerText;
   } else if (healthmed) {
@@ -29,8 +29,6 @@ function doIt() {
 
   maxLife = parseInt(document.getElementById("itemlpdisp").innerText.split("/")[1].replace(/\./g, ""), 10 );
 
-  /* ===== Health status ===== */
-
   if (curLife < maxLife * 0.3) {
     status = 3; // Critical
   } else if (curLife < maxLife * 0.5) {
@@ -41,12 +39,9 @@ function doIt() {
 
   curWidth = Math.floor((curLife / maxLife) * width);
 
-  /* Prevent tiny/negative values */
   curWidth = Math.max(0, Math.min(width, curWidth));
 
   var percentage = Math.floor((curLife / maxLife) * 100);
-
-  /* ===== Create healthbar ===== */
 
   if (!document.getElementById("lifedisp")) {
     newContent =
@@ -64,8 +59,7 @@ function doIt() {
       "height:14px;" +
       "vertical-align:middle;" +
       '">' +
-      /* ===== Background / Unfilled HP ===== */
-
+      /* Background / Unfilled HP */
       '<div id="fulllifedisp" class="health-background health-background-' +
       getHealthBackgroundClass(status) +
       '" style="' +
@@ -81,8 +75,7 @@ function doIt() {
       "border:1px solid rgb(7,100,179);" +
       '">' +
       "</div>" +
-      /* ===== Current HP ===== */
-
+      /* Current HP */
       '<div id="curlife" class="health-' +
       getHealthStatusClass(status) +
       '" style="' +
@@ -101,8 +94,7 @@ function doIt() {
       ";" +
       "transition:width 0.4s ease, background 0.3s ease;" +
       '">' +
-      /* ===== HP Text ===== */
-
+      /* HP Text */
       '<span id="lifepercent" style="' +
       "position:absolute;" +
       "left:50%;" +
@@ -128,35 +120,18 @@ function doIt() {
     var percentDiv = document.getElementById("lifepercent");
     var backgroundDiv = document.getElementById("fulllifedisp");
 
-    /* ===== Update current HP ===== */
-
     curDiv.style.width = curWidth + "px";
     curDiv.style.background = getHealthColor(status);
 
-    /* ===== Update percentage ===== */
-
     percentDiv.innerText = percentage + "%";
-
-    /* ===== Update unfilled background ===== */
-
     backgroundDiv.className =
       "health-background health-background-" + getHealthBackgroundClass(status);
-
-    /* ===== Update filled HP animation ===== */
-
     curDiv.className = "health-" + getHealthStatusClass(status);
-
-    /* ===== Update entire healthbar glow ===== */
-
     healthbarDiv.className = "small healthbar-" + getHealthStatusClass(status);
   }
 
   window.setTimeout(doIt, 1000);
 }
-
-/* =========================================================
-   Health colors
-   ========================================================= */
 
 function getHealthColor(status) {
   if (status == 1) {
@@ -168,10 +143,6 @@ function getHealthColor(status) {
   }
 }
 
-/* =========================================================
-   Health status class
-   ========================================================= */
-
 function getHealthStatusClass(status) {
   if (status == 1) {
     return "good";
@@ -181,10 +152,6 @@ function getHealthStatusClass(status) {
     return "critical";
   }
 }
-
-/* =========================================================
-   Unfilled background class
-   ========================================================= */
 
 function getHealthBackgroundClass(status) {
   if (status == 1) {
@@ -196,17 +163,11 @@ function getHealthBackgroundClass(status) {
   }
 }
 
-/* =========================================================
-   Animation CSS
-   ========================================================= */
-
 var style = document.createElement("style");
 
 style.innerHTML = `
 
-    /* =====================================================
-       Entire Healthbar Glow
-       ===================================================== */
+    /* Entire Healthbar Glow  */
 
     /* Normal */
     .healthbar-good {
@@ -254,9 +215,7 @@ style.innerHTML = `
     }
 
 
-    /* =====================================================
-       Filled HP
-       ===================================================== */
+    /* Filled HP  */
 
     /* Normal HP */
     .health-good {
@@ -302,9 +261,7 @@ style.innerHTML = `
     }
 
 
-    /* =====================================================
-       Unfilled HP Background
-       ===================================================== */
+    /* Unfilled HP Background  */
 
     /* Normal / Good */
     .health-background-good {
@@ -375,13 +332,7 @@ style.innerHTML = `
     }
 
 `;
-
-/* Add CSS to page */
 document.head.appendChild(style);
-
-/* =========================================================
-   Variables
-   ========================================================= */
 
 var width = 80;
 var curWidth = 0;
@@ -391,18 +342,14 @@ var status = 1;
 var content = "";
 var newContent = "";
 
-/* =========================================================
-   Find original Freewar HP elements
-   ========================================================= */
+(function () {
+  var rawLife = document.getElementById("listrow_lifep");
 
-var rawLife = document.getElementById("listrow_lifep");
-if (!rawLife) { return; }
-var healthcritical = rawLife.getElementsByClassName("healthcritical")[0];
-var healthmed = rawLife.getElementsByClassName("healthmed")[0];
-var healthok = rawLife.getElementsByClassName("healthok")[0];
+  if (!rawLife) { return; }
 
-/* =========================================================
-   Start
-   ========================================================= */
+  var healthcritical = rawLife.getElementsByClassName("healthcritical")[0];
+  var healthmed = rawLife.getElementsByClassName("healthmed")[0];
+  var healthok = rawLife.getElementsByClassName("healthok")[0];
 
-doIt();
+  doIt(rawLife, healthcritical, healthmed, healthok);
+})();

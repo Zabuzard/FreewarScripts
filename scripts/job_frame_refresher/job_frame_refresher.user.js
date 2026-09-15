@@ -50,7 +50,7 @@ function routine() {
       setTimeout(function() { reloadItemFrame(); }, 2000);
     });
 
-    console.log("listener attached");
+    //console.log("listener attached");
   } catch (e) {
     console.error("FreewarJobFrameRefresher routine error:", e);
   }
