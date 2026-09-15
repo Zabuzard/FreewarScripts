@@ -82,6 +82,8 @@ function routine() {
 	if (attackpowerWeapon != null && attackpowerWeapon.length > 0) {
 		// Strip the '+' symbol
 		attackpowerWeapon = Number(attackpowerWeapon[0].substring(1));
+	} else {
+		attackpowerWeapon = 0;
 	}
 	setStatValue('AttackpowerHands', attackpowerHands);
 	setStatValue('AttackpowerWeapon', attackpowerWeapon);
@@ -93,6 +95,8 @@ function routine() {
 	if (defensepowerWeapon != null && defensepowerWeapon.length > 0) {
 		// Strip the '+' symbol
 		defensepowerWeapon = Number(defensepowerWeapon[0].substring(1));
+	} else {
+		defensepowerWeapon = 0;
 	}
 	setStatValue('DefensepowerHands', defensepowerHands);
 	setStatValue('DefensepowerWeapon', defensepowerWeapon);
