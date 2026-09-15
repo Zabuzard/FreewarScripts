@@ -483,7 +483,7 @@ function displayJobDetails(jobDetails) {
       'font-weight: bold;' +
       'line-height: 1.5;' +
       'box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);' +
-      'white-space: pre;' +
+      'white-space: pre-line;' +
       '}' + '\n';
 
   var appendedContent = JSON.stringify(displayText);
