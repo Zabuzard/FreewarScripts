@@ -493,7 +493,7 @@ function displayJobDetails(jobDetails) {
   var appendedContent = JSON.stringify(displayText);
   var finalContent;
   if (jobDetailsBaseContent && appendedContent) {
-    finalContent = jobDetailsBaseContent + '"\\A"' + appendedContent;
+    finalContent = jobDetailsBaseContent.slice(0, -1) + '\\A\\A' + appendedContent.slice(1);
   } else if (jobDetailsBaseContent) {
     finalContent = jobDetailsBaseContent;
   } else {
