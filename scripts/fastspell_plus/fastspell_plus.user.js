@@ -65,7 +65,7 @@ function isFastspellMenuPresent() {
  */
 function isSupportingWebStorage() {
 	try {
-		if (typeof(Storage) === "undefined") {
+		if (typeof localStorage === "undefined") {
 			return false;
 		}
 

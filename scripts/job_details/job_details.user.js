@@ -271,22 +271,24 @@ function parseCoordinateResource() {
 
   if (!sections) { return; }
 
-  sections.forEach(function (section) {
+  for (var i = 0; i < sections.length; i++) {
+    var section = sections[i];
+
     var match = section.match(
       /\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\|([^}]+)\}\}[^}]*\}\}([\s\S]*)/
     );
 
-    if (!match) { return; }
+    if (!match) { continue; }
 
     var areaName = match[1];
     var coordinates = match[2].match(/-?\d+,-?\d+/g);
 
-    if (!coordinates) { return; }
+    if (!coordinates) { continue; }
 
-    coordinates.forEach(function (coordinate) {
-      coordinateLookup[coordinate] = areaName;
-    });
-  });
+    for (var j = 0; j < coordinates.length; j++) {
+      coordinateLookup[coordinates[j]] = areaName;
+    }
+  }
 }
 
 function getAreaName(position) {

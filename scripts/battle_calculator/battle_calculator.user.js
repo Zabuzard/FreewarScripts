@@ -49,7 +49,7 @@ function setupMainFrame() {
 
   observedDocument = doc;
 
-  //  MutationObserver
+  // MutationObserver
   if (observer) {
     observer.disconnect();
     observer = null;
@@ -73,7 +73,7 @@ function setupMainFrame() {
     listenerDocument = doc;
 
     doc.addEventListener("click", function (event) {
-      if (event.target.matches(".fastattack")) {
+      if ($(event.target).closest(".fastattack").length > 0) {
         routine();
       }
     });
@@ -253,7 +253,7 @@ function extractNpcStats(cellElement) {
 
   return {
     life: lifeMatch ? parseGermanNumber(lifeMatch[1]) : null,
-    strength: strengthMatch ? parseGermanNumber(strengthMatch[1]) : null,
+    strength: strengthMatch ? parseGermanNumber(strengthMatch[1]) : null
   };
 }
 
