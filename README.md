@@ -102,6 +102,14 @@ man sich beim Lösen nicht mehr nebenbei Notizen machen muss.
 | Links-Rotation bei Tiefe 3                | ![Left at Depth](https://i.vgy.me/Cg6pqk.jpg)       |
 | Zuvor entdeckte Gute/Schlechte Positionen | ![Memorized Positions](https://i.vgy.me/cDRZVF.jpg) |
 
+### `job_details`
+
+Fügt im Charaktermenü Details zum aktuellen Auftrag hinzu. Dazu zählen
+insbesondere dynamische Daten, wie z.B. die Position, oder auch andere
+Highlights aus der Auftragsbeschreibung.
+
+![Job Details](https://i.vgy.me/KqhyeH.jpg)
+
 ### `job_frame_refresher`
 
 Aktualisiert automatisch den Item-Frame, sobald ein neuer Auftrag am Haus der
