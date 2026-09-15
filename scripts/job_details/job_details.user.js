@@ -326,7 +326,11 @@ function getMainFrameJobDetails() {
     return null;
   }
 
-  var description = doc.querySelector('td.areadescription');
+  var description = Array.from(doc.querySelectorAll('td.areadescription')).find(function (element) {
+    return Array.from(element.querySelectorAll('b')).some(function (b) {
+      return b.textContent.trim() === 'Aktueller Auftrag:';
+    });
+  });
   if (!description) { return null; }
 
   var jobHeader = Array.from(description.querySelectorAll('b')).find(function (element) {
