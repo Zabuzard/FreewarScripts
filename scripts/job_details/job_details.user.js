@@ -452,7 +452,7 @@ function getJobDisplayText(jobDetails) {
   var showPosition = true;
 
   if (jobDetailsBaseContent && jobDetails.position) {
-    var positionText = '(' + jobDetails.position.x + '/' + jobDetails.position.y + ')';
+    var positionText = jobDetails.position.x + '/' + jobDetails.position.y;
     if (jobDetailsBaseContent.indexOf(positionText) !== -1) {
       showPosition = false;
     }
