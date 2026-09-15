@@ -531,7 +531,7 @@ function displayJobDetails(jobDetails) {
     finalContent = appendedContent;
   }
 
-  css += '#listrow_char_mission::after { content: ' + finalContent + '; }';
+  css += '#listrow_char_mission::after { content: ' + finalContent + ' !important; }';
 
   if (jobDetailsStyle.textContent !== css) {
     jobDetailsStyle.textContent = css;
