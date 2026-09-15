@@ -52,16 +52,13 @@ function isSupportingWebStorage() {
  * @param value The value of the player stat to set, greater equals 0
  */
 function setStatValue(statName, value) {
+	if (value === null) { return; }
 	var valueAsNumber = parseInt(value);
-	// Abort if the value is invalid
-	if (value === null || value === '' || valueAsNumber < 0) {
-		return;
-	}
+	if (value === '' || valueAsNumber < 0) { return; }
+
 	if (isSupportingWebStorage()) {
-		// Use webstorage
 		sessionStorage.setItem('freewarBattleCalculatorStat' + statName, valueAsNumber);
 	} else {
-		// Fall back to cookies
 		createCookie('freewarBattleCalculatorStat' + statName, valueAsNumber + '', 2);
 	}
 }
@@ -72,35 +69,31 @@ function setStatValue(statName, value) {
 function routine() {
 	// Extract player stats from menu and store them
 	// Extract lifepoints
-	var lifepoints = $('p#listrow_lifep span').text().replace(/\./g, '') || '0';
-	if (lifepoints.includes('(')) {
+	var lifepoints = $('p#listrow_lifep span').text().replace(/\./g, '') || null;
+	if (lifepoints !== null && lifepoints.includes('(')) {
 		lifepoints = lifepoints.replace("(", "").replace(".", "");
 	}
 	setStatValue('Lifepoints', lifepoints);
 
 	// Extract attack power
 	var attackMatch = $('p#listrow_attackp').text().replace(/\./g, '').match(/\d+/);
-	var attackpowerHands = Number(attackMatch ? attackMatch[0] : 0);
-	var attackpowerWeapon = $('p#listrow_attackp').text().replace(/\./g, '').match(/\+\d+/) || 0;
+	var attackpowerHands = attackMatch ? Number(attackMatch[0]) : null;
+	var attackpowerWeapon = $('p#listrow_attackp').text().replace(/\./g, '').match(/\+\d+/) || null;
 	if (attackpowerWeapon != null && attackpowerWeapon.length > 0) {
 		// Strip the '+' symbol
 		attackpowerWeapon = Number(attackpowerWeapon[0].substring(1));
-	} else {
-    attackpowerWeapon = 0;
-  }
+	}
 	setStatValue('AttackpowerHands', attackpowerHands);
 	setStatValue('AttackpowerWeapon', attackpowerWeapon);
 	
 	// Extract defense power
 	var defenseMatch = $('p#listrow_defensep').text().replace(/\./g, '').match(/\d+/);
-	var defensepowerHands = Number(defenseMatch ? defenseMatch[0] : 0);
-	var defensepowerWeapon = $('p#listrow_defensep').text().replace(/\./g, '').match(/\+\d+/) || 0;
+	var defensepowerHands = defenseMatch ? Number(defenseMatch[0]) : null;
+	var defensepowerWeapon = $('p#listrow_defensep').text().replace(/\./g, '').match(/\+\d+/) || null;
 	if (defensepowerWeapon != null && defensepowerWeapon.length > 0) {
 		// Strip the '+' symbol
 		defensepowerWeapon = Number(defensepowerWeapon[0].substring(1));
-	} else {
-    defensepowerWeapon = 0;
-  }
+	}
 	setStatValue('DefensepowerHands', defensepowerHands);
 	setStatValue('DefensepowerWeapon', defensepowerWeapon);
 }
