@@ -6,6 +6,10 @@
 // @version     1
 // ==/UserScript==
 
+var STORAGE_KEY = 'FreewarJobDetails';
+var COOKIE_KEY = 'FreewarJobDetails';
+var STORAGE_MAX_AGE_MS = 3 * 60 * 60 * 1000;
+
 var currentJobDetails = null;
 
 // Update using https://www.fwwiki.de/index.php?title=Koordinaten_(Liste)&action=edit
@@ -189,6 +193,71 @@ var coordinateResource = `
 `;
 
 var coordinateLookup = {};
+
+function loadJobDetails() {
+  var value;
+
+  try {
+    value = window.localStorage.getItem(STORAGE_KEY);
+
+    if (value) {
+      var parsed = JSON.parse(value);
+
+      if (parsed && typeof parsed === 'object' &&
+          parsed.jobDetails && parsed.timestamp) {
+        if (Date.now() - parsed.timestamp <= STORAGE_MAX_AGE_MS) {
+          return parsed.jobDetails;
+        }
+
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  } catch (e) {}
+
+  try {
+    var cookies = document.cookie.split(';');
+
+    for (var i = 0; i < cookies.length; i++) {
+      var cookie = cookies[i].trim();
+
+      if (cookie.indexOf(COOKIE_KEY + '=') === 0) {
+        value = decodeURIComponent(
+          cookie.substring((COOKIE_KEY + '=').length)
+        );
+
+        var parsedCookie = JSON.parse(value);
+
+        if (parsedCookie && typeof parsedCookie === 'object' &&
+            parsedCookie.jobDetails && parsedCookie.timestamp) {
+          if (Date.now() - parsedCookie.timestamp <= STORAGE_MAX_AGE_MS) {
+            return parsedCookie.jobDetails;
+          }
+
+          return null;
+        }
+      }
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+function saveJobDetails(jobDetails) {
+  var value = JSON.stringify({
+    jobDetails: jobDetails,
+    timestamp: Date.now()
+  });
+
+  try {
+    window.localStorage.setItem(STORAGE_KEY, value);
+    return;
+  } catch (e) {}
+
+  try {
+    document.cookie =
+      COOKIE_KEY + '=' + encodeURIComponent(value) + '; path=/';
+  } catch (e) {}
+}
 
 function parseCoordinateResource() {
   var sections = coordinateResource.match(
@@ -380,6 +449,7 @@ function routine() {
 
     if (jobDetails) {
       currentJobDetails = jobDetails;
+      saveJobDetails(currentJobDetails);
     }
 
     if (!currentJobDetails) { return; }
@@ -396,6 +466,8 @@ function routine() {
 }
 
 parseCoordinateResource();
+
+currentJobDetails = loadJobDetails();
 
 setInterval(routine, 100);
 routine();
