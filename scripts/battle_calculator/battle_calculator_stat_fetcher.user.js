@@ -69,35 +69,61 @@ function setStatValue(statName, value) {
 function routine() {
 	// Extract player stats from menu and store them
 	// Extract lifepoints
-	var lifepoints = $('p#listrow_lifep span').text().replace(/\./g, '') || null;
-	if (lifepoints !== null && lifepoints.includes('(')) {
-		lifepoints = lifepoints.replace("(", "").replace(".", "");
+	var lifepointsElement = $('p#listrow_lifep span');
+	var lifepoints = null;
+
+	if (lifepointsElement.length > 0) {
+		lifepoints = lifepointsElement.text().replace(/\./g, '');
+		if (lifepoints !== '' && lifepoints.includes('(')) {
+			lifepoints = lifepoints.replace("(", "").replace(".", "");
+		}
 	}
+
 	setStatValue('Lifepoints', lifepoints);
 
 	// Extract attack power
-	var attackMatch = $('p#listrow_attackp').text().replace(/\./g, '').match(/\d+/);
-	var attackpowerHands = attackMatch ? Number(attackMatch[0]) : null;
-	var attackpowerWeapon = $('p#listrow_attackp').text().replace(/\./g, '').match(/\+\d+/) || null;
-	if (attackpowerWeapon != null && attackpowerWeapon.length > 0) {
-		// Strip the '+' symbol
-		attackpowerWeapon = Number(attackpowerWeapon[0].substring(1));
-	} else {
-		attackpowerWeapon = 0;
+	var attackElement = $('p#listrow_attackp');
+	var attackpowerHands = null;
+	var attackpowerWeapon = 0;
+
+	if (attackElement.length > 0) {
+		var attackText = attackElement.text().replace(/\./g, '');
+		var attackMatch = attackText.match(/\d+/);
+
+		if (attackMatch) {
+			attackpowerHands = Number(attackMatch[0]);
+		}
+
+		var attackWeaponMatch = attackText.match(/\+\d+/);
+		if (attackWeaponMatch != null && attackWeaponMatch.length > 0) {
+			// Strip the '+' symbol
+			attackpowerWeapon = Number(attackWeaponMatch[0].substring(1));
+		}
 	}
+
 	setStatValue('AttackpowerHands', attackpowerHands);
 	setStatValue('AttackpowerWeapon', attackpowerWeapon);
 	
 	// Extract defense power
-	var defenseMatch = $('p#listrow_defensep').text().replace(/\./g, '').match(/\d+/);
-	var defensepowerHands = defenseMatch ? Number(defenseMatch[0]) : null;
-	var defensepowerWeapon = $('p#listrow_defensep').text().replace(/\./g, '').match(/\+\d+/) || null;
-	if (defensepowerWeapon != null && defensepowerWeapon.length > 0) {
-		// Strip the '+' symbol
-		defensepowerWeapon = Number(defensepowerWeapon[0].substring(1));
-	} else {
-		defensepowerWeapon = 0;
+	var defenseElement = $('p#listrow_defensep');
+	var defensepowerHands = null;
+	var defensepowerWeapon = 0;
+
+	if (defenseElement.length > 0) {
+		var defenseText = defenseElement.text().replace(/\./g, '');
+		var defenseMatch = defenseText.match(/\d+/);
+
+		if (defenseMatch) {
+			defensepowerHands = Number(defenseMatch[0]);
+		}
+
+		var defenseWeaponMatch = defenseText.match(/\+\d+/);
+		if (defenseWeaponMatch != null && defenseWeaponMatch.length > 0) {
+			// Strip the '+' symbol
+			defensepowerWeapon = Number(defenseWeaponMatch[0].substring(1));
+		}
 	}
+
 	setStatValue('DefensepowerHands', defensepowerHands);
 	setStatValue('DefensepowerWeapon', defensepowerWeapon);
 }
