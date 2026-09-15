@@ -430,7 +430,7 @@ function displayJobDetails(jobDetails) {
   display.style.padding = '5px 7px';
   display.style.background = '#464646';
   display.style.border = '1px solid #666';
-  display.style.borderLeft = '4px solid rgb(255, 238, 112)';
+  display.style.borderLeft = '4px solid rgb(255, 206, 112)';
   display.style.borderRadius = '5px';
   display.style.color = '#f5f5f5';
   display.style.fontSize = '12px';
