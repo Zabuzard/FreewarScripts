@@ -105,11 +105,11 @@ function displayPosition(position) {
   display.id = 'job-position';
 
   display.style.display = 'block';
-  display.style.margin = '12px 2px';
+  display.style.margin = '-10px 2px 12px 7px';
   display.style.padding = '5px 7px';
   display.style.background = '#464646';
   display.style.border = '1px solid #666';
-  display.style.borderLeft = '4px solid #f99';
+  display.style.borderLeft = '4px solid rgb(252, 252, 114)';
   display.style.borderRadius = '5px';
   display.style.color = '#f5f5f5';
   display.style.fontSize = '12px';
@@ -117,9 +117,9 @@ function displayPosition(position) {
   display.style.lineHeight = '1.5';
   display.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.45)';
 
-  display.textContent = 'Position X: ' + position.x + ' Y: ' + position.y;
+  display.textContent = 'Pos: ' + position.x + '/' + position.y;
 
-  row.appendChild(display);
+  row.parentNode.insertBefore(display, row.nextSibling);
 }
 
 function routine() {
