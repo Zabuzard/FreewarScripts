@@ -14,6 +14,9 @@ var currentJobDetails = null;
 var itemFrameObserver = null;
 var observedItemDocument = null;
 
+var jobDetailsStyle = null;
+var jobDetailsBaseContent = null;
+
 // Update using https://www.fwwiki.de/index.php?title=Koordinaten_(Liste)&action=edit
 var coordinateResource = `
 {{Überschriftensimulation 2|1={{Gebietslink|Alte Mühle}} (18 Felder)}}-821,-780; -825,-779; -824,-779; -823,-779; -821,-779; -825,-778; -824,-778; -823,-778; -822,-778; -821,-778; -825,-777; -824,-777; -823,-777; -822,-777; -821,-777; -824,-776; -823,-776; -822,-776<!--
@@ -364,11 +367,9 @@ function getMainFrameJobDetails() {
   while (element) {
     if (element.nodeType === 1 && element.tagName === 'B') {
       var value = element.textContent.trim();
+      if (value === 'Belohnung') { break; }
 
-      if (value === 'Belohnung') {
-        break;
-      }
-
+      // Ignore progress values such as: <b>0</b> von <b>5</b>
       if (/^\d+$/.test(value)) {
         var next = element.nextSibling;
 
@@ -376,13 +377,11 @@ function getMainFrameJobDetails() {
           next = next.nextSibling;
         }
 
-        if (next && next.tagName === 'B' &&
-            /^\d+$/.test(next.textContent.trim())) {
+        if (next && next.tagName === 'B' && /^\d+$/.test(next.textContent.trim())) {
           var separator = element.nextSibling;
 
-          while (separator && separator !== next) {
-            if (separator.nodeType === 3 &&
-                separator.textContent.trim() === 'von') {
+          while (separator !== next) {
+            if (separator.nodeType === 3 && separator.textContent.trim() === 'von') {
               element = next;
               break;
             }
@@ -420,16 +419,7 @@ function getItemFrameJobName() {
   return link.getAttribute('title');
 }
 
-function displayJobDetails(jobDetails) {
-  var doc = getItemDocument();
-  if (!doc) { return; }
-
-  var row = doc.querySelector('#listrow_char_mission');
-  if (!row) { return; }
-
-  var display = doc.querySelector('#job-position');
-  if (display) { return; }
-
+function getJobDisplayText(jobDetails) {
   var displayText = '';
 
   if (jobDetails.position) {
@@ -450,27 +440,63 @@ function displayJobDetails(jobDetails) {
     displayText += jobDetails.highlights.join(', ');
   }
 
+  return displayText;
+}
+
+function displayJobDetails(jobDetails) {
+  var doc = getItemDocument();
+  if (!doc) { return; }
+
+  var row = doc.querySelector('#listrow_char_mission');
+  if (!row) { return; }
+
+  var displayText = getJobDisplayText(jobDetails);
   if (!displayText) { return; }
 
-  display = doc.createElement('span');
-  display.id = 'job-position';
+  if (jobDetailsBaseContent === null) {
+    var computedStyle = doc.defaultView.getComputedStyle(row, '::after');
 
-  display.style.display = 'block';
-  display.style.margin = '-10px 2px 12px 7px';
-  display.style.padding = '5px 7px';
-  display.style.background = '#464646';
-  display.style.border = '1px solid #666';
-  display.style.borderLeft = '4px solid rgb(255, 206, 112)';
-  display.style.borderRadius = '5px';
-  display.style.color = '#f5f5f5';
-  display.style.fontSize = '12px';
-  display.style.fontWeight = 'bold';
-  display.style.lineHeight = '1.5';
-  display.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.45)';
+    var content = computedStyle.content;
+    if (!content || content === 'none' || content === 'normal') {
+      jobDetailsBaseContent = '';
+    } else {
+      jobDetailsBaseContent = content;
+    }
+  }
 
-  display.textContent = displayText;
+  if (!jobDetailsStyle) {
+    jobDetailsStyle = doc.createElement('style');
+    jobDetailsStyle.id = 'job-details-style';
+    doc.head.appendChild(jobDetailsStyle);
+  }
 
-  row.parentNode.insertBefore(display, row.nextSibling);
+  var css = '#listrow_char_mission::after {' +
+      'display: block;' +
+      'margin: 12px 2px;' +
+      'padding: 5px 7px;' +
+      'background: #464646;' +
+      'border: 1px solid #666;' +
+      'border-left: 4px solid #f99;' +
+      'border-radius: 5px;' +
+      'color: #f5f5f5;' +
+      'font-size: 12px;' +
+      'font-weight: bold;' +
+      'line-height: 1.5;' +
+      'box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);' +
+      'white-space: pre;' +
+      '}' + '\n';
+
+  var appendedContent = JSON.stringify(displayText);
+  var finalContent;
+  if (jobDetailsBaseContent && appendedContent) {
+    finalContent = jobDetailsBaseContent + '"\\A"' + appendedContent;
+  } else if (jobDetailsBaseContent) {
+    finalContent = jobDetailsBaseContent;
+  } else {
+    finalContent = appendedContent;
+  }
+  css += '#listrow_char_mission:has(a[href="item.php?action=missiondesc"])::after { content: ' + finalContent + '; }';
+  jobDetailsStyle.textContent = css;
 }
 
 function routine() {
@@ -481,11 +507,11 @@ function routine() {
       currentJobDetails = jobDetails;
       saveJobDetails(currentJobDetails);
     }
-
     if (!currentJobDetails) { return; }
 
     var itemFrameJobName = getItemFrameJobName();
-    if (!itemFrameJobName || itemFrameJobName !== currentJobDetails.name) {
+    if (!itemFrameJobName ||
+        itemFrameJobName !== currentJobDetails.name) {
       return;
     }
 
@@ -513,6 +539,9 @@ function observeItemFrame() {
     }
 
     observedItemDocument = doc;
+
+    jobDetailsStyle = null;
+    jobDetailsBaseContent = null;
 
     itemFrameObserver = new MutationObserver(function () {
       routine();
