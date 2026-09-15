@@ -500,7 +500,9 @@ function displayJobDetails(jobDetails) {
     finalContent = appendedContent;
   }
   css += '#listrow_char_mission:has(a[href="item.php?action=missiondesc"])::after { content: ' + finalContent + '; }';
-  jobDetailsStyle.textContent = css;
+  if (jobDetailsStyle.textContent !== css) {
+    jobDetailsStyle.textContent = css;
+  }
 }
 
 function routine() {
@@ -508,8 +510,10 @@ function routine() {
     var jobDetails = getMainFrameJobDetails();
 
     if (jobDetails) {
-      currentJobDetails = jobDetails;
-      saveJobDetails(currentJobDetails);
+      if (JSON.stringify(jobDetails) !== JSON.stringify(currentJobDetails)) {
+        currentJobDetails = jobDetails;
+        saveJobDetails(currentJobDetails);
+      }
     }
     if (!currentJobDetails) { return; }
 
