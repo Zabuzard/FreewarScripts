@@ -524,7 +524,7 @@ function displayJobDetails(jobDetails) {
   var finalContent;
 
   if (jobDetailsBaseContent && appendedContent) {
-    finalContent = jobDetailsBaseContent.slice(0, -1) + '\\A\\A' + appendedContent.slice(1);
+    finalContent = jobDetailsBaseContent.slice(0, -1) + ' \\A\\A ' + appendedContent.slice(1);
   } else if (jobDetailsBaseContent) {
     finalContent = jobDetailsBaseContent;
   } else {
