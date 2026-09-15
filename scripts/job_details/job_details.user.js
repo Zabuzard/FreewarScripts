@@ -326,16 +326,38 @@ function getMainFrameJobDetails() {
     return null;
   }
 
-  var description = Array.from(doc.querySelectorAll('td.areadescription')).find(function (element) {
-    return Array.from(element.querySelectorAll('b')).some(function (b) {
-      return b.textContent.trim() === 'Aktueller Auftrag:';
-    });
-  });
+  var descriptions = doc.querySelectorAll('td.areadescription');
+  var description = null;
+
+  for (var i = 0; i < descriptions.length; i++) {
+    var boldElements = descriptions[i].querySelectorAll('b');
+    var hasJobHeader = false;
+
+    for (var j = 0; j < boldElements.length; j++) {
+      if (boldElements[j].textContent.trim() === 'Aktueller Auftrag:') {
+        hasJobHeader = true;
+        break;
+      }
+    }
+
+    if (hasJobHeader) {
+      description = descriptions[i];
+      break;
+    }
+  }
+
   if (!description) { return null; }
 
-  var jobHeader = Array.from(description.querySelectorAll('b')).find(function (element) {
-    return element.textContent.trim() === 'Aktueller Auftrag:';
-  });
+  var descriptionBoldElements = description.querySelectorAll('b');
+  var jobHeader = null;
+
+  for (var k = 0; k < descriptionBoldElements.length; k++) {
+    if (descriptionBoldElements[k].textContent.trim() === 'Aktueller Auftrag:') {
+      jobHeader = descriptionBoldElements[k];
+      break;
+    }
+  }
+
   if (!jobHeader) { return null; }
 
   var jobName = jobHeader.nextElementSibling;
@@ -499,7 +521,7 @@ function displayJobDetails(jobDetails) {
   } else {
     finalContent = appendedContent;
   }
-  css += '#listrow_char_mission:has(a[href="item.php?action=missiondesc"])::after { content: ' + finalContent + '; }';
+  css += '#listrow_char_mission::after { content: ' + finalContent + '; }';
   if (jobDetailsStyle.textContent !== css) {
     jobDetailsStyle.textContent = css;
   }

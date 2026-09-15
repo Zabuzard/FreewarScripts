@@ -4,7 +4,7 @@
 // @description Enables the full potential of fastspells when the user is no sponsor, that is fastspells 5 to 9 and fastspell sets 2 to 5. Further the script allows the user to extend the fastspells by infinitely many.
 // @include     *.freewar.de/freewar/internal/item.php*
 // @version     1
-// @require http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
+// @require https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
 // @grant       none
 // ==/UserScript==
 
@@ -64,7 +64,19 @@ function isFastspellMenuPresent() {
  * @returns True if it is supported, false if not
  */
 function isSupportingWebStorage() {
-	return typeof(Storage) !== "undefined";
+	try {
+		if (typeof(Storage) === "undefined") {
+			return false;
+		}
+
+		var testKey = 'freewarFakeFastspellStorageTest';
+		localStorage.setItem(testKey, '1');
+		localStorage.removeItem(testKey);
+
+		return true;
+	} catch (e) {
+		return false;
+	}
 }
 
 /*

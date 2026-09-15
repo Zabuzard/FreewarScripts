@@ -20,9 +20,9 @@ function getMainDocument() {
 function reloadItemFrame() {
   try {
     var frame = document.querySelector('frame[name="itemFrame"]');
-    if (frame) {
+    if (frame && frame.contentDocument) {
       //console.log("Reloaded");
-      frame.contentWindow.location.reload();
+      frame.contentDocument.location.reload();
     }
   } catch (e) {
     console.error("reloadItemFrame failed:", e);
@@ -38,11 +38,11 @@ function routine() {
     if (!jobLink) { return; }
 
     // Don't attach the listener more than once to the same link.
-    if (jobLink.dataset.jobRefreshAttached === "true") {
+    if (jobLink.freewarJobRefreshAttached === true) {
       return;
     }
 
-    jobLink.dataset.jobRefreshAttached = "true";
+    jobLink.freewarJobRefreshAttached = true;
     jobLink.addEventListener("click", function() {
       //console.log("Auftrag anfordern clicked");
 

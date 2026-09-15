@@ -4,7 +4,7 @@
 // @description Removes fastattack links for NPCs where the outcome of a battle is loosing for the player.
 // @include     *.freewar.de/freewar/internal/frset.php*
 // @version     3
-// @require http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
+// @require https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
 // @grant       none
 // ==/UserScript==
 
@@ -64,7 +64,7 @@ function setupMainFrame() {
 
     observer.observe(targetNode, {
       childList: true,
-      subtree: true,
+      subtree: true
     });
   }
 
@@ -218,7 +218,7 @@ function processElement(cellElement) {
 
   // Auto-attack if enabled
   if (npcAutoAttack) {
-    const randomWait = Math.floor(Math.random() * (2000 - 500 + 1) + 500);
+    var randomWait = Math.floor(Math.random() * (2000 - 500 + 1) + 500);
 
     setTimeout(function () {
       $npcFastAttackElement.trigger("click");
@@ -360,7 +360,7 @@ function getNpcLife(npcName) {
     }
   }
 
-  // If NPC data could not be found or life is 0, NPC is unknown
+  // If NPC data could not be found or life is 0, return -1
   if (life == 0) {
     return -1;
   } else {

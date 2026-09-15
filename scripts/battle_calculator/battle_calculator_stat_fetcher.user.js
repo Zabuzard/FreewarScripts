@@ -4,7 +4,7 @@
 // @description Tool for the 'BattleCalculator - Freewar' which extracts and saves player stats like lifepoints, attack and defense power.
 // @include     *.freewar.de/freewar/internal/item.php*
 // @version     1
-// @require http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
+// @require https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
 // @grant       none
 // ==/UserScript==
 /* global $ */
@@ -79,7 +79,8 @@ function routine() {
 	setStatValue('Lifepoints', lifepoints);
 
 	// Extract attack power
-	var attackpowerHands = Number($('p#listrow_attackp').text().replace(/\./g, '').match(/\d+/)?.[0] || 0);
+	var attackMatch = $('p#listrow_attackp').text().replace(/\./g, '').match(/\d+/);
+	var attackpowerHands = Number(attackMatch ? attackMatch[0] : 0);
 	var attackpowerWeapon = $('p#listrow_attackp').text().replace(/\./g, '').match(/\+\d+/) || 0;
 	if (attackpowerWeapon != null && attackpowerWeapon.length > 0) {
 		// Strip the '+' symbol
@@ -91,7 +92,8 @@ function routine() {
 	setStatValue('AttackpowerWeapon', attackpowerWeapon);
 	
 	// Extract defense power
-	var defensepowerHands = Number($('p#listrow_defensep').text().replace(/\./g, '').match(/\d+/)?.[0] || 0);
+	var defenseMatch = $('p#listrow_defensep').text().replace(/\./g, '').match(/\d+/);
+	var defensepowerHands = Number(defenseMatch ? defenseMatch[0] : 0);
 	var defensepowerWeapon = $('p#listrow_defensep').text().replace(/\./g, '').match(/\+\d+/) || 0;
 	if (defensepowerWeapon != null && defensepowerWeapon.length > 0) {
 		// Strip the '+' symbol
