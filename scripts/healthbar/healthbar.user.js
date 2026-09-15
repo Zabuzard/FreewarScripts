@@ -27,13 +27,7 @@ function doIt() {
     content = content.substring(0, content.length - newContent.length);
   }
 
-  maxLife = parseInt(
-    document
-      .getElementById("itemlpdisp")
-      .innerText.split("/")[1]
-      .replace(/\./g, ""),
-    10,
-  );
+  maxLife = parseInt(document.getElementById("itemlpdisp").innerText.split("/")[1].replace(/\./g, ""), 10 );
 
   /* ===== Health status ===== */
 
@@ -402,6 +396,7 @@ var newContent = "";
    ========================================================= */
 
 var rawLife = document.getElementById("listrow_lifep");
+if (!rawLife) { return; }
 var healthcritical = rawLife.getElementsByClassName("healthcritical")[0];
 var healthmed = rawLife.getElementsByClassName("healthmed")[0];
 var healthok = rawLife.getElementsByClassName("healthok")[0];

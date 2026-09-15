@@ -72,15 +72,15 @@ function setStatValue(statName, value) {
 function routine() {
 	// Extract player stats from menu and store them
 	// Extract lifepoints
-	var lifepoints = $('p#listrow_lifep span').text().replace(/\./g, '');
+	var lifepoints = $('p#listrow_lifep span').text().replace(/\./g, '') || '0';
 	if (lifepoints.includes('(')) {
 		lifepoints = lifepoints.replace("(", "").replace(".", "");
 	}
 	setStatValue('Lifepoints', lifepoints);
 
 	// Extract attack power
-	var attackpowerHands = Number($('p#listrow_attackp').text().replace(/\./g, '').match(/\d+/)[0]);
-	var attackpowerWeapon = $('p#listrow_attackp').text().replace(/\./g, '').match(/\+\d+/);
+	var attackpowerHands = Number($('p#listrow_attackp').text().replace(/\./g, '').match(/\d+/)?.[0] || 0);
+	var attackpowerWeapon = $('p#listrow_attackp').text().replace(/\./g, '').match(/\+\d+/) || 0;
 	if (attackpowerWeapon != null && attackpowerWeapon.length > 0) {
 		// Strip the '+' symbol
 		attackpowerWeapon = Number(attackpowerWeapon[0].substring(1));
@@ -91,8 +91,8 @@ function routine() {
 	setStatValue('AttackpowerWeapon', attackpowerWeapon);
 	
 	// Extract defense power
-	var defensepowerHands = Number($('p#listrow_defensep').text().replace(/\./g, '').match(/\d+/)[0]);
-	var defensepowerWeapon = $('p#listrow_defensep').text().replace(/\./g, '').match(/\+\d+/);
+	var defensepowerHands = Number($('p#listrow_defensep').text().replace(/\./g, '').match(/\d+/)?.[0] || 0);
+	var defensepowerWeapon = $('p#listrow_defensep').text().replace(/\./g, '').match(/\+\d+/) || 0;
 	if (defensepowerWeapon != null && defensepowerWeapon.length > 0) {
 		// Strip the '+' symbol
 		defensepowerWeapon = Number(defensepowerWeapon[0].substring(1));
