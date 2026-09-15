@@ -11,6 +11,8 @@ var COOKIE_KEY = 'FreewarJobDetails';
 var STORAGE_MAX_AGE_MS = 3 * 60 * 60 * 1000;
 
 var currentJobDetails = null;
+var itemFrameObserver = null;
+var observedItemDocument = null;
 
 // Update using https://www.fwwiki.de/index.php?title=Koordinaten_(Liste)&action=edit
 var coordinateResource = `
@@ -465,9 +467,52 @@ function routine() {
   }
 }
 
-parseCoordinateResource();
+function observeItemFrame() {
+  try {
+    var doc = getItemDocument();
 
-currentJobDetails = loadJobDetails();
+    if (!doc || !doc.documentElement) {
+      return;
+    }
 
-setInterval(routine, 100);
-routine();
+    if (observedItemDocument === doc) {
+      return;
+    }
+
+    if (itemFrameObserver) {
+      itemFrameObserver.disconnect();
+      itemFrameObserver = null;
+    }
+
+    observedItemDocument = doc;
+
+    itemFrameObserver = new MutationObserver(function () {
+      routine();
+    });
+
+    itemFrameObserver.observe(doc.documentElement, {
+      childList: true,
+      subtree: true
+    });
+
+    routine();
+  } catch (e) {
+    console.error("observeItemFrame failed:", e);
+  }
+}
+
+function init() {
+  parseCoordinateResource();
+
+  currentJobDetails = loadJobDetails();
+
+  setInterval(function () {
+    observeItemFrame();
+    routine();
+  }, 100);
+
+  observeItemFrame();
+  routine();
+}
+
+init();
