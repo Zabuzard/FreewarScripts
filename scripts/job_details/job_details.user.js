@@ -424,7 +424,11 @@ function getMainFrameJobDetails() {
         }
       }
 
-      if (value) {
+      const ignoredHighlights = new Set([
+        'Kiste mit Reagenzgläsern'
+      ]);
+
+      if (value && !ignoredHighlights.has(value)) {
         result.highlights.push(value);
       }
     }
