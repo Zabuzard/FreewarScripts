@@ -425,7 +425,9 @@ function getMainFrameJobDetails() {
       }
 
       const ignoredHighlights = new Set([
-        'Kiste mit Reagenzgläsern'
+        'Kiste mit Reagenzgläsern',
+        "rostigen Werkzeugkoffer",
+        "Schneeschaufel"
       ]);
 
       if (value && !ignoredHighlights.has(value)) {
