@@ -115,3 +115,10 @@ Highlights aus der Auftragsbeschreibung.
 Aktualisiert automatisch den Item-Frame, sobald ein neuer Auftrag am Haus der
 Aufträge angenommen wurde. Dadurch greifen Benutzerdefinitierte Skripte, welche
 mit dem Auftrags-Status im Inventar arbeiten direkt und besser.
+
+## `chat_highlight`
+
+Highlights certain chat messages. Can be configured in the user script using
+regex patterns.
+
+![Chat highlight](https://i.vgy.me/eQJ6rx.jpg)

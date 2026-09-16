@@ -8,23 +8,46 @@
 // ==/UserScript==
 
 (function () {
-  var patterns = [/war da heute drinnen/i];
+  var patterns = [
+    /.*?Stachel-Kowu belebt das.*?Stachel-Kowu wieder/i,
+    /Massive Landqualle aktiviert ein magisches Schutzschild/i
+  ];
+
+  function highlightMessage(message) {
+    var text = message.textContent;
+
+    for (var i = 0; i < patterns.length; i++) {
+      if (patterns[i].test(text)) {
+        message.style.backgroundColor = "rgba(255, 120, 120, 0.3)";
+        break;
+      }
+    }
+  }
 
   function highlightMessages() {
     var messages = document.querySelectorAll("p");
 
     for (var i = 0; i < messages.length; i++) {
-      var message = messages[i];
-      var text = message.textContent;
+      highlightMessage(messages[i]);
+    }
+  }
 
-      for (var j = 0; j < patterns.length; j++) {
-        if (patterns[j].test(text)) {
-          message.style.backgroundColor = "#ffff00";
-          break;
+  var observer = new MutationObserver(function (mutations) {
+    for (var i = 0; i < mutations.length; i++) {
+      var nodes = mutations[i].addedNodes;
+
+      for (var j = 0; j < nodes.length; j++) {
+        if (nodes[j].nodeType === 1 && nodes[j].tagName === "P") {
+          highlightMessage(nodes[j]);
         }
       }
     }
-  }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
 
   highlightMessages();
 })();
