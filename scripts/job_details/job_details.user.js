@@ -381,6 +381,13 @@ function getMainFrameJobDetails() {
     highlights: []
   };
 
+  var ignoredPositions = [
+    "127/89"
+  ];
+  if (position && ignoredPositions.indexOf(position[1] + "/" + position[2]) !== -1) {
+    position = null;
+  }
+
   if (position) {
     result.position = {
       x: parseInt(position[1], 10),
@@ -429,6 +436,7 @@ function getMainFrameJobDetails() {
         "rostigen Werkzeugkoffer",
         "Phasenkugel",
         "Schneeschaufel",
+        "Fackel des Auftragshauses",
         "0"
       ]);
 
