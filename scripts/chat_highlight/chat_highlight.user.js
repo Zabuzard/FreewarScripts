@@ -10,7 +10,8 @@
 (function () {
   var patterns = [
     /.*?Stachel-Kowu belebt das.*?Stachel-Kowu wieder/i,
-    /Massive Landqualle aktiviert ein magisches Schutzschild/i
+    /Massive Landqualle aktiviert ein magisches Schutzschild/i,
+    /Behüter der Kathedrale zerbricht die Angriffswaffe/i
   ];
 
   function highlightMessage(message) {
