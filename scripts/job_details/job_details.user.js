@@ -437,6 +437,7 @@ function getMainFrameJobDetails() {
         "Phasenkugel",
         "Schneeschaufel",
         "Fackel des Auftragshauses",
+        "Klopfstock",
         "0"
       ]);
 
