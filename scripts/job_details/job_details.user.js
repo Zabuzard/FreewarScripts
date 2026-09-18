@@ -453,6 +453,7 @@ function getMainFrameJobDetails() {
         "Fackel des Auftragshauses",
         "Klopfstock",
         "Brotandro-Virus",
+        "Kristall der Miniaturisierung",
         "0"
       ]);
 
