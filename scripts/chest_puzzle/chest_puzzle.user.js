@@ -53,7 +53,7 @@ function saveChestNpcs(chestNpcs) {
 
 function getNpcId(npcRow) {
     if (!npcRow || !npcRow.id) { return null; }
-    var match = npcRow.id.match(/^npc-(\d+)$/);
+    var match = npcRow.id.match(/^npc-(-?\d+)$/);
     return match ? match[1] : null;
 }
 
