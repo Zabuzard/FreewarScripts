@@ -694,6 +694,8 @@ function displayMapHighlight(jobDetails) {
   var targetX = jobDetails.position.x;
   var targetY = jobDetails.position.y;
 
+  if (Math.sign(playerX) !== Math.sign(targetX)) { return; } // Overworld versus Dungeon
+
   var deltaX = targetX - playerX;
   var deltaY = targetY - playerY;
 
