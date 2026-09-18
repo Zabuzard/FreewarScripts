@@ -398,6 +398,9 @@ function getMainFrameJobDetails() {
   if (position && ignoredPositions.indexOf(position[1] + "/" + position[2]) !== -1) {
     position = null;
   }
+  if (result.name == "Die Fischspeise") {
+    position = [ "137", "116" ];
+  }
 
   if (position) {
     result.position = {
