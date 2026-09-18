@@ -788,6 +788,198 @@ function displayMapHighlight(jobDetails) {
   }
 }
 
+function displayMapJobNpc(jobDetails) {
+  var mapDoc = getMapDocument();
+  if (!mapDoc) { return; }
+  if (!jobDetails || !jobDetails.name) { return; }
+
+  var npcJobs = {
+    "Onlo": {
+      jobs: ["Der Kugelknochen"],
+      positions: [
+        [70, 105],
+        [70, 108],
+        [71, 105],
+        [71, 107],
+        [72, 106],
+        [73, 105],
+        [73, 106],
+        [74, 104]
+      ]
+    },
+    "Blattalisk": {
+      jobs: ["Der diebische Blattalisk"],
+      positions: [
+        [119, 111],
+        [119, 114],
+        [119, 115],
+        [120, 111],
+        [120, 114],
+        [121, 111],
+        [121, 114],
+        [121, 115]
+      ]
+    },
+    "Bürger": {
+      jobs: ["Die verwesten Bürger Teil 2"],
+      positions: [
+        [-185, -94],
+        [-193, -98],
+        [-196, -96],
+        [80, 87],
+        [81, 88],
+        [81, 89],
+        [82, 87],
+        [82, 90],
+        [84, 88]
+      ]
+    },
+    "Ektofron": {
+      jobs: ["Der Ektofronstachel"],
+      positions: [
+        [50, 84],
+        [51, 82],
+        [51, 85],
+        [55, 88],
+        [57, 88],
+        [58, 88],
+        [58, 91],
+        [59, 84],
+        [59, 88],
+        [59, 92],
+        [59, 93],
+        [60, 87],
+        [60, 88],
+        [60, 92]
+      ]
+    },
+    "t-Falter": {
+      jobs: ["Falterchaos"],
+      positions: [
+        [-508, -375],
+        [108, 77],
+        [109, 76],
+        [111, 77],
+        [112, 79],
+        [113, 79],
+        [114, 81],
+        [115, 80],
+        [116, 79],
+        [119, 79]
+      ]
+    },
+    "Kröte": {
+      jobs: ["Itolos-Leder"],
+      positions: [
+        [255, 94],
+        [255, 96],
+        [256, 95],
+        [257, 92],
+        [257, 94],
+        [258, 95],
+        [259, 92],
+        [254, 96],
+        [258, 93],
+        [259, 95],
+        [261, 93]
+      ]
+    },
+    "Bro-Virus": {
+      jobs: ["Wissenschaftliches Arbeiten"],
+      positions: [
+        [111, 132],
+        [113, 131],
+        [115, 131],
+        [115, 134]
+      ]
+    },
+    "leb. Ast": {
+      jobs: ["Astforschung"],
+      positions: [
+        [-595, -448],
+        [-596, -449],
+        [-597, -448],
+        [-599, -448]
+      ]
+    },
+    "Ratte": {
+      jobs: ["Ratten und Raffzähne"],
+      positions: [
+        [93, 95],
+        [91, 96],
+        [93, 97],
+        [94, 98],
+        [115, 98],
+        [114, 99],
+        [115, 100],
+        [114, 103],
+        [113, 104],
+        [115, 104],
+        [116, 105],
+        [115, 106],
+        [114, 107],
+        [116, 107],
+        [118, 107],
+        [115, 108],
+        [116, 108],
+        [117, 108],
+        [118, 108]
+      ]
+    }
+  };
+
+  var styleId = "fw-job-npc-style";
+  var style = mapDoc.getElementById(styleId);
+  if (!style) {
+    style = mapDoc.createElement("style");
+    style.id = styleId;
+    mapDoc.head.appendChild(style);
+  }
+
+  var css = `
+    .framemapbg table td {
+      position: relative;
+    }
+  `;
+
+  for (var npcName in npcJobs) {
+    if (!npcJobs.hasOwnProperty(npcName)) { continue; }
+
+    var npc = npcJobs[npcName];
+    if (npc.jobs.indexOf(jobDetails.name) === -1) { continue; }
+
+    var selectors = [];
+
+    for (var i = 0; i < npc.positions.length; i++) {
+      selectors.push("#mapx" + npc.positions[i][0] + "y" + npc.positions[i][1] + " a:after");
+    }
+
+    css += `
+      ${selectors.join(",\n      ")} {
+        content: "${npcName}";
+        z-index: 2;
+        width: 50px;
+        position: absolute;
+        left: 0;
+        top: 0;
+        line-height: 120%;
+        font-size: 10px;
+        font-weight: 700;
+        text-align: center;
+        color: #004cff;
+        background: #ccc;
+        border-bottom: 1px solid #bababa;
+        opacity: 0.7;
+        -moz-border-radius-bottomleft: 6px;
+        -moz-border-radius-bottomright: 6px;
+        -webkit-border-bottom-left-radius: 6px;
+        -webkit-border-bottom-right-radius: 6px;
+      }
+    `;
+  }
+  style.textContent = css;
+}
+
 function routine() {
   try {
     var jobDetails = getMainFrameJobDetails();
@@ -808,6 +1000,7 @@ function routine() {
 
     displayJobDetails(currentJobDetails);
     displayMapHighlight(currentJobDetails);
+    displayMapJobNpc(currentJobDetails);
   } catch (e) {
     console.error("FreewarJobDetails routine error:", e);
   }
