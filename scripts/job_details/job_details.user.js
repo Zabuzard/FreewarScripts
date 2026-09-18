@@ -575,10 +575,6 @@ function displayMapHighlight(jobDetails) {
     return;
   }
 
-  var tile = mapDoc.getElementById("mapx" + jobDetails.position.x + "y" + jobDetails.position.y);
-  if (!tile) { return; }
-  if (tile.classList.contains("fw-job-highlight")) { return; }
-
   if (!mapDoc.getElementById("fw-job-highlight-style")) {
     var style = mapDoc.createElement("style");
     style.id = "fw-job-highlight-style";
@@ -595,11 +591,201 @@ function displayMapHighlight(jobDetails) {
         background: rgba(255, 255, 0, 0.25);
         pointer-events: none;
       }
+
+      .fw-job-direction-highlight {
+        position: relative;
+      }
+
+      .fw-job-direction-highlight::after {
+        content: "";
+        position: absolute;
+        pointer-events: none;
+        background: rgba(255, 255, 0, 0.35);
+      }
+
+      .fw-job-direction-north::after {
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 15px;
+      }
+
+      .fw-job-direction-south::after {
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 15px;
+      }
+
+      .fw-job-direction-west::after {
+        top: 0;
+        left: 0;
+        width: 15px;
+        height: 100%;
+      }
+
+      .fw-job-direction-east::after {
+        top: 0;
+        right: 0;
+        width: 15px;
+        height: 100%;
+      }
+
+      .fw-job-direction-northwest::after {
+        inset: 0;
+        background: transparent;
+        box-shadow:
+          inset 0 15px 0 rgba(255, 255, 0, 0.35),
+          inset 15px 0 0 rgba(255, 255, 0, 0.35);
+      }
+
+      .fw-job-direction-northeast::after {
+        inset: 0;
+        background: transparent;
+        box-shadow:
+          inset 0 15px 0 rgba(255, 255, 0, 0.35),
+          inset -15px 0 0 rgba(255, 255, 0, 0.35);
+      }
+
+      .fw-job-direction-southwest::after {
+        inset: 0;
+        background: transparent;
+        box-shadow:
+          inset 0 -15px 0 rgba(255, 255, 0, 0.35),
+          inset 15px 0 0 rgba(255, 255, 0, 0.35);
+      }
+
+      .fw-job-direction-southeast::after {
+        inset: 0;
+        background: transparent;
+        box-shadow:
+          inset 0 -15px 0 rgba(255, 255, 0, 0.35),
+          inset -15px 0 0 rgba(255, 255, 0, 0.35);
+      }
     `;
+
     mapDoc.head.appendChild(style);
   }
 
-  tile.classList.add("fw-job-highlight");
+  var oldDirectionTiles = mapDoc.querySelectorAll(".fw-job-direction-highlight");
+  for (var i = 0; i < oldDirectionTiles.length; i++) {
+    oldDirectionTiles[i].classList.remove("fw-job-direction-highlight", "fw-job-direction-north", "fw-job-direction-south", "fw-job-direction-west", "fw-job-direction-east", "fw-job-direction-northwest", "fw-job-direction-northeast", "fw-job-direction-southwest", "fw-job-direction-southeast");
+  }
+
+  var tile = mapDoc.getElementById("mapx" + jobDetails.position.x + "y" + jobDetails.position.y);
+  if (tile) {
+    if (!tile.classList.contains("fw-job-highlight")) {
+      tile.classList.add("fw-job-highlight");
+    }
+    return;
+  }
+
+  var positionText = mapDoc.querySelector(".positiontext");
+  if (!positionText) { return; }
+
+  var positionMatch = positionText.textContent.match(/Position X:\s*(-?\d+)\s*Y:\s*(-?\d+)/);
+  if (!positionMatch) { return; }
+
+  var playerX = parseInt(positionMatch[1], 10);
+  var playerY = parseInt(positionMatch[2], 10);
+  var targetX = jobDetails.position.x;
+  var targetY = jobDetails.position.y;
+
+  var deltaX = targetX - playerX;
+  var deltaY = targetY - playerY;
+
+  var directionX = 0;
+  var directionY = 0;
+
+  if (deltaX < -1) {
+    directionX = -1;
+  } else if (deltaX > 1) {
+    directionX = 1;
+  }
+
+  if (deltaY < -1) {
+    directionY = -1;
+  } else if (deltaY > 1) {
+    directionY = 1;
+  }
+
+  var directionClass = "";
+  if (directionX === 0 && directionY < 0) {
+    directionClass = "north";
+  } else if (directionX === 0 && directionY > 0) {
+    directionClass = "south";
+  } else if (directionX < 0 && directionY === 0) {
+    directionClass = "west";
+  } else if (directionX > 0 && directionY === 0) {
+    directionClass = "east";
+  } else if (directionX < 0 && directionY < 0) {
+    directionClass = "northwest";
+  } else if (directionX > 0 && directionY < 0) {
+    directionClass = "northeast";
+  } else if (directionX < 0 && directionY > 0) {
+    directionClass = "southwest";
+  } else if (directionX > 0 && directionY > 0) {
+    directionClass = "southeast";
+  }
+  if (!directionClass) { return; }
+
+  var rows = mapDoc.querySelectorAll(".maptable tr");
+  if (rows.length < 3) { return; }
+
+  var centerRow = Math.floor(rows.length / 2);
+  var centerColumn = Math.floor(rows[centerRow].children.length / 2);
+  var highlightTiles = [];
+  if (directionClass === "north") {
+    for (var x = centerColumn - 1; x <= centerColumn + 1; x++) {
+      highlightTiles.push({ row: 0, column: x, direction: "north" });
+    }
+  } else if (directionClass === "south") {
+    for (var x = centerColumn - 1; x <= centerColumn + 1; x++) {
+      highlightTiles.push({ row: rows.length - 1, column: x, direction: "south" });
+    }
+  } else if (directionClass === "west") {
+    for (var y = centerRow - 1; y <= centerRow + 1; y++) {
+      highlightTiles.push({ row: y, column: 0, direction: "west" });
+    }
+  } else if (directionClass === "east") {
+    for (var y = centerRow - 1; y <= centerRow + 1; y++) {
+      highlightTiles.push({ row: y, column: rows[y].children.length - 1, direction: "east" });
+    }
+  } else if (directionClass === "northwest") {
+    highlightTiles.push(
+      { row: 0, column: 0, direction: "northwest" },
+      { row: 0, column: 1, direction: "north" },
+      { row: 1, column: 0, direction: "west" }
+    );
+  } else if (directionClass === "northeast") {
+    highlightTiles.push(
+      { row: 0, column: rows[0].children.length - 1, direction: "northeast" },
+      { row: 0, column: rows[0].children.length - 2, direction: "north" },
+      { row: 1, column: rows[1].children.length - 1, direction: "east" }
+    );
+  } else if (directionClass === "southwest") {
+    highlightTiles.push(
+      { row: rows.length - 1, column: 0, direction: "southwest" },
+      { row: rows.length - 1, column: 1, direction: "south" },
+      { row: rows.length - 2, column: 0, direction: "west" }
+    );
+  } else if (directionClass === "southeast") {
+    highlightTiles.push(
+      { row: rows.length - 1, column: rows[rows.length - 1].children.length - 1, direction: "southeast" },
+      { row: rows.length - 1, column: rows[rows.length - 1].children.length - 2, direction: "south" },
+      { row: rows.length - 2, column: rows[rows.length - 2].children.length - 1, direction: "east" }
+    );
+  }
+
+  for (var i = 0; i < highlightTiles.length; i++) {
+    var highlight = highlightTiles[i];
+    if (!rows[highlight.row]) { continue; }
+
+    var directionTile = rows[highlight.row].children[highlight.column];
+    if (!directionTile) { continue; }
+
+    directionTile.classList.add("fw-job-direction-highlight", "fw-job-direction-" + highlight.direction);
+  }
 }
 
 function routine() {
