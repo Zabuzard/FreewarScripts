@@ -320,6 +320,17 @@ function getItemDocument() {
   }
 }
 
+function getMapDocument() {
+  try {
+    var frame = document.querySelector('frame[name="mapFrame"]');
+    if (!frame) { return null; }
+    return frame.contentDocument;
+  } catch (e) {
+    console.error("getMapDocument failed:", e);
+    return null;
+  }
+}
+
 function getMainFrameJobDetails() {
   var doc = getMainDocument();
   if (!doc) { return null; }
@@ -556,6 +567,41 @@ function displayJobDetails(jobDetails) {
   }
 }
 
+function displayMapHighlight(jobDetails) {
+  var mapDoc = getMapDocument();
+  if (!mapDoc) { return; }
+
+  if (!jobDetails || !jobDetails.position) {
+    return;
+  }
+
+  var tile = mapDoc.getElementById("mapx" + jobDetails.position.x + "y" + jobDetails.position.y);
+  if (!tile) { return; }
+  if (tile.classList.contains("fw-job-highlight")) { return; }
+
+  if (!mapDoc.getElementById("fw-job-highlight-style")) {
+    var style = mapDoc.createElement("style");
+    style.id = "fw-job-highlight-style";
+    style.textContent = `
+      .fw-job-highlight {
+        position: relative;
+        filter: sepia(0.15) saturate(1.1) hue-rotate(0deg) brightness(1.02);
+      }
+
+      .fw-job-highlight::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 0, 0.25);
+        pointer-events: none;
+      }
+    `;
+    mapDoc.head.appendChild(style);
+  }
+
+  tile.classList.add("fw-job-highlight");
+}
+
 function routine() {
   try {
     var jobDetails = getMainFrameJobDetails();
@@ -575,6 +621,7 @@ function routine() {
     }
 
     displayJobDetails(currentJobDetails);
+    displayMapHighlight(currentJobDetails);
   } catch (e) {
     console.error("FreewarJobDetails routine error:", e);
   }
