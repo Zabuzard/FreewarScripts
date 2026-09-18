@@ -110,6 +110,18 @@ Highlights aus der Auftragsbeschreibung.
 
 ![Job Details](https://i.vgy.me/bzAFIY.jpg)
 
+Die Ziel-Position und Richtung wird auserdem auf der Karte hervorgehoben, so
+dass man leichter hinfindet.
+
+| Nordost                                 | Osten                                 | Sichtbar                                 |
+| --------------------------------------- | ------------------------------------- | ---------------------------------------- |
+| ![Nordost](https://i.vgy.me/9h8sWa.jpg) | ![Osten](https://i.vgy.me/cQAWM6.jpg) | ![Sichtbar](https://i.vgy.me/Xuscli.jpg) |
+
+Zusätzlich werden einige Job-relevante NPC Spawns dyanmisch auf der Karte
+markiert, sobald man den entsprechenden Auftrag hat.
+
+![Job NPC](https://i.vgy.me/6GYADM.jpg)
+
 ### `job_frame_refresher`
 
 Aktualisiert automatisch den Item-Frame, sobald ein neuer Auftrag am Haus der
