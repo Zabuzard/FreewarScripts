@@ -438,6 +438,7 @@ function getMainFrameJobDetails() {
         "Schneeschaufel",
         "Fackel des Auftragshauses",
         "Klopfstock",
+        "Brotandro-Virus",
         "0"
       ]);
 
