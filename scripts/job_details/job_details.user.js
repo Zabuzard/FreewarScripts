@@ -372,7 +372,7 @@ function getMainFrameJobDetails() {
   var match = text.match(/Aktueller Auftrag:\s*([\s\S]*?)\s*Belohnung:/);
   if (!match) { return null; }
 
-  var position = match[1].match(/(?:Position|Ort) X:\s*(-?\d+)\s*Y:\s*(-?\d+)/);
+  var position = match[1].match(/(?:Position|Ort|Stelle) X:\s*(-?\d+)\s*Y:\s*(-?\d+)/);
 
   var result = {
     name: jobName.textContent.trim(),
