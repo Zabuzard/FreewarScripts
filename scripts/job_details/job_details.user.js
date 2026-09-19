@@ -538,7 +538,7 @@ function getJobDisplayText(jobDetails) {
 
   if (jobDetails.reward || jobDetails.expiresAt) {
     if (displayText) {
-      displayText += ' \\A\\A ';
+      displayText += ' \\A ';
     }
     displayText += '(';
 
@@ -606,7 +606,7 @@ function displayJobDetails(jobDetails) {
       'white-space: pre-line;' +
       '}' + '\n';
 
-  var appendedContent = JSON.stringify(displayText);
+  var appendedContent = JSON.stringify(displayText).replace(/\\\\A/g, '\\A');
   var finalContent;
 
   if (jobDetailsBaseContent && appendedContent) {
