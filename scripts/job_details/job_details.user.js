@@ -540,23 +540,24 @@ function getJobDisplayText(jobDetails) {
     if (displayText) {
       displayText += ' \\A\\A ';
     }
+    displayText += '(';
 
-    var rewardText = '';
+    var extraText = '';
 
     if (jobDetails.reward) {
-      rewardText += '★ ' + jobDetails.reward.ap + ', G ' + jobDetails.reward.gold.toLocaleString("de-DE");
+      extraText += '★ ' + jobDetails.reward.ap + ', G ' + jobDetails.reward.gold.toLocaleString("de-DE");
     }
 
     if (jobDetails.expiresAt) {
-      if (rewardText) {
-        rewardText += ', ';
+      if (extraText) {
+        extraText += ', ';
       }
 
       var remainingMinutes = Math.max(0, Math.floor((jobDetails.expiresAt - Date.now()) / 60000));
-      rewardText += '⏱ ' + remainingMinutes + 'min';
+      extraText += '⏱ ' + remainingMinutes + 'min';
     }
 
-    displayText += rewardText;
+    displayText += extraText + ')';
   }
 
   return displayText;
