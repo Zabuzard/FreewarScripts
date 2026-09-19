@@ -95,12 +95,9 @@ werden, gelegt werden.
 Zeigt beim Lösen eines Kisten-Rätsels den aktuellen Status direkt an, so dass
 man sich beim Lösen nicht mehr nebenbei Notizen machen muss.
 
-| Situation                                 | Interface                                           |
-| ----------------------------------------- | --------------------------------------------------- |
-| Start                                     | ![Start](https://i.vgy.me/Qjnas1.jpg)               |
-| Rechts-Rotation mit Feedback              | ![Right with Feedback](https://i.vgy.me/Xqy6b0.jpg) |
-| Links-Rotation bei Tiefe 3                | ![Left at Depth](https://i.vgy.me/Cg6pqk.jpg)       |
-| Zuvor entdeckte Gute/Schlechte Positionen | ![Memorized Positions](https://i.vgy.me/cDRZVF.jpg) |
+| Start                                 | Rechts-Rotation mit Feedback                        | Links-Rotation bei Tiefe 3                    | Zuvor entdeckte Gute/Schlechte Positionen           |
+| ------------------------------------- | --------------------------------------------------- | --------------------------------------------- | --------------------------------------------------- |
+| ![Start](https://i.vgy.me/Qjnas1.jpg) | ![Right with Feedback](https://i.vgy.me/Xqy6b0.jpg) | ![Left at Depth](https://i.vgy.me/Cg6pqk.jpg) | ![Memorized Positions](https://i.vgy.me/cDRZVF.jpg) |
 
 ### `job_details`
 
@@ -108,7 +105,7 @@ Fügt im Charaktermenü Details zum aktuellen Auftrag hinzu. Dazu zählen
 insbesondere dynamische Daten, wie z.B. die Position, oder auch andere
 Highlights aus der Auftragsbeschreibung.
 
-![Job Details](https://i.vgy.me/bzAFIY.jpg)
+![Job Details](https://i.vgy.me/SHvKLD.jpg)
 
 Die Ziel-Position und Richtung wird auserdem auf der Karte hervorgehoben, so
 dass man leichter hinfindet.

@@ -412,7 +412,12 @@ function getMainFrameJobDetails() {
     name: jobName.textContent.trim(),
     position: null,
     area: null,
-    highlights: []
+    highlights: [],
+    reward: {
+      gold: 0,
+      ap: 0
+    },
+    expiresAt: null
   };
 
   if (position && ignoredPositions.indexOf(position[1] + "/" + position[2]) !== -1) {
@@ -429,6 +434,22 @@ function getMainFrameJobDetails() {
     };
 
     result.area = getAreaName(result.position);
+  }
+
+  var rewardMatch = text.match(/Belohnung\s*:\s*([\d.]+)\s*Goldmünzen\s*und\s*(\d+)\s*Auftragspunkt(?:e)?/i);
+  if (rewardMatch) {
+    result.reward.gold = parseInt(rewardMatch[1].replace(/\./g, ""), 10);
+    result.reward.ap = parseInt(rewardMatch[2], 10);
+  }
+
+  var bonusMatch = text.match(/Bonus\s*:\s*([\d.]+)\s*Goldmünzen/i);
+  if (bonusMatch) {
+    result.reward.gold += parseInt(bonusMatch[1].replace(/\./g, ""), 10);
+  }
+
+  var timeMatch = text.match(/Du hast noch\s*(\d+)\s*Minuten?,\s*um die Mission zu beenden/i);
+  if (timeMatch) {
+    result.expiresAt = Date.now() + parseInt(timeMatch[1], 10) * 60 * 1000;
   }
 
   var element = jobName.nextSibling;
@@ -513,6 +534,29 @@ function getJobDisplayText(jobDetails) {
     }
 
     displayText += jobDetails.highlights.join(', ');
+  }
+
+  if (jobDetails.reward || jobDetails.expiresAt) {
+    if (displayText) {
+      displayText += ' \\A\\A ';
+    }
+
+    var rewardText = '';
+
+    if (jobDetails.reward) {
+      rewardText += '★ ' + jobDetails.reward.ap + ', G ' + jobDetails.reward.gold.toLocaleString("de-DE");
+    }
+
+    if (jobDetails.expiresAt) {
+      if (rewardText) {
+        rewardText += ', ';
+      }
+
+      var remainingMinutes = Math.max(0, Math.floor((jobDetails.expiresAt - Date.now()) / 60000));
+      rewardText += '⏱ ' + remainingMinutes + 'min';
+    }
+
+    displayText += rewardText;
   }
 
   return displayText;
