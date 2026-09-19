@@ -38,6 +38,8 @@ var positionOverrides = {
   "Der silberne Ohrring Teil 2": "70/101",
   "Verschneite Wege": "111/83",
   "Die Fischspeise": "137/116",
+  "Der kranke Loranier": "65/79",
+  "Das Artefakt von Dranar": "105/127",
 };
 
 // Update using https://www.fwwiki.de/index.php?title=Koordinaten_(Liste)&action=edit
@@ -424,7 +426,7 @@ function getMainFrameJobDetails() {
     position = null;
   }
   if (positionOverrides[result.name]) {
-    position = positionOverrides[result.name].split("/");
+    position = ["", ...positionOverrides[result.name].split("/")];
   }
 
   if (position) {
@@ -436,10 +438,14 @@ function getMainFrameJobDetails() {
     result.area = getAreaName(result.position);
   }
 
-  var rewardMatch = text.match(/Belohnung\s*:\s*([\d.]+)\s*Goldmünzen\s*und\s*(\d+)\s*Auftragspunkt(?:e)?/i);
-  if (rewardMatch) {
-    result.reward.gold = parseInt(rewardMatch[1].replace(/\./g, ""), 10);
-    result.reward.ap = parseInt(rewardMatch[2], 10);
+  var rewardGoldMatch = text.match(/Belohnung\s*:[\s\S]*?([\d.]+)\s*Goldmünzen/i);
+  if (rewardGoldMatch) {
+    result.reward.gold = parseInt(rewardGoldMatch[1].replace(/\./g, ""), 10);
+  }
+
+  var rewardApMatch = text.match(/Belohnung\s*:[\s\S]*?(\d+)\s*Auftragspunkt(?:e)?/i);
+  if (rewardApMatch) {
+    result.reward.ap = parseInt(rewardApMatch[1], 10);
   }
 
   var bonusMatch = text.match(/Bonus\s*:\s*([\d.]+)\s*Goldmünzen/i);
@@ -554,7 +560,7 @@ function getJobDisplayText(jobDetails) {
       }
 
       var remainingMinutes = Math.max(0, Math.floor((jobDetails.expiresAt - Date.now()) / 60000));
-      extraText += '⏱ ' + remainingMinutes + 'min';
+      extraText += '⏱ ' + remainingMinutes + ' min';
     }
 
     displayText += extraText + ')';
