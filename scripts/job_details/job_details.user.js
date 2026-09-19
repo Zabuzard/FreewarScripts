@@ -19,7 +19,8 @@ var jobDetailsBaseContent = null;
 
 var ignoredPositions = [
   "127/89", // Blauer Seelenstaub: Brondor
-  "55/75" // Zuviele Farben: Laree - Stadt
+  "55/75", // Zuviele Farben: Laree - Stadt
+  "61/104" // Itolos-Leder: Karto - Das Todesmoor
 ];
 const ignoredHighlights = new Set([
   'Kiste mit Reagenzgläsern',
