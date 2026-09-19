@@ -17,6 +17,29 @@ var observedItemDocument = null;
 var jobDetailsStyle = null;
 var jobDetailsBaseContent = null;
 
+var ignoredPositions = [
+  "127/89", // Blauer Seelenstaub: Brondor
+  "55/75" // Zuviele Farben: Laree - Stadt
+];
+const ignoredHighlights = new Set([
+  'Kiste mit Reagenzgläsern',
+  "rostigen Werkzeugkoffer",
+  "Phasenkugel",
+  "Schneeschaufel",
+  "Fackel des Auftragshauses",
+  "Klopfstock",
+  "Brotandro-Virus",
+  "Kristall der Miniaturisierung",
+  "0"
+]);
+var positionOverrides = {
+  "Die Fischspeise": "137/116",
+  "Die Wachtelnachzucht": "90/115",
+  "Der silberne Ohrring Teil 2": "70/101",
+  "Verschneite Wege": "111/83",
+  "Die Fischspeise": "137/116",
+};
+
 // Update using https://www.fwwiki.de/index.php?title=Koordinaten_(Liste)&action=edit
 var coordinateResource = `
 {{Überschriftensimulation 2|1={{Gebietslink|Alte Mühle}} (18 Felder)}}-821,-780; -825,-779; -824,-779; -823,-779; -821,-779; -825,-778; -824,-778; -823,-778; -822,-778; -821,-778; -825,-777; -824,-777; -823,-777; -822,-777; -821,-777; -824,-776; -823,-776; -822,-776<!--
@@ -392,14 +415,11 @@ function getMainFrameJobDetails() {
     highlights: []
   };
 
-  var ignoredPositions = [
-    "127/89"
-  ];
   if (position && ignoredPositions.indexOf(position[1] + "/" + position[2]) !== -1) {
     position = null;
   }
-  if (result.name == "Die Fischspeise") {
-    position = [ "137", "116" ];
+  if (positionOverrides[result.name]) {
+    position = positionOverrides[result.name].split("/");
   }
 
   if (position) {
@@ -444,18 +464,6 @@ function getMainFrameJobDetails() {
           }
         }
       }
-
-      const ignoredHighlights = new Set([
-        'Kiste mit Reagenzgläsern',
-        "rostigen Werkzeugkoffer",
-        "Phasenkugel",
-        "Schneeschaufel",
-        "Fackel des Auftragshauses",
-        "Klopfstock",
-        "Brotandro-Virus",
-        "Kristall der Miniaturisierung",
-        "0"
-      ]);
 
       if (value && !ignoredHighlights.has(value)) {
         result.highlights.push(value);
