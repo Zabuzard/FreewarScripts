@@ -46,6 +46,7 @@ var positionOverrides = {
   "Die Windwiesen": "111/94",
   "Der silberne Ohrring Teil 2": "77/101",
   "Der silberne Ohrring Teil 3": "77/101",
+  "Der feine Gestank": "60/111",
 };
 
 var npcJobs = {

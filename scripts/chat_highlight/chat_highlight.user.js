@@ -14,7 +14,8 @@
     /Behüter der Kathedrale zerbricht die Angriffswaffe/i,
     /flimmernde Farbanomalie richtet ihre vier Augen auf/i,
     /nimmt das Item Briefbeschwerer durch einen Beutezauber auf/i,
-    /nimmt das Item Plan der Jerodar durch einen Beutezauber auf/i
+    /nimmt das Item Plan der Jerodar durch einen Beutezauber auf/i,
+    /doch dann siehst du, dass es der Juwelenring der Familie Gruan ist, schön und sauber geputzt/i
   ];
 
   function highlightMessage(message) {
