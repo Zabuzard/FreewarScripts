@@ -560,7 +560,7 @@ function getJobDisplayText(jobDetails) {
         extraText += ', ';
       }
 
-      var remainingMinutes = Math.max(0, Math.floor((jobDetails.expiresAt - Date.now()) / 60000));
+      var remainingMinutes = Math.max(0, Math.round((jobDetails.expiresAt - Date.now()) / 60000));
       extraText += '⏱ ' + remainingMinutes + ' min';
     }
 
