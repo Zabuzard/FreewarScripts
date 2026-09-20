@@ -131,3 +131,13 @@ Highlights certain chat messages. Can be configured in the user script using
 regex patterns.
 
 ![Chat highlight](https://i.vgy.me/eQJ6rx.jpg)
+
+## `aka_limit_display`
+
+Adds a percentage display of the current Akademielimit (compared to the EXP)
+directly to the menu without needing to click on Details first.
+
+- red: below 50% (no EXP gain anymore)
+- orange: below 90% (with deactivated PvP only 30% chance to gain EXP)
+
+![Aka Limit Display](https://i.vgy.me/vD3VKt.jpg)
