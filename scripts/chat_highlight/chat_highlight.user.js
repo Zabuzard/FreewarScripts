@@ -11,7 +11,9 @@
   var patterns = [
     /.*?Stachel-Kowu belebt das.*?Stachel-Kowu wieder/i,
     /Massive Landqualle aktiviert ein magisches Schutzschild/i,
-    /Behüter der Kathedrale zerbricht die Angriffswaffe/i
+    /Behüter der Kathedrale zerbricht die Angriffswaffe/i,
+    /flimmernde Farbanomalie richtet ihre vier Augen auf/i,
+    /nimmt das Item Briefbeschwerer durch einen Beutezauber auf/i
   ];
 
   function highlightMessage(message) {
