@@ -180,11 +180,19 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     .timer {
       width: 90px;
+      height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       text-align: center;
       font-size: 64px;
       line-height: 1;
       font-weight: 700;
+      color: #f9fafb;
+      background: #374151;
+      border-radius: 16px;
       visibility: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     .timer-warning {
@@ -229,6 +237,18 @@ class RequestHandler(BaseHTTPRequestHandler):
       return value.toLocaleString("de-DE");
     }
 
+    function getUserColor(user) {
+      var hash = 0;
+
+      for (var i = 0; i < user.length; i++) {
+        hash = ((hash << 5) - hash) + user.charCodeAt(i);
+        hash |= 0;
+      }
+
+      var hue = Math.abs(hash) % 360;
+      return "hsl(" + hue + ", 45%, 25%)";
+    }
+
     function addEvent(data) {
       var element = document.createElement("div");
       element.className = "event";
@@ -255,10 +275,11 @@ class RequestHandler(BaseHTTPRequestHandler):
       eventsContainer.scrollTop = eventsContainer.scrollHeight;
     }
 
-    function startTimer() {
+    function startTimer(user) {
       clearInterval(timerInterval);
 
       timer.classList.remove("timer-warning");
+      timer.style.backgroundColor = getUserColor(user);
       timer.style.visibility = "visible";
       timerEnd = Date.now() + 4000;
       timer.textContent = "4";
@@ -315,7 +336,7 @@ class RequestHandler(BaseHTTPRequestHandler):
       addEvent(data);
 
       if (data.type === "hit") {
-        startTimer();
+        startTimer(data.user);
       } else if (data.type === "healed") {
         clearInterval(timerInterval);
         timerInterval = null;
@@ -497,7 +518,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 
 server = ThreadingHTTPServer(("0.0.0.0", port), RequestHandler)
-print("Baru-Schreck server listening on http://localhost:" + str(port))
+print("Baru-Schreck server listening on http://0.0.0.0:" + str(port))
 
 try:
   server.serve_forever()
