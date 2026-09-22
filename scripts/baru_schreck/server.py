@@ -232,21 +232,66 @@ class RequestHandler(BaseHTTPRequestHandler):
     var eventHistoryData = """ + historyJson + """;
     var timerInterval = null;
     var timerEnd = 0;
+    var userColors = {};
+    var usedColors = {};
 
     function formatLifepoints(value) {
       return value.toLocaleString("de-DE");
     }
 
     function getUserColor(user) {
-      var hash = 0;
-
-      for (var i = 0; i < user.length; i++) {
-        hash = ((hash << 5) - hash) + user.charCodeAt(i);
-        hash |= 0;
+      if (userColors[user]) {
+        return userColors[user];
       }
 
-      var hue = Math.abs(hash) % 360;
-      return "hsl(" + hue + ", 45%, 25%)";
+      var colors = [
+        "#5b3f6b",
+        "#3f5b6b",
+        "#6b3f45",
+        "#536b3f",
+        "#6b533f",
+        "#3f6b61",
+        "#63403f",
+        "#3f476b",
+        "#6b643f",
+        "#3f6b4a",
+        "#6b3f62",
+        "#4f5f6b",
+        "#5f6b4f",
+        "#6b4f5f",
+        "#4f6b67",
+        "#594f6b"
+      ];
+
+      var hash = 2166136261;
+
+      for (var i = 0; i < user.length; i++) {
+        hash ^= user.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+
+      hash >>>= 0;
+
+      var startIndex = hash % colors.length;
+      var color = null;
+
+      for (var i = 0; i < colors.length; i++) {
+        var index = (startIndex + i) % colors.length;
+
+        if (!usedColors[colors[index]]) {
+          color = colors[index];
+          break;
+        }
+      }
+
+      if (!color) {
+        color = colors[startIndex];
+      }
+
+      userColors[user] = color;
+      usedColors[color] = true;
+
+      return color;
     }
 
     function addEvent(data) {
