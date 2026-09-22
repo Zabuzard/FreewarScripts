@@ -134,10 +134,15 @@ regex patterns.
 
 ## `aka_limit_display`
 
-Adds a percentage display of the current Akademielimit (compared to the EXP)
-directly to the menu without needing to click on Details first.
+Fügt eine Prozentualanzeige des aktuellen Akademielimits (im Vergleich zu den
+XP) dem Charakter-Menü hinzu, so dass man nicht mehr auf Details klicken muss.
 
-- red: below 50% (no EXP gain anymore)
-- orange: below 90% (with deactivated PvP only 30% chance to gain EXP)
+- rot: unter 50% (man erhält keine XP mehr)
+- orange: unter 90% (mit deaktiviertem PvP erhält man nur noch zu 30% XP)
 
 ![Aka Limit Display](https://i.vgy.me/vD3VKt.jpg)
+
+## `weather_hints`
+
+Fügt allen Wettereffekt-Nachrichten im Chat eine Erklärung hinzu, welche man bei
+Mouse-Hover sehen kann.
