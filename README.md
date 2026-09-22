@@ -146,3 +146,5 @@ XP) dem Charakter-Menü hinzu, so dass man nicht mehr auf Details klicken muss.
 
 Fügt allen Wettereffekt-Nachrichten im Chat eine Erklärung hinzu, welche man bei
 Mouse-Hover sehen kann.
+
+![Wetter-Effekt](https://i.vgy.me/ee4HcL.jpg)
