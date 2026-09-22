@@ -19,17 +19,25 @@
     if (!timestamp || (lastTimestamp !== null && timestamp <= lastTimestamp)) { return; }
     lastTimestamp = timestamp;
 
-    var text = message.textContent.trim();
+    var parts = timestamp.split(/[:.]/);
+    var ts = new Date();
+    ts.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), parseInt(parts[2], 10), parseInt(parts[3].substring(0, 3), 10));
+    var epochMillis = ts.getTime();
+
+    var text = message.cloneNode(true);
+    var chatTime = text.querySelector(".chattime");
+    if (chatTime) { chatTime.remove(); }
+    text = text.textContent.trim();
 
     var match = text.match(/^(.+?) führt einen Schlag gegen Baru-Schrecke aus, zieht/);
     if (match) {
       var user = match[1].trim();
-      fetch(endpoint + "/hit?user=" + encodeURIComponent(user), { method: "GET", mode: "no-cors" }).catch(function () {/* Fire-and-forget: ignore connection errors */});
+      fetch(endpoint + "/hit?user=" + encodeURIComponent(user) + "&ts=" + epochMillis, { method: "GET", mode: "no-cors" }).catch(function () {/* Fire-and-forget: ignore connection errors */});
       return;
     }
 
     if (text === "Baru-Schrecke heilt sich zwischen den Angriffen komplett.") {
-      fetch(endpoint + "/healed", { method: "GET", mode: "no-cors" }).catch(function () {/* Fire-and-forget: ignore connection errors */});
+      fetch(endpoint + "/healed?ts=" + epochMillis, { method: "GET", mode: "no-cors" }).catch(function () {/* Fire-and-forget: ignore connection errors */});
     }
   }
 
