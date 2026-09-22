@@ -403,6 +403,7 @@
       patterns: [
         /Ein Wirbelsturm bahnt sich an\./,
         /Auf Windfeldern wehen so starke Wirbelstürme, dass Wesen sich an diesen kaum festhalten können\./,
+        /Auf Windfeldern der Inseln wehen so starke Wirbelstürme, dass Wesen sich dort kaum festhalten können/,
         /Der Wirbelsturm verschwindet wieder\./,
       ]
     },
@@ -425,9 +426,33 @@
     "Segen des Kolrun": {
       hint: "Belebt alle NPC um ein zufälliges Feld wieder und alle Spieler erhalten Zeitkontrolle.",
       patterns: [
-        /Als .+? den Äonenjäger besiegen, erstarkt der Geist der Welt merklich, was alle Lebewesen der Welt heilt und beschleunigt./,
-        /Sämtliche Lebewesen rund um Beispielort kommen hervor, um den Segen des Kolrun zu empfangen./,
-        /Der Segen wird wieder schwächer, bis er nur noch spurenhaft wahrzunehmen ist./,
+        /Als .+? den Äonenjäger besiegen, erstarkt der Geist der Welt merklich, was alle Lebewesen der Welt heilt und beschleunigt\./,
+        /Sämtliche Lebewesen rund um Beispielort kommen hervor, um den Segen des Kolrun zu empfangen\./,
+        /Der Segen wird wieder schwächer, bis er nur noch spurenhaft wahrzunehmen ist\./,
+      ]
+    },
+    "Taubenflug": {
+      hint: "Erzeugt Brieftaube des Auftragshauses (Remote-Annehmen/Abschließen von Aufträgen) im Inventar zufälliger Spieler.",
+      patterns: [
+        /.+? hat die Tür des Auftragshauses offen stehen gelassen und großes Unheil nimmt seinen Lauf\./,
+        /.+? Brieftauben des Auftragshauses fliegen wie wild über die Welt\. .+? gelingt es eine einzufangen\./,
+        /Alle Brieftauben des Auftragshauses konnten eingefangen werden und die Welt beruhigt sich langsam wieder\./,
+      ]
+    },
+    "Magische Nebelwolken": {
+      hint: "Alle an der Oberfläche erhalten Fliegen (3min). Erzeugt Nebelgebiete, welche über die Karte wandern. Dort gibt es Nebelzofen und auf der Nebelinsel gibt es Nebelprinzessin.",
+      patterns: [
+        /Ein heller Lichtstrahl bricht durch die dichte Nebeldecke über der Nebelinsel und schießt gen Himmel\./,
+        /Magische Nebelwolken ziehen über die Welt Richtung Nebelinsel und verleihen jedem die Fähigkeit zu fliegen\./,
+        /Die letzten Nebelwolken sind verschwunden und langsam beruhigen sich die Nebel auf der Nebelinsel wieder\./,
+      ]
+    },
+    "Schwarm-Angriff": {
+      hint: "Erzeugt Schwarm-Kriegerin (dropt Item um massive Steinplatte in Elufia weiter zu schwächen). Teil eines Welten-Events.",
+      patterns: [
+        /Am Horizont taucht ein Schwarm großer Insekten auf, die sich darauf vorbereiten, diese Welt zu vernichten\./,
+        /Hunderte Schwarm-Kriegerinnen fallen über diese Welt her\./,
+        /Der große Insektenschwarm am Horizont verschwindet langsam wieder\. Die Invasion scheint abgewendet zu sein\./,
       ]
     }
   };
