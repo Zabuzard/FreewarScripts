@@ -148,3 +148,19 @@ Fügt allen Wettereffekt-Nachrichten im Chat eine Erklärung hinzu, welche man b
 Mouse-Hover sehen kann.
 
 ![Wetter-Effekt](https://i.vgy.me/ee4HcL.jpg)
+
+## `baru_schreck`
+
+Visuelles Tool um die Baru-Schrecke leichter zu besiegen.
+
+- `baru_schreck.user.js` muss von einem Spieler installiert sein, es extrahiert
+  entsprechende Events aus dem Freewar-Chat und leitet sie zum Server weiter
+- `server.py` muss im Hintergrund laufen und für alle Spieler erreichbar sein
+  (siehe `endpoint` Variable).
+
+Alle Spieler rufen dann `/baru_schreck` im Browser auf (zum Beispiel
+`http://freewarscripts.duckdns.org/baru-schreck`) und haben somit ein Tool,
+welches unter anderem anzeigt wann geschlagen werden muss bevor sich die
+Baru-Schrecke selbstständig heilt.
+
+![Demo](https://i.vgy.me/dgKEQJ.gif)

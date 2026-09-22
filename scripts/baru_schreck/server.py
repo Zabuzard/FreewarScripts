@@ -4,7 +4,7 @@ import json
 import queue
 import threading
 
-port = 8628
+port = 80
 lastTimestamp = None
 latestMessage = "Warten auf Events..."
 lifepoints = 7000
@@ -496,7 +496,7 @@ class RequestHandler(BaseHTTPRequestHandler):
     return
 
 
-server = ThreadingHTTPServer(("localhost", port), RequestHandler)
+server = ThreadingHTTPServer(("0.0.0.0", port), RequestHandler)
 print("Baru-Schreck server listening on http://localhost:" + str(port))
 
 try:
