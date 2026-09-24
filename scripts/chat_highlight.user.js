@@ -13,8 +13,17 @@
     /Massive Landqualle aktiviert ein magisches Schutzschild/i,
     /Behüter der Kathedrale zerbricht die Angriffswaffe/i,
     /flimmernde Farbanomalie richtet ihre vier Augen auf/i,
+    /nimmt das Item Herz der Glypra durch einen Beutezauber auf/i,
     /nimmt das Item Briefbeschwerer durch einen Beutezauber auf/i,
+    /nimmt das Item Schlüssel von Mister Lorper durch einen Beutezauber auf/i,
+    /nimmt das Item Ektofronstachel durch einen Beutezauber auf/i,
+    /nimmt das Item Itolos-Leder durch einen Beutezauber auf/i,
     /nimmt das Item Plan der Jerodar durch einen Beutezauber auf/i,
+    /nimmt das Item Schattenmoosextrakt durch einen Beutezauber auf/i,
+    /nimmt das Item Untoter Knochen durch einen Beutezauber auf/i,
+    /nimmt das Item Quallenglibber durch einen Beutezauber auf/i,
+    /nimmt das Item Flammenwurmsekret durch einen Beutezauber auf/i,
+    /nimmt das Item Kugelknochen durch einen Beutezauber auf/i,
     /doch dann siehst du, dass es der Juwelenring der Familie Gruan ist, schön und sauber geputzt/i
   ];
 
