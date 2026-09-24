@@ -46,13 +46,16 @@
     defenseName = defenseNameSpan;
   }
 
+  var currentAttack = weaponName.textContent.trim();
+  var currentDefense = defenseName.textContent.trim();
+
   weaponLabel.insertBefore(document.createTextNode(" ("), weaponColon);
 
   var swapLink = document.createElement("a");
   swapLink.href = "#";
   swapLink.textContent = "⇄";
   swapLink.title = "Waffen ab-/anlegen";
-  swapLink.style.color = "#FFFFFF";
+  swapLink.style.color = currentAttack === "keine" && currentDefense === "keine" ? "#888888" : "#FFFFFF";
   swapLink.style.fontSize = "1.5em";
 
   swapLink.onclick = function (event) {
@@ -96,9 +99,9 @@
 
   var fishLink = document.createElement("a");
   fishLink.href = "#";
-  fishLink.textContent = "🐟";
+  fishLink.textContent = "🐟︎";
   fishLink.title = "Taucheranzug an-/ablegen";
-  fishLink.style.color = "#66CCFF";
+  fishLink.style.color = currentDefense === divingSuit.name ? "#66CCFF" : "#888888";
   fishLink.style.fontSize = "1.5em";
 
   fishLink.onclick = function (event) {
