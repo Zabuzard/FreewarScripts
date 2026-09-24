@@ -164,3 +164,8 @@ welches unter anderem anzeigt wann geschlagen werden muss bevor sich die
 Baru-Schrecke selbstständig heilt.
 
 ![Demo](https://i.vgy.me/dgKEQJ.gif)
+
+## `necklace_swap`
+
+Fügt Symbole hinzu um Halsschmuck schnell zu und direkt zu wechseln. Symbole und
+Item-Ids müssen zuvor im Code konfiguriert werden.
