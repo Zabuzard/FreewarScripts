@@ -48,6 +48,8 @@ var positionOverrides = {
   "Der silberne Ohrring Teil 3": "77/101",
   "Der feine Gestank": "60/111",
   "Die Tischdecke": "111/96",
+  "Die Hungersnot Teil 2": "101/116",
+  "Urlaub Teil 2": "118/106",
 };
 
 var npcJobs = {
