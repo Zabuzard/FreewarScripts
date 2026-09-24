@@ -40,7 +40,7 @@
       this.href += "&yscroll=" + window.pageYOffset;
       this.href = this.href.replace(
         /(itemcheckid=)[0-9]+/,
-        "$1" + Math.floor(((parent.frames.reloadChatFrame.server_time_offset || 0) + Date.now()) / 1000)
+        "$1" + Math.floor(((getServerTimeOffset() || 0) + Date.now()) / 1000)
       );
     };
 
@@ -57,4 +57,17 @@
   });
 
   parent.insertBefore(document.createTextNode(")"), textNode);
+
+  function getServerTimeOffset() {
+    var frame = window;
+
+    while (frame.parent !== frame) {
+      if (frame.parent.frames["reloadChatFrame"]) {
+        return frame.parent.frames["reloadChatFrame"].server_time_offset || 0;
+      }
+      frame = frame.parent;
+    }
+
+    return 0;
+  }
 })();
