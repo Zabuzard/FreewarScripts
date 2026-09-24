@@ -179,3 +179,9 @@ um den Taucheranzug direkt auszurüsten. Symbole und Item-Ids müssen zuvor im
 Code konfiguriert werden.
 
 ![Waffen-Tausch Symbole](https://i.vgy.me/TSmw3k.jpg)
+
+## `quick_heal`
+
+Fügt ein Symbol zur schnellen Heilung bei den Lebenspunkten hinzu. Die Item-ID
+muss zuvor im Code konfiguriert werden (zum Beispiel ein Fels der
+Phasenselbstheilung).
