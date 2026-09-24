@@ -47,6 +47,7 @@ var positionOverrides = {
   "Der silberne Ohrring Teil 2": "77/101",
   "Der silberne Ohrring Teil 3": "77/101",
   "Der feine Gestank": "60/111",
+  "Die Tischdecke": "111/96",
 };
 
 var npcJobs = {
