@@ -169,3 +169,5 @@ Baru-Schrecke selbstständig heilt.
 
 Fügt Symbole hinzu um Halsschmuck schnell zu und direkt zu wechseln. Symbole und
 Item-Ids müssen zuvor im Code konfiguriert werden.
+
+![icons](https://i.vgy.me/QLf5ln.jpg)
