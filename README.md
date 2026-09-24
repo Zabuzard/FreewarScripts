@@ -171,3 +171,9 @@ Fügt Symbole hinzu um Halsschmuck schnell zu und direkt zu wechseln. Symbole un
 Item-Ids müssen zuvor im Code konfiguriert werden.
 
 ![icons](https://i.vgy.me/QLf5ln.jpg)
+
+## `weapon_swap`
+
+Fügt Symbole hinzu um alle Waffen schnell und direkt ab- oder anzulegen, sowie
+um den Taucheranzug direkt auszurüsten. Symbole und Item-Ids müssen zuvor im
+Code konfiguriert werden.
