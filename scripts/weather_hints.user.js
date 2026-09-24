@@ -427,7 +427,7 @@
       hint: "Belebt alle NPC um ein zufälliges Feld wieder und alle Spieler erhalten Zeitkontrolle.",
       patterns: [
         /Als .+? den Äonenjäger besiegen, erstarkt der Geist der Welt merklich, was alle Lebewesen der Welt heilt und beschleunigt\./,
-        /Sämtliche Lebewesen rund um Beispielort kommen hervor, um den Segen des Kolrun zu empfangen\./,
+        /Sämtliche Lebewesen rund um .+? kommen hervor, um den Segen des Kolrun zu empfangen\./,
         /Der Segen wird wieder schwächer, bis er nur noch spurenhaft wahrzunehmen ist\./,
       ]
     },
