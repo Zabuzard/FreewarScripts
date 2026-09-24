@@ -336,7 +336,7 @@ style.innerHTML = `
 `;
 document.head.appendChild(style);
 
-var width = 80;
+var width = 100;
 var curWidth = 0;
 var curLife = 0;
 var maxLife = 0;
