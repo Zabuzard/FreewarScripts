@@ -185,3 +185,5 @@ Code konfiguriert werden.
 Fügt ein Symbol zur schnellen Heilung bei den Lebenspunkten hinzu. Die Item-ID
 muss zuvor im Code konfiguriert werden (zum Beispiel ein Fels der
 Phasenselbstheilung).
+
+![Healing Symbol](https://i.vgy.me/jtKgtb.jpg)
