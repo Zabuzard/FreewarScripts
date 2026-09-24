@@ -8,10 +8,10 @@
 
 (function () {
   var necklaces = [ // Configure this to your needs
-    { id: 247183403, icon: "⌛", color: "#C49A6C" },
-    { id: 247183421, icon: "❄", color: "#66CCFF" },
-    { id: 247183401, icon: "🔥", color: "#FF6600" },
-    { id: 247183479, icon: "★", color: "#FFD700" }
+    { name: "Landmaster", id: 247183403, icon: "⌛︎", color: "#C49A6C" },
+    { name: "Amulett der Frostkälte", id: 247183421, icon: "❄", color: "#66CCFF" },
+    { name: "Amulett der Feuersbrunst", id: 247183401, icon: "🔥︎", color: "#FF6600" },
+    { name: "Amulett der Erfahrung", id: 247183479, icon: "★", color: "#FFD700" }
   ];
 
   var neckRow = document.getElementById("listrow_neck");
@@ -24,6 +24,8 @@
   if (neckName) {
     neckName.style.fontSize = "0.85em";
   }
+
+  var currentName = neckName ? neckName.textContent.trim() : "nichts";
 
   var parent = neckLink.parentNode;
   var textNode = neckLink.nextSibling;
@@ -44,7 +46,7 @@
 
     link.textContent = necklace.icon;
     link.title = "Halsschmuck wechseln";
-    link.style.color = necklace.color;
+    link.style.color = currentName === necklace.name ? necklace.color : "#888888";
     link.style.fontSize = "1.5em";
 
     parent.insertBefore(link, textNode);
