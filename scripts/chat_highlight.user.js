@@ -25,7 +25,9 @@
     /nimmt das Item Quallenglibber durch einen Beutezauber auf/i,
     /nimmt das Item Flammenwurmsekret durch einen Beutezauber auf/i,
     /nimmt das Item Kugelknochen durch einen Beutezauber auf/i,
-    /doch dann siehst du, dass es der Juwelenring der Familie Gruan ist, schön und sauber geputzt/i
+    /nimmt das Item zerbrochenes Artefakt durch einen Beutezauber auf/i,
+    /doch dann siehst du, dass es der Juwelenring der Familie Gruan ist, schön und sauber geputzt/i,
+    /wahnsinniger Waldschlurch rennt wie wild Richtung/i
   ];
 
   function highlightMessage(message) {
