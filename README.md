@@ -187,3 +187,19 @@ muss zuvor im Code konfiguriert werden (zum Beispiel ein Fels der
 Phasenselbstheilung).
 
 ![Healing Symbol](https://i.vgy.me/jtKgtb.jpg)
+
+## `ultra_hd_frameset`
+
+Passt das Frameset von Freewar so an, dass es besser für 4K Displays geeignet
+ist.
+
+| Frameset                                 | FwWiki                                 |
+| ---------------------------------------- | -------------------------------------- |
+| ![Frameset](https://i.vgy.me/jQlrv7.jpg) | ![FwWiki](https://i.vgy.me/pVBT0w.jpg) |
+
+Dabei wird die Karte zwischen Hauptanzeige und Inventar bewegt um die verfügbare
+Weite zu füllen und die typischen Maus-Distanzen zu reduzieren. Die Karte ist
+auserdem vergrößert.
+
+Das Inventar hat dafür mehr Platz in der Höhe und der Bereich über der Karte
+kann optional zum Beispiel das FreewarWiki anzeigen.
