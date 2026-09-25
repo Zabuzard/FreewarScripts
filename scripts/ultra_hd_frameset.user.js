@@ -76,10 +76,6 @@
   ));
 
   var map = frame("mapFrame");
-  map.addEventListener("load", function () {
-    map.contentDocument.body.style.zoom = "1.1";
-  });
-
   mapArea.appendChild(blank);
   mapArea.appendChild(map);
 
