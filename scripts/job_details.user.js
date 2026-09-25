@@ -34,6 +34,7 @@ const ignoredHighlights = new Set([
   "Kristall der Miniaturisierung",
   "Portalmaschine",
   "Grotte des Todes",
+  "Seelenkapsel",
   "0"
 ]);
 var positionOverrides = {
@@ -47,9 +48,9 @@ var positionOverrides = {
   "Der silberne Ohrring Teil 2": "77/101",
   "Der silberne Ohrring Teil 3": "77/101",
   "Der feine Gestank": "60/111",
-  "Die Tischdecke": "111/96",
   "Die Hungersnot Teil 2": "101/116",
   "Urlaub Teil 2": "118/106",
+  "Die Seuche": "98/102",
 };
 
 var npcJobs = {
