@@ -57,7 +57,7 @@
     [
       /^Turm der inneren Macht auf Stufe \d+\s*$/,
       /Du kannst jetzt deine Förderung bei der Stiftung abholen\./,
-      /Nächste Wissenszauber-Abholung in .+ wieder möglich\./,
+      /Du kannst jetzt wieder einen Wissenszauber abholen\./,
       /In .+ wird der Zähler für die Nebelprismen wieder zurückgesetzt\./,
       /Du kannst dich erst in .+ wieder mit Flugkreide bestreuen lassen/
     ].forEach(function (pattern) {
