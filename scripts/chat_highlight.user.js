@@ -27,6 +27,7 @@
     /nimmt das Item Kugelknochen durch einen Beutezauber auf/i,
     /nimmt das Item zerbrochenes Artefakt durch einen Beutezauber auf/i,
     /doch dann siehst du, dass es der Juwelenring der Familie Gruan ist, schön und sauber geputzt/i,
+    /sucht mit dem Goldsieb im Wasser und findet einen silbernen Ohrring/i,
     /wahnsinniger Waldschlurch rennt wie wild Richtung/i
   ];
 
