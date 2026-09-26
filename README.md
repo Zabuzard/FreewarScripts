@@ -212,9 +212,17 @@ kann optional zum Beispiel das FreewarWiki anzeigen.
 
 ## `target_navigation`
 
-Fügt ein Eingabefeld für Zielkoordinaten zur Navigationshilfe der Karte hinzu.
-Falls bekannt wird auch der Name des Gebiets angezeigt.
+Zwei Skripte, welche ein Eingabefeld für Zielkoordinaten zur Navigationshilfe
+der Karte hinzufügt. Falls bekannt wird auch der Name des Gebiets angezeigt.
 
 | Südost                                 | Sichtbar                                 |
 | -------------------------------------- | ---------------------------------------- |
 | ![Südost](https://i.vgy.me/cAj84v.jpg) | ![Sichtbar](https://i.vgy.me/S93RZ6.jpg) |
+
+Das Skript `target_navigation_detection` scannt dann zusätzlich die Haupt-,
+Chat- und Itemanzeige nach Koordinaten. Gefundene Koordinaten können dann zum
+Start der Navigation angeklickt werden.
+
+| Itemanzeige                                 | Chat                                 |
+| ------------------------------------------- | ------------------------------------ |
+| ![Itemanzeige](https://i.vgy.me/FrpXAD.jpg) | ![Chat](https://i.vgy.me/11Lxiq.jpg) |

@@ -13,6 +13,7 @@
     var COOKIE_MAX_AGE = 2 * 60 * 60;
 
     var COORDINATE_PATTERN = /X:\s*(-?\d+)\s+Y:\s*(-?\d+)/g;
+
     var FRAME_NAMES = [
         "mainFrame",
         "chattextFrame",
@@ -38,9 +39,10 @@
         }
     }
 
-    function makeCoordinateClickable(textNode, match) {
+    function makeCoordinateClickable(match) {
         var element = document.createElement("span");
 
+        element.className = "target-navigation-coordinate";
         element.textContent = match[0];
         element.style.cursor = "pointer";
         element.style.textDecoration = "underline";
@@ -82,7 +84,7 @@
             }
 
             fragment.appendChild(
-                makeCoordinateClickable(textNode, match)
+                makeCoordinateClickable(match)
             );
 
             lastIndex = match.index + match[0].length;
@@ -98,21 +100,24 @@
     }
 
     function scanFrame(frameName) {
-        var frame = window.frames[frameName];
-        if (!frame) { return; }
+        var frameElement = document.querySelector(
+            "frame[name=\"" + frameName + "\"]"
+        );
 
-        var documentObject;
+        if (!frameElement) { return; }
+
+        var frameDocument;
 
         try {
-            documentObject = frame.document;
+            frameDocument = frameElement.contentDocument;
         } catch (e) {
             return;
         }
 
-        if (!documentObject || !documentObject.body) { return; }
+        if (!frameDocument || !frameDocument.body) { return; }
 
-        var walker = documentObject.createTreeWalker(
-            documentObject.body,
+        var walker = frameDocument.createTreeWalker(
+            frameDocument.body,
             NodeFilter.SHOW_TEXT
         );
 
@@ -150,9 +155,9 @@
         }
     }
 
+    scanFrames();
+
     setInterval(function () {
         scanFrames();
     }, 500);
-
-    scanFrames();
 })();
