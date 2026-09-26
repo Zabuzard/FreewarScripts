@@ -225,4 +225,4 @@ Start der Navigation angeklickt werden.
 
 | Itemanzeige                                 | Chat                                 |
 | ------------------------------------------- | ------------------------------------ |
-| ![Itemanzeige](https://i.vgy.me/FrpXAD.jpg) | ![Chat](https://i.vgy.me/11Lxiq.jpg) |
+| ![Itemanzeige](https://i.vgy.me/x9mV67.jpg) | ![Chat](https://i.vgy.me/XHoRJE.jpg) |
