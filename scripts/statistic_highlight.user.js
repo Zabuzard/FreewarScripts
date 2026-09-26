@@ -51,11 +51,11 @@
 
     highlightStorage("Glodo-Fische im Lager", 0.7);
     highlightStorage("Baru-Getreide im Lager", 0.5);
-    highlightStorage("Ölfässer im Lager", 0.4);
+    highlightStorage("Ölfässer im Lager", 0.3);
     highlightStorage("Sumpfgasflaschen im Lager", 0.5);
 
     [
-      /Turm der inneren Macht auf Stufe .+/,
+      /^Turm der inneren Macht auf Stufe \d+\s*$/,
       /Du kannst jetzt deine Förderung bei der Stiftung abholen\./,
       /Nächste Wissenszauber-Abholung in .+ wieder möglich\./,
       /In .+ wird der Zähler für die Nebelprismen wieder zurückgesetzt\./,
