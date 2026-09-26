@@ -220,7 +220,7 @@
     "Schönes Wetter": {
       hint: "Erhöht die Spawnrate von NPCs an der Oberfläche deutlich.",
       patterns: [
-        /Alle Wolken verziehen sich, und es sieht aus, als ob das Wetter unglaublich schön wird\./,
+        /Alle Wolken verziehen sich und es sieht aus, als ob das Wetter unglaublich schön wird\./,
         /Atemberaubend schönes Wetter betört alle NPCs in dieser Welt und lässt viele neue NPCs entstehen\./,
         /Das Wetter normalisiert sich wieder und die ein oder andere Wolke ist zu sehen\./,
       ]
