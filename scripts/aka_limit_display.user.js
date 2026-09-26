@@ -8,15 +8,34 @@
 
 (function () {
   var akaElement = document.querySelector("#listrow_aka_battlep");
-  var akaLimit = parseInt(akaElement.textContent.replace(/\./g, "").match(/\d+/)[0], 10);
-
   var xpElement = document.querySelector(".listcaption");
-  var xpText = xpElement.textContent.replace(/\./g, "");
-  var xp = parseInt(xpText.match(/Erfahrung:\s*(\d+)/)[1], 10);
+
+  if (!akaElement || !xpElement) {
+    return;
+  }
+
+  var akaMatch = akaElement.textContent.replace(/\./g, "").match(/\d+/);
+  var xpMatch = xpElement.textContent.replace(/\./g, "").match(/Erfahrung:\s*(\d+)/);
+
+  if (!akaMatch || !xpMatch) {
+    return;
+  }
+
+  var akaLimit = parseInt(akaMatch[0], 10);
+  var xp = parseInt(xpMatch[1], 10);
+
+  if (!xp) {
+    return;
+  }
 
   var percentage = Math.floor((akaLimit / xp) * 100);
 
   var akaSpan = akaElement.querySelector(".small");
+
+  if (!akaSpan) {
+    return;
+  }
+
   var percentageElement = document.createElement("span");
 
   percentageElement.textContent = " (" + percentage + "%)";
