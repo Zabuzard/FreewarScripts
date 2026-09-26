@@ -209,3 +209,12 @@ auserdem vergrößert.
 
 Das Inventar hat dafür mehr Platz in der Höhe und der Bereich über der Karte
 kann optional zum Beispiel das FreewarWiki anzeigen.
+
+## `target_navigation`
+
+Fügt ein Eingabefeld für Zielkoordinaten zur Navigationshilfe der Karte hinzu.
+Falls bekannt wird auch der Name des Gebiets angezeigt.
+
+| Südost                                 | Sichtbar                                 |
+| -------------------------------------- | ---------------------------------------- |
+| ![Südost](https://i.vgy.me/cAj84v.jpg) | ![Sichtbar](https://i.vgy.me/S93RZ6.jpg) |
