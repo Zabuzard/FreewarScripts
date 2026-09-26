@@ -2,18 +2,21 @@
 // @name        statistic_highlight
 // @namespace   Zabuza
 // @description Highlights certain messages in the statistics menu.
-// @include     *.freewar.de/freewar/internal/main.php*
+// @include     *.freewar.de/freewar/internal/stats.php*
 // @version     1
 // @grant       none
 // ==/UserScript==
 
 (function () {
-  var mainCaption = document.querySelector(".maincaption");
-  if (!mainCaption || mainCaption.textContent.trim() !== "Statistiken") { return; }
+  var highlightColor = "rgb(82, 58, 58)";
 
-  var highlightColor = "#ffcccc";
+  function isStatisticsPage() {
+    var mainCaption = document.querySelector(".maincaption");
+    return mainCaption && mainCaption.textContent.trim() === "Statistiken";
+  }
 
   function highlightRow(row) {
+    if (row.style.backgroundColor) { return; }
     row.style.backgroundColor = highlightColor;
   }
 
@@ -42,18 +45,35 @@
     });
   }
 
-  highlightStorage("Glodo-Fische im Lager", 0.5);
-  highlightStorage("Baru-Getreide im Lager", 0.5);
-  highlightStorage("Ölfässer im Lager", 0.5);
-  highlightStorage("Sumpfgasflaschen im Lager", 0.5);
+  function highlightMessages() {
+    console.log("hi");
+    if (!isStatisticsPage()) { return; }
 
-  [
-    /Turm der inneren Macht auf Stufe 9/,
-    /Du kannst jetzt deine Förderung bei der Stiftung abholen\./,
-    /Nächste Wissenszauber-Abholung in .+ wieder möglich\./,
-    /In .+ wird der Zähler für die Nebelprismen wieder zurückgesetzt\./,
-    /Du kannst dich erst in .+ wieder mit Flugkreide bestreuen lassen/
-  ].forEach(function (pattern) {
-    findRowsMatching(pattern).forEach(highlightRow);
+    highlightStorage("Glodo-Fische im Lager", 0.7);
+    highlightStorage("Baru-Getreide im Lager", 0.5);
+    highlightStorage("Ölfässer im Lager", 0.4);
+    highlightStorage("Sumpfgasflaschen im Lager", 0.5);
+
+    [
+      /Turm der inneren Macht auf Stufe .+/,
+      /Du kannst jetzt deine Förderung bei der Stiftung abholen\./,
+      /Nächste Wissenszauber-Abholung in .+ wieder möglich\./,
+      /In .+ wird der Zähler für die Nebelprismen wieder zurückgesetzt\./,
+      /Du kannst dich erst in .+ wieder mit Flugkreide bestreuen lassen/
+    ].forEach(function (pattern) {
+      findRowsMatching(pattern).forEach(highlightRow);
+    });
+  }
+
+  var observer = new MutationObserver(function () {
+    highlightMessages();
   });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
+
+  setInterval(highlightMessages, 200);
 })();

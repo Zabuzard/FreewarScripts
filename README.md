@@ -132,6 +132,12 @@ regex patterns.
 
 ![Chat highlight](https://i.vgy.me/eQJ6rx.jpg)
 
+## `statistic_highlight`
+
+Hebt bestimmte Nachrichten im Statistik-Menü farblich hervor.
+
+![Statistik](https://i.vgy.me/wVN04F.jpg)
+
 ## `aka_limit_display`
 
 Fügt eine Prozentualanzeige des aktuellen Akademielimits (im Vergleich zu den
