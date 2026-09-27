@@ -186,7 +186,7 @@ Alle Spieler rufen dann `/quallenglibber` im Browser auf (zum Beispiel
 welches unter anderem anzeigt wer zuletzt geschlagen hat und ob ein Schutz aktiv
 ist, durch den sich die massive Landqualle selbstständig heilt.
 
-![Demo](https://i.vgy.me/dgKEQJ.gif)
+![Demo](https://i.vgy.me/t3WV2p.gif)
 
 ## `necklace_swap`
 
