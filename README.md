@@ -171,6 +171,23 @@ Baru-Schrecke selbstständig heilt.
 
 ![Demo](https://i.vgy.me/dgKEQJ.gif)
 
+## `quallenglibber`
+
+Visuelles Tool um die massive Landqualle leichter zu besiegen.
+
+- `quallenglibber.user.js` muss von dem Spieler installiert sein, welcher für
+  die Auflösung des Schutzes der Qualle zuständig ist; es extrahiert
+  entsprechende Events aus dem Freewar-Chat und leitet sie zum Server weiter.
+- `server.py` muss im Hintergrund laufen und für alle Spieler erreichbar sein
+  (siehe `endpoint` Variable).
+
+Alle Spieler rufen dann `/quallenglibber` im Browser auf (zum Beispiel
+`http://freewarscripts.duckdns.org/quallenglibber`) und haben somit ein Tool,
+welches unter anderem anzeigt wer zuletzt geschlagen hat und ob ein Schutz aktiv
+ist, durch den sich die massive Landqualle selbstständig heilt.
+
+![Demo](https://i.vgy.me/dgKEQJ.gif)
+
 ## `necklace_swap`
 
 Fügt Symbole hinzu um Halsschmuck schnell zu und direkt zu wechseln. Symbole und
