@@ -10,7 +10,7 @@
 (function () {
   var patterns = [
     /.*?Stachel-Kowu belebt das.*?Stachel-Kowu wieder/i,
-    /Massive Landqualle aktiviert ein magisches Schutzschild/i,
+    /aktiviert einen magischen Schutzschild/i,
     /Behüter der Kathedrale zerbricht die Angriffswaffe/i,
     /flimmernde Farbanomalie richtet ihre vier Augen auf/i,
     /nimmt das Item Herz eines Glypra durch einen Beutezauber auf/i,
