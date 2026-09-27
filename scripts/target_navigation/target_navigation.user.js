@@ -348,7 +348,8 @@
         return {
             x: coordinates.x,
             y: coordinates.y,
-            value: value
+            value: value,
+            timestamp: timestamp
         };
     }
 
@@ -430,7 +431,8 @@
             input.value = normalizedValue;
 
             saveTarget(coordinates.x, coordinates.y);
-            lastTargetValue = normalizedValue;
+            var storedTarget = readStoredTarget();
+            lastTargetValue = storedTarget.value + "|" + storedTarget.timestamp;
             clearButton.style.display = "";
             updateAreaDisplay(coordinates.x, coordinates.y);
             highlightTarget(coordinates.x, coordinates.y);
@@ -769,11 +771,13 @@
             clearButton.style.display = "";
         }
 
-        if (storedTarget.value === lastTargetValue) {
+        var targetSignature = storedTarget.value + "|" + storedTarget.timestamp;
+
+        if (targetSignature === lastTargetValue) {
             return;
         }
 
-        lastTargetValue = storedTarget.value;
+        lastTargetValue = targetSignature;
         updateAreaDisplay(storedTarget.x, storedTarget.y);
         highlightTarget(storedTarget.x, storedTarget.y);
     }
