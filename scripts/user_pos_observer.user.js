@@ -231,7 +231,6 @@
     }
 
     element.classList.remove("user-pos-observer-highlight");
-    element.classList.remove("user-pos-observer-stale");
     element.style.backgroundColor = "";
     element.style.borderRadius = "";
     element.style.padding = "";
@@ -248,13 +247,17 @@
     removeOldDecoration(element);
 
     element.classList.add("user-pos-observer-highlight");
-    element.style.backgroundColor = isSecureLocation(x, y) ? "#444444" : "#8b4a4a";
+
+    if (!isSecureLocation(x, y)) {
+      if (isStale) {
+        element.style.backgroundColor = player.pvp ? "#661f1f" : "#665500";
+      } else {
+        element.style.backgroundColor = "#444444";
+      }
+    }
+
     element.style.borderRadius = "2px";
     element.style.padding = "0 2px";
-
-    if (isStale) {
-      element.classList.add("user-pos-observer-stale");
-    }
 
     if (areaName) {
       var areaElement = element.ownerDocument.createElement("span");
@@ -381,26 +384,6 @@
     }
   }
 
-  function addBlinkStyle(frameDocument) {
-    if (frameDocument.getElementById("user-pos-observer-blink-style")) {
-      return;
-    }
-
-    var style = frameDocument.createElement("style");
-
-    style.id = "user-pos-observer-blink-style";
-    style.textContent =
-      "@keyframes user-pos-observer-blink {" +
-      "0%, 49% { opacity: 1; }" +
-      "50%, 100% { opacity: 0.7; }" +
-      "} " +
-      ".user-pos-observer-stale {" +
-      "animation: user-pos-observer-blink 1s infinite;" +
-      "}";
-
-    frameDocument.head.appendChild(style);
-  }
-
   function scanFrame(frameName) {
     var frameElement = document.querySelector("frame[name=\"" + frameName + "\"]");
 
@@ -419,8 +402,6 @@
     if (!frameDocument || !frameDocument.body) {
       return;
     }
-
-    addBlinkStyle(frameDocument);
 
     if (frameName === "mainFrame") {
       scanPvP(frameDocument);
