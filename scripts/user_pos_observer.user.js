@@ -1,3 +1,13 @@
+// ==UserScript==
+// @name        user_pos_observer
+// @namespace   Zabuza
+// @description Shows details, such as PvP or secure field status, in all menus of the MMORPG freewar.de showing user positions.
+// @include     *.freewar.de/freewar/internal/frset.php*
+// @require     https://zabuzard.github.io/FreewarScripts/resources/coordinate_resource.js
+// @require     https://zabuzard.github.io/FreewarScripts/resources/secure_locations.js
+// @version     1
+// ==/UserScript==
+
 (function () {
   var positionPattern = /(?:\(\s*X:\s*(-?\d+)\s+Y:\s*(-?\d+)\s*\)|Position\s+X:\s*(-?\d+)\s+Y:\s*(-?\d+))/g;
 
