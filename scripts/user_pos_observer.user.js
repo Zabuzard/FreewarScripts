@@ -216,8 +216,7 @@
   }
 
   function isSpecialSecurePosition(lineText) {
-    return lineText.indexOf("Unterkunft") !== -1 ||
-      lineText.indexOf("Seetangwald") !== -1;
+    return lineText.indexOf("Unterkunft") !== -1 || lineText.indexOf("UK ") !== -1 || lineText.indexOf("Seetangwald") !== -1 || lineText.indexOf("STW ") !== -1;
   }
 
   function scanPvP(frameDocument) {
