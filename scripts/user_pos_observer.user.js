@@ -6,22 +6,343 @@
 // @require     https://zabuzard.github.io/FreewarScripts/resources/coordinate_resource.js
 // @require     https://zabuzard.github.io/FreewarScripts/resources/secure_locations.js
 // @version     1
+// @grant       none
 // ==/UserScript==
 
 (function () {
-  var positionPattern = /(?:\(\s*X:\s*(-?\d+)\s+Y:\s*(-?\d+)\s*\)|Position\s+X:\s*(-?\d+)\s+Y:\s*(-?\d+)|X:\s*(-?\d+)\s+Y:\s*(-?\d+))/g;
+  var STORAGE_KEY = "user-pos-observer";
 
   var FRAME_NAMES = [
     "mainFrame",
     "itemFrame"
   ];
 
-  function scanFrame(frameName) {
-    var frameElement = document.querySelector(
-      "frame[name=\"" + frameName + "\"]"
-    );
+  var POSITION_PATTERN = /X:\s*(-?\d+)\s+Y:\s*(-?\d+)/;
+  var XP_USERNAME_PATTERN = /^(.+?)\s+\(XP:\s*[\d.]+\)/;
+  var BARE_USERNAME_PATTERN = /^(.+?)\s+-\s+\(/;
 
-    if (!frameElement) { return; }
+  function loadPlayerData() {
+    try {
+      var value = localStorage.getItem(STORAGE_KEY);
+
+      if (value) {
+        return JSON.parse(value);
+      }
+    } catch (e) {}
+
+    return {};
+  }
+
+  function savePlayerData(data) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {}
+  }
+
+  function getLineInfo(node) {
+    var current = node;
+
+    while (current && current.parentNode) {
+      var parent = current.parentNode;
+      var siblings = parent.childNodes;
+      var index = -1;
+
+      for (var i = 0; i < siblings.length; i++) {
+        if (siblings[i] === current) {
+          index = i;
+          break;
+        }
+      }
+
+      if (index === -1) {
+        current = parent;
+        continue;
+      }
+
+      var start = index;
+      var end = index;
+
+      while (start > 0) {
+        var previous = siblings[start - 1];
+
+        if (previous.nodeType === Node.ELEMENT_NODE && previous.nodeName === "BR") {
+          break;
+        }
+
+        start--;
+      }
+
+      while (end < siblings.length - 1) {
+        var next = siblings[end + 1];
+
+        if (next.nodeType === Node.ELEMENT_NODE && next.nodeName === "BR") {
+          break;
+        }
+
+        end++;
+      }
+
+      if (start !== index || end !== index || parent.nodeName === "BODY" || parent.nodeName === "TD") {
+        var nodes = [];
+
+        for (var j = start; j <= end; j++) {
+          nodes.push(siblings[j]);
+        }
+
+        return {
+          parent: parent,
+          nodes: nodes
+        };
+      }
+
+      current = parent;
+    }
+
+    return null;
+  }
+
+  function getLineText(node) {
+    var lineInfo = getLineInfo(node);
+
+    if (!lineInfo) {
+      return "";
+    }
+
+    var text = "";
+
+    for (var i = 0; i < lineInfo.nodes.length; i++) {
+      text += lineInfo.nodes[i].textContent || "";
+    }
+
+    return text;
+  }
+
+  function getUsername(lineText) {
+    var match = XP_USERNAME_PATTERN.exec(lineText);
+
+    if (match) {
+      return match[1].trim();
+    }
+
+    match = BARE_USERNAME_PATTERN.exec(lineText);
+
+    if (match) {
+      return match[1].trim();
+    }
+
+    return null;
+  }
+
+  function getPosition(text) {
+    var match = POSITION_PATTERN.exec(text);
+
+    if (!match) {
+      return null;
+    }
+
+    return {
+      x: parseInt(match[1], 10),
+      y: parseInt(match[2], 10)
+    };
+  }
+
+  function scanPvP(frameDocument) {
+    var links = frameDocument.getElementsByTagName("a");
+    var data = loadPlayerData();
+    var changed = false;
+
+    for (var i = 0; i < links.length; i++) {
+      var link = links[i];
+      var href = link.getAttribute("href") || "";
+
+      if (href.indexOf("fight.php") === -1 || href.indexOf("watchuser") === -1) {
+        continue;
+      }
+
+      var lineText = getLineText(link);
+
+      if (!lineText) {
+        continue;
+      }
+
+      var username = getUsername(lineText);
+
+      if (!username) {
+        continue;
+      }
+
+      data[username] = {
+        pvp: lineText.indexOf("PvP deaktiviert") === -1,
+        timestamp: Date.now()
+      };
+
+      changed = true;
+    }
+
+    if (changed) {
+      savePlayerData(data);
+    }
+  }
+
+  function removeOldDecoration(element) {
+    var areas = element.querySelectorAll(".user-pos-observer-area");
+    var swords = element.querySelectorAll(".user-pos-observer-pvp");
+
+    for (var i = 0; i < areas.length; i++) {
+      areas[i].remove();
+    }
+
+    for (var i = 0; i < swords.length; i++) {
+      swords[i].remove();
+    }
+
+    element.classList.remove("user-pos-observer-highlight");
+    element.style.backgroundColor = "";
+    element.style.borderRadius = "";
+    element.style.padding = "";
+  }
+
+  function decorateCoordinate(element, x, y, username) {
+    var areaName = getAreaName(x, y);
+    var data = loadPlayerData();
+    var player = data[username];
+
+    removeOldDecoration(element);
+
+    element.classList.add("user-pos-observer-highlight");
+    element.style.backgroundColor = isSecureLocation(x, y) ? "#444444" : "#8b4a4a";
+    element.style.borderRadius = "2px";
+    element.style.padding = "0 2px";
+
+    if (areaName) {
+      var areaElement = element.ownerDocument.createElement("span");
+
+      areaElement.className = "user-pos-observer-area";
+      areaElement.textContent = " [" + areaName + "]";
+
+      element.appendChild(areaElement);
+    }
+
+    if (player && player.pvp) {
+      var swordElement = element.ownerDocument.createElement("span");
+
+      swordElement.className = "user-pos-observer-pvp";
+      swordElement.textContent = " ⚔";
+      swordElement.style.color = "#ff4444";
+      swordElement.title = "PvP aktiv";
+
+      element.appendChild(swordElement);
+    }
+  }
+
+  function decorateTextNode(textNode) {
+    var position = getPosition(textNode.nodeValue);
+
+    if (!position) {
+      return;
+    }
+
+    var lineText = getLineText(textNode);
+    var username = getUsername(lineText);
+
+    if (!username) {
+      return;
+    }
+
+    var parent = textNode.parentElement;
+
+    if (
+      parent &&
+      (
+        parent.classList.contains("target-navigation-coordinate") ||
+        parent.classList.contains("user-pos-observer-highlight")
+      )
+    ) {
+      decorateCoordinate(parent, position.x, position.y, username);
+      return;
+    }
+
+    var document = textNode.ownerDocument;
+    var text = textNode.nodeValue;
+    var positionMatch = POSITION_PATTERN.exec(text);
+
+    if (!positionMatch) {
+      return;
+    }
+
+    var fragment = document.createDocumentFragment();
+
+    if (positionMatch.index > 0) {
+      fragment.appendChild(
+        document.createTextNode(
+          text.substring(0, positionMatch.index)
+        )
+      );
+    }
+
+    var span = document.createElement("span");
+
+    span.className = "user-pos-observer-highlight";
+    span.textContent = positionMatch[0];
+
+    decorateCoordinate(span, position.x, position.y, username);
+
+    fragment.appendChild(span);
+
+    if (positionMatch.index + positionMatch[0].length < text.length) {
+      fragment.appendChild(
+        document.createTextNode(
+          text.substring(positionMatch.index + positionMatch[0].length)
+        )
+      );
+    }
+
+    textNode.parentNode.replaceChild(fragment, textNode);
+  }
+
+  function scanPositions(frameDocument) {
+    var walker = frameDocument.createTreeWalker(frameDocument.body, NodeFilter.SHOW_TEXT);
+    var textNodes = [];
+    var node;
+
+    while ((node = walker.nextNode())) {
+      var parent = node.parentNode;
+
+      if (!parent) {
+        continue;
+      }
+
+      if (
+        parent.nodeName === "SCRIPT" ||
+        parent.nodeName === "STYLE" ||
+        parent.nodeName === "TEXTAREA" ||
+        parent.nodeName === "INPUT" ||
+        parent.nodeName === "BUTTON"
+      ) {
+        continue;
+      }
+
+      if (
+        node.nodeValue.indexOf("X:") === -1 ||
+        node.nodeValue.indexOf("Y:") === -1
+      ) {
+        continue;
+      }
+
+      textNodes.push(node);
+    }
+
+    for (var i = 0; i < textNodes.length; i++) {
+      decorateTextNode(textNodes[i]);
+    }
+  }
+
+  function scanFrame(frameName) {
+    var frameElement = document.querySelector("frame[name=\"" + frameName + "\"]");
+
+    if (!frameElement) {
+      return;
+    }
 
     var frameDocument;
 
@@ -31,151 +352,15 @@
       return;
     }
 
-    if (!frameDocument || !frameDocument.body) { return; }
-
-    var walker = frameDocument.createTreeWalker(
-      frameDocument.body,
-      NodeFilter.SHOW_TEXT
-    );
-
-    var textNodes = [];
-    var node;
-
-    while ((node = walker.nextNode())) {
-      var parent = node.parentNode;
-
-      if (!parent) { continue; }
-
-      if (
-        parent.nodeName === "SCRIPT" ||
-        parent.nodeName === "STYLE" ||
-        parent.nodeName === "TEXTAREA" ||
-        parent.nodeName === "INPUT" ||
-        parent.nodeName === "BUTTON" ||
-        parent.classList.contains("user-pos-observer-highlight")
-      ) {
-        continue;
-      }
-
-      textNodes.push(node);
-    }
-
-    for (var i = 0; i < textNodes.length; i++) {
-      highlightPositions(textNodes[i]);
-    }
-  }
-
-  function highlightPositions(textNode) {
-    var text = textNode.nodeValue;
-
-    positionPattern.lastIndex = 0;
-
-    if (!positionPattern.test(text)) {
+    if (!frameDocument || !frameDocument.body) {
       return;
     }
 
-    positionPattern.lastIndex = 0;
-
-    var document = textNode.ownerDocument;
-    var navigationElement = textNode.parentElement
-      ? textNode.parentElement.closest(".target-navigation-coordinate")
-      : null;
-
-    if (navigationElement) {
-      var match = positionPattern.exec(text);
-
-      if (!match) { return; }
-
-      var x = parseInt(
-        match[1] !== undefined ? match[1] :
-        match[3] !== undefined ? match[3] :
-        match[5],
-        10
-      );
-
-      var y = parseInt(
-        match[2] !== undefined ? match[2] :
-        match[4] !== undefined ? match[4] :
-        match[6],
-        10
-      );
-
-      var areaName = getAreaName(x, y);
-
-      navigationElement.classList.add(
-        "user-pos-observer-highlight"
-      );
-
-      navigationElement.style.backgroundColor = isSecureLocation(x, y)
-        ? "#444444"
-        : "#8b4a4a";
-      navigationElement.style.borderRadius = "2px";
-      navigationElement.style.padding = "0 2px";
-
-      if (areaName && navigationElement.textContent === match[0]) {
-        navigationElement.textContent =
-          match[0] + " [" + areaName + "]";
-      }
-
-      return;
+    if (frameName === "mainFrame") {
+      scanPvP(frameDocument);
     }
 
-    var fragment = document.createDocumentFragment();
-    var lastIndex = 0;
-    var match;
-
-    while ((match = positionPattern.exec(text)) !== null) {
-      var x = parseInt(
-        match[1] !== undefined ? match[1] :
-        match[3] !== undefined ? match[3] :
-        match[5],
-        10
-      );
-
-      var y = parseInt(
-        match[2] !== undefined ? match[2] :
-        match[4] !== undefined ? match[4] :
-        match[6],
-        10
-      );
-
-      var areaName = getAreaName(x, y);
-
-      if (match.index > lastIndex) {
-        fragment.appendChild(
-          document.createTextNode(
-            text.substring(lastIndex, match.index)
-          )
-        );
-      }
-
-      var span = document.createElement("span");
-
-      span.className = "user-pos-observer-highlight";
-      span.style.backgroundColor = isSecureLocation(x, y)
-        ? "#444444"
-        : "#8b4a4a";
-      span.style.borderRadius = "2px";
-      span.style.padding = "0 2px";
-      span.textContent = areaName
-        ? match[0] + " [" + areaName + "]"
-        : match[0];
-      span.title = "Position: X " + x + " Y " + y;
-
-      fragment.appendChild(span);
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    if (lastIndex < text.length) {
-      fragment.appendChild(
-        document.createTextNode(
-          text.substring(lastIndex)
-        )
-      );
-    }
-
-    textNode.parentNode.replaceChild(fragment, textNode);
+    scanPositions(frameDocument);
   }
 
   function scanFrames() {
