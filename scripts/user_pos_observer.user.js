@@ -40,6 +40,26 @@
     } catch (e) {}
   }
 
+  function ensureBlinkStyle(frameDocument) {
+    if (frameDocument.getElementById("user-pos-observer-blink-style")) {
+      return;
+    }
+
+    var style = frameDocument.createElement("style");
+
+    style.id = "user-pos-observer-blink-style";
+    style.textContent =
+      "@keyframes user-pos-observer-blink {" +
+        "from { opacity: 0.5; }" +
+        "to { opacity: 1.0; }" +
+      "}" +
+      ".user-pos-observer-blink {" +
+        "animation: user-pos-observer-blink 1s ease-in-out infinite alternate;" +
+      "}";
+
+    (frameDocument.head || frameDocument.body).appendChild(style);
+  }
+
   function rememberPosition(username, x, y) {
     var data = loadPlayerData();
     var player = data[username];
@@ -236,6 +256,7 @@
     }
 
     element.classList.remove("user-pos-observer-highlight");
+    element.classList.remove("user-pos-observer-blink");
     element.style.backgroundColor = "";
     element.style.borderRadius = "";
     element.style.padding = "";
@@ -248,16 +269,21 @@
     var isStale = player &&
       player.positionTimestamp &&
       Date.now() - player.positionTimestamp >= POSITION_STALE_TIME;
+    var isUnsecure = !isSpecialSecure && !isSecureLocation(x, y);
 
     removeOldDecoration(element);
 
     element.classList.add("user-pos-observer-highlight");
 
-    if (!isSpecialSecure && !isSecureLocation(x, y)) {
+    if (isUnsecure) {
       if (player && player.pvp) {
         element.style.backgroundColor = isStale ? "#810505" : "#5d3636";
       } else {
         element.style.backgroundColor = isStale ? "#776300" : "#61584a";
+      }
+
+      if (isStale) {
+        element.classList.add("user-pos-observer-blink");
       }
     }
 
@@ -409,6 +435,8 @@
     if (!frameDocument || !frameDocument.body) {
       return;
     }
+
+    ensureBlinkStyle(frameDocument);
 
     if (frameName === "mainFrame") {
       scanPvP(frameDocument);
