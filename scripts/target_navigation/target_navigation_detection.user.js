@@ -13,7 +13,7 @@
     var STORAGE_TIMESTAMP_KEY = "target-navigation-coordinate-timestamp";
     var COOKIE_MAX_AGE = 2 * 60 * 60;
 
-    var COORDINATE_PATTERN = /X:\s*(-?\d+)\s+Y:\s*(-?\d+)/g;
+    var COORDINATE_PATTERN = /X:\s*(-?\d+)\s*(?:\/\s*|\s+)Y:\s*(-?\d+)/g;
 
     var FRAME_NAMES = [
         "mainFrame",
