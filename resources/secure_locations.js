@@ -317,7 +317,8 @@ var secureLocations = new Set([
     "103,102",
     "63,136",
     "47,101",
-    "99,118"
+    "99,118",
+    "70,133"
 ]);
 
 function isSecureLocation(x, y) {
