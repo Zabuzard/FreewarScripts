@@ -243,3 +243,17 @@ Start der Navigation angeklickt werden.
 | Itemanzeige                                 | Chat                                 |
 | ------------------------------------------- | ------------------------------------ |
 | ![Itemanzeige](https://i.vgy.me/x9mV67.jpg) | ![Chat](https://i.vgy.me/XHoRJE.jpg) |
+
+## `user_pos_observer`
+
+Scannt und merkt sich den Inhalt der Schriftrolle der Lebenden, oder der Listen
+am Haus der Beobachtung. Zeigt dann verschiedene Hilfen an:
+
+- fügt den Gebietsnamen zu Koordinaten hinzu
+- zeigt den PvP Status eines Spielers an (⚔ Symbol)
+- markiert Spieler auf unsicheren Feldern (rot falls PvP aktiviert, ansonsten gelb)
+- zeigt zusätzlich an ob ein Spieler AFK ist (für 5 Minuten nicht mehr bewegt, blinkend)
+
+| Schriftrolle                                 | Liste der Beobachtung                                 |
+| -------------------------------------------- | ----------------------------------------------------- |
+| ![Schriftrolle](https://i.vgy.me/3aj0UB.gif) | ![Liste der Beobachtung](https://i.vgy.me/5Afzcb.jpg) |
