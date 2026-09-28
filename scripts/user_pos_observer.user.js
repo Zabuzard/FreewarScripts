@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        user_pos_observer
 // @namespace   Zabuza
-// @description Shows details, such as PvP or secure field status, in all menus of the MMORPG freewar.de showing user positions.
+// @description Shows details, such as PvP or secure field status in all menus of the MMORPG freewar.de showing user positions.
 // @include     *.freewar.de/freewar/internal/frset.php*
 // @require     https://zabuzard.github.io/FreewarScripts/resources/coordinate_resource.js
 // @require     https://zabuzard.github.io/FreewarScripts/resources/secure_locations.js
@@ -11,6 +11,7 @@
 
 (function () {
   var STORAGE_KEY = "user-pos-observer";
+  var POSITION_STALE_TIME = 5 * 60 * 1000;
 
   var FRAME_NAMES = [
     "mainFrame",
@@ -37,6 +38,37 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (e) {}
+  }
+
+  function rememberPosition(username, x, y) {
+    var data = loadPlayerData();
+    var player = data[username];
+    var now = Date.now();
+
+    if (!player) {
+      player = {
+        pvp: false,
+        timestamp: now,
+        x: x,
+        y: y,
+        positionTimestamp: now
+      };
+
+      data[username] = player;
+      savePlayerData(data);
+      return;
+    }
+
+    if (player.x !== x || player.y !== y || !player.positionTimestamp) {
+      player.x = x;
+      player.y = y;
+      player.positionTimestamp = now;
+    }
+
+    player.timestamp = now;
+
+    data[username] = player;
+    savePlayerData(data);
   }
 
   function getLineInfo(node) {
@@ -171,10 +203,12 @@
         continue;
       }
 
-      data[username] = {
-        pvp: lineText.indexOf("PvP deaktiviert") === -1,
-        timestamp: Date.now()
-      };
+      if (!data[username]) {
+        data[username] = {};
+      }
+
+      data[username].pvp = lineText.indexOf("PvP deaktiviert") === -1;
+      data[username].timestamp = Date.now();
 
       changed = true;
     }
@@ -197,6 +231,7 @@
     }
 
     element.classList.remove("user-pos-observer-highlight");
+    element.classList.remove("user-pos-observer-stale");
     element.style.backgroundColor = "";
     element.style.borderRadius = "";
     element.style.padding = "";
@@ -206,6 +241,9 @@
     var areaName = getAreaName(x, y);
     var data = loadPlayerData();
     var player = data[username];
+    var isStale = player &&
+      player.positionTimestamp &&
+      Date.now() - player.positionTimestamp >= POSITION_STALE_TIME;
 
     removeOldDecoration(element);
 
@@ -213,6 +251,10 @@
     element.style.backgroundColor = isSecureLocation(x, y) ? "#444444" : "#8b4a4a";
     element.style.borderRadius = "2px";
     element.style.padding = "0 2px";
+
+    if (isStale) {
+      element.classList.add("user-pos-observer-stale");
+    }
 
     if (areaName) {
       var areaElement = element.ownerDocument.createElement("span");
@@ -248,6 +290,8 @@
     if (!username) {
       return;
     }
+
+    rememberPosition(username, position.x, position.y);
 
     var parent = textNode.parentElement;
 
@@ -337,6 +381,26 @@
     }
   }
 
+  function addBlinkStyle(frameDocument) {
+    if (frameDocument.getElementById("user-pos-observer-blink-style")) {
+      return;
+    }
+
+    var style = frameDocument.createElement("style");
+
+    style.id = "user-pos-observer-blink-style";
+    style.textContent =
+      "@keyframes user-pos-observer-blink {" +
+      "0%, 49% { opacity: 1; }" +
+      "50%, 100% { opacity: 0.7; }" +
+      "} " +
+      ".user-pos-observer-stale {" +
+      "animation: user-pos-observer-blink 1s infinite;" +
+      "}";
+
+    frameDocument.head.appendChild(style);
+  }
+
   function scanFrame(frameName) {
     var frameElement = document.querySelector("frame[name=\"" + frameName + "\"]");
 
@@ -355,6 +419,8 @@
     if (!frameDocument || !frameDocument.body) {
       return;
     }
+
+    addBlinkStyle(frameDocument);
 
     if (frameName === "mainFrame") {
       scanPvP(frameDocument);
