@@ -3,6 +3,7 @@
 // @namespace   Zabuza
 // @description Shows details, such as PvP or secure field status in all menus of the MMORPG freewar.de showing user positions.
 // @include     *.freewar.de/freewar/internal/frset.php*
+// @include     *.freewar.de/freewar/internal/friset.php*
 // @require     https://zabuzard.github.io/FreewarScripts/resources/coordinate_resource.js
 // @require     https://zabuzard.github.io/FreewarScripts/resources/secure_locations.js
 // @version     1
@@ -438,31 +439,41 @@
   }
 
   function scanFrame(frameName) {
-    var frameElement = document.querySelector("frame[name=\"" + frameName + "\"]");
+    var selectors = [
+      "frame[name=\"" + frameName + "\"]",
+      "iframe[name=\"" + frameName + "\"]",
+      "frame[name=\"" + frameName + "Alt\"]",
+      "iframe[name=\"" + frameName + "Alt\"]"
+    ];
 
-    if (!frameElement) {
-      return;
+    var frameElements = document.querySelectorAll(selectors.join(","));
+
+    for (var i = 0; i < frameElements.length; i++) {
+      var frameElement = frameElements[i];
+      var frameDocument;
+
+      try {
+        frameDocument = frameElement.contentDocument;
+
+        if (!frameDocument && frameElement.contentWindow) {
+          frameDocument = frameElement.contentWindow.document;
+        }
+      } catch (e) {
+        continue;
+      }
+
+      if (!frameDocument || !frameDocument.body) {
+        continue;
+      }
+
+      ensureBlinkStyle(frameDocument);
+
+      if (frameName === "mainFrame") {
+        scanPvP(frameDocument);
+      }
+
+      scanPositions(frameDocument);
     }
-
-    var frameDocument;
-
-    try {
-      frameDocument = frameElement.contentDocument;
-    } catch (e) {
-      return;
-    }
-
-    if (!frameDocument || !frameDocument.body) {
-      return;
-    }
-
-    ensureBlinkStyle(frameDocument);
-
-    if (frameName === "mainFrame") {
-      scanPvP(frameDocument);
-    }
-
-    scanPositions(frameDocument);
   }
 
   function scanFrames() {
