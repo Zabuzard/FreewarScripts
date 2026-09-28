@@ -20,42 +20,6 @@
         "chattextFrame",
         "itemFrame"
     ];
-    
-    var coordinateLookup = {};
-
-    function parseCoordinateResource() {
-        var sections = coordinateResource.match(
-            /\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\|([^}]+)\}\}[^}]*\}\}([\s\S]*?)(?=\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\||$)/g
-        );
-
-        if (!sections) { return; }
-
-        for (var i = 0; i < sections.length; i++) {
-            var section = sections[i];
-
-            var match = section.match(
-                /\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\|([^}]+)\}\}[^}]*\}\}([\s\S]*)/
-            );
-
-            if (!match) { continue; }
-
-            var areaName = match[1];
-            var coordinates = match[2].match(/-?\d+,-?\d+/g);
-
-            if (!coordinates) { continue; }
-
-            for (var j = 0; j < coordinates.length; j++) {
-                coordinateLookup[coordinates[j]] = areaName;
-            }
-        }
-    }
-
-    function getAreaName(position) {
-        if (!position) { return null; }
-
-        var coordinate = position.x + "," + position.y;
-        return coordinateLookup[coordinate] || null;
-    }
 
     function saveTarget(x, y) {
         var value = x + "/" + y;
@@ -80,10 +44,7 @@
         var element = document.createElement("span");
         var x = parseInt(match[1], 10);
         var y = parseInt(match[2], 10);
-        var areaName = getAreaName({
-            x: x,
-            y: y
-        });
+        var areaName = getAreaName(x, y);
 
         element.className = "target-navigation-coordinate";
         element.textContent = match[0];
@@ -202,7 +163,6 @@
         }
     }
 
-    parseCoordinateResource();
     scanFrames();
 
     setInterval(function () {

@@ -177,3 +177,38 @@ var coordinateResource = `
 -->{{Überschriftensimulation 2|1={{Gebietslink|Zahra}} (57 Felder)}}81,119; 81,120; 82,120; 82,121; 82,122; 83,121; 83,122; 83,123; 84,121; 84,122; 85,121; 85,122; 86,121; 87,121; 87,122; 88,122; 88,123; 88,124; 88,125; 89,121; 89,122; 89,123; 89,124; 90,121; 90,122; 90,123; 90,124; 91,121; 91,119; 91,122; 91,123; 91,124; 92,116; 92,117; 92,118; 92,119; 92,120; 92,121; 92,122; 92,123; 92,124; 92,125; 93,116; 93,117; 93,118; 93,119; 93,120; 93,122; 93,123; 93,124; 93,125; 94,120; 94,121; 94,123; 94,125; 95,122; 95,123<!--
 -->{{Überschriftensimulation 2|1={{Gebietslink|Zelle}} (2 Felder)}}-100,-105; -100,-104
 `;
+
+var coordinateLookup = new Map();
+
+function parseCoordinateResource() {
+  var sections = coordinateResource.match(
+    /\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\|([^}]+)\}\}[^}]*\}\}([\s\S]*?)(?=\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\||$)/g
+  );
+
+  if (!sections) { return; }
+
+  for (var i = 0; i < sections.length; i++) {
+    var section = sections[i];
+
+    var match = section.match(
+      /\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\|([^}]+)\}\}[^}]*\}\}([\s\S]*)/
+    );
+
+    if (!match) { continue; }
+
+    var areaName = match[1];
+    var coordinates = match[2].match(/-?\d+,-?\d+/g);
+
+    if (!coordinates) { continue; }
+
+    for (var j = 0; j < coordinates.length; j++) {
+      coordinateLookup.set(coordinates[j], areaName);
+    }
+  }
+}
+
+function getAreaName(x, y) {
+  return coordinateLookup.get(x + "," + y) || null;
+}
+
+parseCoordinateResource();

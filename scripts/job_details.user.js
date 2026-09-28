@@ -195,8 +195,6 @@ var npcJobs = {
     }
   };
 
-var coordinateLookup = {};
-
 function loadJobDetails() {
   var value;
 
@@ -260,40 +258,6 @@ function saveJobDetails(jobDetails) {
     document.cookie =
       COOKIE_KEY + '=' + encodeURIComponent(value) + '; path=/';
   } catch (e) {}
-}
-
-function parseCoordinateResource() {
-  var sections = coordinateResource.match(
-    /\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\|([^}]+)\}\}[^}]*\}\}([\s\S]*?)(?=\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\||$)/g
-  );
-
-  if (!sections) { return; }
-
-  for (var i = 0; i < sections.length; i++) {
-    var section = sections[i];
-
-    var match = section.match(
-      /\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\|([^}]+)\}\}[^}]*\}\}([\s\S]*)/
-    );
-
-    if (!match) { continue; }
-
-    var areaName = match[1];
-    var coordinates = match[2].match(/-?\d+,-?\d+/g);
-
-    if (!coordinates) { continue; }
-
-    for (var j = 0; j < coordinates.length; j++) {
-      coordinateLookup[coordinates[j]] = areaName;
-    }
-  }
-}
-
-function getAreaName(position) {
-  if (!position) { return null; }
-
-  var coordinate = position.x + ',' + position.y;
-  return coordinateLookup[coordinate] || null;
 }
 
 function getMainDocument() {
@@ -408,7 +372,7 @@ function getMainFrameJobDetails() {
       y: parseInt(position[2], 10)
     };
 
-    result.area = getAreaName(result.position);
+    result.area = getAreaName(result.position.x, result.position.y);
   }
 
   var rewardGoldMatch = text.match(/Belohnung\s*:[\s\S]*?([\d.]+)\s*Goldmünzen/i);
@@ -947,8 +911,6 @@ function observeItemFrame() {
 }
 
 function init() {
-  parseCoordinateResource();
-
   currentJobDetails = loadJobDetails();
 
   setInterval(function () {

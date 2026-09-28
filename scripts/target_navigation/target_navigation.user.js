@@ -15,8 +15,6 @@
     var TARGET_MAX_AGE = 2 * 60 * 60 * 1000;
     var lastTargetValue = null;
 
-    var coordinateLookup = {};
-
     function parseCoordinates(value) {
         var match = String(value || "").match(/^\s*(-?\d+)\s*(?:[,/ ]+)\s*(-?\d+)\s*$/);
         if (!match) { return null; }
@@ -25,40 +23,6 @@
             x: parseInt(match[1], 10),
             y: parseInt(match[2], 10)
         };
-    }
-
-    function parseCoordinateResource() {
-        var sections = coordinateResource.match(
-            /\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\|([^}]+)\}\}[^}]*\}\}([\s\S]*?)(?=\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\||$)/g
-        );
-
-        if (!sections) { return; }
-
-        for (var i = 0; i < sections.length; i++) {
-            var section = sections[i];
-
-            var match = section.match(
-                /\{\{Überschriftensimulation 2\|1=\{\{Gebietslink\|([^}]+)\}\}[^}]*\}\}([\s\S]*)/
-            );
-
-            if (!match) { continue; }
-
-            var areaName = match[1];
-            var coordinates = match[2].match(/-?\d+,-?\d+/g);
-
-            if (!coordinates) { continue; }
-
-            for (var j = 0; j < coordinates.length; j++) {
-                coordinateLookup[coordinates[j]] = areaName;
-            }
-        }
-    }
-
-    function getAreaName(position) {
-        if (!position) { return null; }
-
-        var coordinate = position.x + "," + position.y;
-        return coordinateLookup[coordinate] || null;
     }
 
     function getCookie(name) {
@@ -178,10 +142,7 @@
         var areaElement = document.querySelector("#target-navigation-area");
         if (!areaElement) { return; }
 
-        var area = getAreaName({
-            x: x,
-            y: y
-        });
+        var area = getAreaName(x, y);
 
         areaElement.textContent = area || "";
         areaElement.style.display = area ? "" : "none";
@@ -602,8 +563,6 @@
         updateAreaDisplay(storedTarget.x, storedTarget.y);
         highlightTarget(storedTarget.x, storedTarget.y);
     }
-
-    parseCoordinateResource();
 
     var observer = new MutationObserver(function () {
         addTargetLine();
