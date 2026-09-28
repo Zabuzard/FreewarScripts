@@ -60,6 +60,22 @@
     (frameDocument.head || frameDocument.body).appendChild(style);
   }
 
+  function isDarkTheme(element) {
+    var document = element.ownerDocument;
+    var color = document.defaultView.getComputedStyle(element).color;
+    var match = color.match(/\d+/g);
+
+    if (!match || match.length < 3) {
+      return true;
+    }
+
+    var r = parseInt(match[0], 10);
+    var g = parseInt(match[1], 10);
+    var b = parseInt(match[2], 10);
+
+    return (r * 299 + g * 587 + b * 114) / 1000 >= 128;
+  }
+
   function rememberPosition(username, x, y) {
     var data = loadPlayerData();
     var player = data[username];
@@ -262,7 +278,7 @@
     element.style.padding = "";
   }
 
-  function decorateCoordinate(element, x, y, username, isSpecialSecure) {
+  function decorateCoordinate(element, x, y, username, isSpecialSecure, darkTheme) {
     var areaName = getAreaName(x, y);
     var data = loadPlayerData();
     var player = data[username];
@@ -277,9 +293,13 @@
 
     if (isUnsecure) {
       if (player && player.pvp) {
-        element.style.backgroundColor = isStale ? "#810505" : "#5d3636";
+        element.style.backgroundColor = darkTheme
+          ? (isStale ? "#810505" : "#5d3636")
+          : (isStale ? "#ffb3b3" : "#e8caca");
       } else {
-        element.style.backgroundColor = isStale ? "#776300" : "#61584a";
+        element.style.backgroundColor = darkTheme
+          ? (isStale ? "#776300" : "#61584a")
+          : (isStale ? "#ffe58a" : "#d8d0b5");
       }
 
       if (isStale) {
@@ -338,7 +358,7 @@
         parent.classList.contains("user-pos-observer-highlight")
       )
     ) {
-      decorateCoordinate(parent, position.x, position.y, username, isSpecialSecure);
+      decorateCoordinate(parent, position.x, position.y, username, isSpecialSecure, isDarkTheme(parent));
       return;
     }
 
@@ -365,7 +385,7 @@
     span.className = "user-pos-observer-highlight";
     span.textContent = positionMatch[0];
 
-    decorateCoordinate(span, position.x, position.y, username, isSpecialSecure);
+    decorateCoordinate(span, position.x, position.y, username, isSpecialSecure, isDarkTheme(textNode.parentElement));
 
     fragment.appendChild(span);
 
@@ -455,5 +475,5 @@
 
   setInterval(function () {
     scanFrames();
-  }, 500);
+  }, 200);
 })();
