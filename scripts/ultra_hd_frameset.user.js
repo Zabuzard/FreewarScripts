@@ -24,7 +24,7 @@
 */
 
 (function () {
-  document.body.style.background = "#282828";
+  document.documentElement.style.background = "#282828";
 
   var frame = function (name) {
     return document.querySelector('frame[name="' + name + '"]');
