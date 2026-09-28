@@ -249,10 +249,10 @@
     element.classList.add("user-pos-observer-highlight");
 
     if (!isSecureLocation(x, y)) {
-      if (isStale) {
-        element.style.backgroundColor = player.pvp ? "#661f1f" : "#665500";
+      if (player.pvp) {
+        element.style.backgroundColor = isStale ? "#661f1f" : "#4b3566";
       } else {
-        element.style.backgroundColor = "#444444";
+        element.style.backgroundColor = isStale ? "#665500" : "#444444";
       }
     }
 
