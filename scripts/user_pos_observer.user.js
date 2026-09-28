@@ -178,6 +178,11 @@
     };
   }
 
+  function isSpecialSecurePosition(lineText) {
+    return lineText.indexOf("Unterkunft") !== -1 ||
+      lineText.indexOf("Seetangwald") !== -1;
+  }
+
   function scanPvP(frameDocument) {
     var links = frameDocument.getElementsByTagName("a");
     var data = loadPlayerData();
@@ -236,7 +241,7 @@
     element.style.padding = "";
   }
 
-  function decorateCoordinate(element, x, y, username) {
+  function decorateCoordinate(element, x, y, username, isSpecialSecure) {
     var areaName = getAreaName(x, y);
     var data = loadPlayerData();
     var player = data[username];
@@ -248,11 +253,11 @@
 
     element.classList.add("user-pos-observer-highlight");
 
-    if (!isSecureLocation(x, y)) {
-      if (player.pvp) {
-        element.style.backgroundColor = isStale ? "#661f1f" : "#4b3566";
+    if (!isSpecialSecure && !isSecureLocation(x, y)) {
+      if (player && player.pvp) {
+        element.style.backgroundColor = isStale ? "#810505" : "#5d3636";
       } else {
-        element.style.backgroundColor = isStale ? "#665500" : "#444444";
+        element.style.backgroundColor = isStale ? "#776300" : "#61584a";
       }
     }
 
@@ -294,6 +299,8 @@
       return;
     }
 
+    var isSpecialSecure = isSpecialSecurePosition(lineText);
+
     rememberPosition(username, position.x, position.y);
 
     var parent = textNode.parentElement;
@@ -305,7 +312,7 @@
         parent.classList.contains("user-pos-observer-highlight")
       )
     ) {
-      decorateCoordinate(parent, position.x, position.y, username);
+      decorateCoordinate(parent, position.x, position.y, username, isSpecialSecure);
       return;
     }
 
@@ -332,7 +339,7 @@
     span.className = "user-pos-observer-highlight";
     span.textContent = positionMatch[0];
 
-    decorateCoordinate(span, position.x, position.y, username);
+    decorateCoordinate(span, position.x, position.y, username, isSpecialSecure);
 
     fragment.appendChild(span);
 
