@@ -605,11 +605,9 @@ function displayJobDetails(jobDetails) {
 
 function displayMapHighlight(jobDetails) {
   var mapDoc = getMapDocument();
-  if (!mapDoc) { return; }
-
-  if (!jobDetails || !jobDetails.position) {
-    return;
-  }
+  if (!mapDoc || !mapDoc.documentElement) { return; }
+  if (!jobDetails || !jobDetails.position) { return; }
+  if (!mapDoc.querySelector(".maptable")) { return; }
 
   if (!mapDoc.getElementById("fw-job-highlight-style")) {
     var style = mapDoc.createElement("style");
@@ -700,7 +698,9 @@ function displayMapHighlight(jobDetails) {
       }
     `;
 
-    mapDoc.head.appendChild(style);
+    var styleParent = mapDoc.head || mapDoc.documentElement;
+    if (!styleParent) { return; }
+    styleParent.appendChild(style);
   }
 
   var oldDirectionTiles = mapDoc.querySelectorAll(".fw-job-direction-highlight");
