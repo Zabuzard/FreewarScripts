@@ -792,15 +792,17 @@ function displayMapHighlight(jobDetails) {
 
 function displayMapJobNpc(jobDetails) {
   var mapDoc = getMapDocument();
-  if (!mapDoc) { return; }
-  if (!jobDetails || !jobDetails.name) { return; }
+  if (!mapDoc || !mapDoc.documentElement) { return; }
+  if (!jobDetails) { return; }
 
   var styleId = "fw-job-npc-style";
   var style = mapDoc.getElementById(styleId);
   if (!style) {
     style = mapDoc.createElement("style");
     style.id = styleId;
-    mapDoc.head.appendChild(style);
+    var styleParent = mapDoc.head || mapDoc.documentElement;
+    if (!styleParent) { return; }
+    styleParent.appendChild(style);
   }
 
   var css = `
