@@ -360,7 +360,7 @@
       hint: "NPCs können Goldtropfen (Chaoslabor oder 50gm Shop) droppen.",
       patterns: [
         /Ein Goldregen bahnt sich an\./,
-        /Ein mächtiger Goldregen stürmt über die Welt, deren goldige Tropfen von den geistlosen Wesen dieser Welt aufgesogen werden\./,
+        /Ein mächtiger Goldregen stürmt über die Welt, dessen goldige Tropfen von den geistlosen Wesen dieser Welt aufgesogen werden\./,
         /Der Goldregen zieht weiter\./,
       ]
     },
