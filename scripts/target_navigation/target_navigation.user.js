@@ -220,15 +220,37 @@
             highlightTarget(coordinates.x, coordinates.y);
         });
         input.addEventListener("keydown", function (event) {
-            if (event.key !== "Escape") { return; }
+            if (event.key === "Escape") {
+                event.preventDefault();
+
+                input.value = "";
+                clearStoredTarget();
+                clearTargetHighlight();
+                clearAreaDisplay();
+                clearButton.style.display = "none";
+                return;
+            }
+
+            if (event.key !== "Enter" || input.value.trim() !== "") { return; }
 
             event.preventDefault();
 
-            input.value = "";
-            clearStoredTarget();
-            clearTargetHighlight();
-            clearAreaDisplay();
-            clearButton.style.display = "none";
+            var positionText = document.querySelector("p.positiontext");
+            var positionMatch = positionText && positionText.textContent.match(/X:\s*(-?\d+)\s*Y:\s*(-?\d+)/);
+
+            if (!positionMatch) { return; }
+
+            var x = parseInt(positionMatch[1], 10);
+            var y = parseInt(positionMatch[2], 10);
+
+            saveTarget(x, y);
+            var storedTarget = readStoredTarget();
+            lastTargetValue = storedTarget.value + "|" + storedTarget.timestamp;
+
+            input.value = x + "/" + y;
+            clearButton.style.display = "";
+            updateAreaDisplay(x, y);
+            highlightTarget(x, y);
         });
 
         clearButton.type = "button";
