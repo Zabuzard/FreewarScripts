@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        soul_vision
+// @name        sticky_soul_vision
 // @namespace   Zabuza
 // @description Extends the visibility of soul vision effects on the map (e.g. Seelenkapsel)
 // @include     *.freewar.de/freewar/internal/map.php*

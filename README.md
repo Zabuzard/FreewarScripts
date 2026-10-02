@@ -260,7 +260,7 @@ am Haus der Beobachtung. Zeigt dann verschiedene Hilfen an:
 | -------------------------------------------- | ----------------------------------------------------- |
 | ![Schriftrolle](https://i.vgy.me/3aj0UB.gif) | ![Liste der Beobachtung](https://i.vgy.me/5Afzcb.jpg) |
 
-## `soul_vision`
+## `sticky_soul_vision`
 
 Zeigt NPCs, welche durch Seelensicht (z.B. durch die Anwendung einer
 Seelenkapsel) auf der Karte angezeigt wurden, weiterhin für bis zu 5 Minuten an.
