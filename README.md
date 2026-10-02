@@ -251,9 +251,20 @@ am Haus der Beobachtung. Zeigt dann verschiedene Hilfen an:
 
 - fügt den Gebietsnamen zu Koordinaten hinzu
 - zeigt den PvP Status eines Spielers an (⚔ Symbol)
-- markiert Spieler auf unsicheren Feldern (rot falls PvP aktiviert, ansonsten gelb)
-- zeigt zusätzlich an ob ein Spieler AFK ist (für 5 Minuten nicht mehr bewegt, blinkend)
+- markiert Spieler auf unsicheren Feldern (rot falls PvP aktiviert, ansonsten
+  gelb)
+- zeigt zusätzlich an ob ein Spieler AFK ist (für 5 Minuten nicht mehr bewegt,
+  blinkend)
 
 | Schriftrolle                                 | Liste der Beobachtung                                 |
 | -------------------------------------------- | ----------------------------------------------------- |
 | ![Schriftrolle](https://i.vgy.me/3aj0UB.gif) | ![Liste der Beobachtung](https://i.vgy.me/5Afzcb.jpg) |
+
+## `soul_vision`
+
+Zeigt NPCs, welche durch Seelensicht (z.B. durch die Anwendung einer
+Seelenkapsel) auf der Karte angezeigt wurden, weiterhin für bis zu 5 Minuten an.
+Beim Besuchen des Feldes durch einen Spieler wird angenommen, dass das NPC
+besiegt wurde.
+
+![Soul Vision Demo](https://i.vgy.me/3GB74F.gif)

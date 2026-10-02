@@ -15,6 +15,8 @@
   var SOUL_VISION_COLOR = "#AA44FF";
 
   var lastSnapshot = "";
+  var map = document.querySelector("table.maptable");
+  var mapObserver = null;
 
   function loadNPCs() {
     try {
@@ -65,75 +67,88 @@
   }
 
   function scanMap() {
-    var now = Date.now();
-    var npcs = loadNPCs();
-    var cells = document.querySelectorAll("table.maptable td[id^='mapx']");
+    if (mapObserver) { mapObserver.disconnect(); }
 
-    cells.forEach(function (cell) {
-      var match = cell.id.match(/^mapx(-?\d+)y(-?\d+)$/);
-      if (!match) { return; }
+    try {
+      var now = Date.now();
+      var npcs = loadNPCs();
+      var cells = document.querySelectorAll("table.maptable td[id^='mapx']");
 
-      var key = match[1] + "," + match[2];
-      var svg = cell.querySelector("svg.mapstate");
+      cells.forEach(function (cell) {
+        var match = cell.id.match(/^mapx(-?\d+)y(-?\d+)$/);
+        if (!match) { return; }
 
-      if (!svg) { return; }
+        var key = match[1] + "," + match[2];
+        var svg = cell.querySelector("svg.mapstate");
 
-      var marker = svg.querySelector("g.npcs");
+        if (!svg) { return; }
 
-      // NPC marker exists: keep using the NPC information.
-      if (marker) {
-        var texts = marker.querySelectorAll("text");
-        var count = 0;
+        var marker = svg.querySelector("g.npcs");
 
-        texts.forEach(function (text) {
-          var value = text.textContent.trim();
+        // NPC marker exists: keep using the NPC information.
+        if (marker) {
+          var texts = marker.querySelectorAll("text");
+          var count = 0;
 
-          if (/^\d+$/.test(value)) {
-            count = Math.max(count, parseInt(value, 10));
+          texts.forEach(function (text) {
+            var value = text.textContent.trim();
+
+            if (/^\d+$/.test(value)) {
+              count = Math.max(count, parseInt(value, 10));
+            }
+          });
+
+          if (count <= 0) { return; }
+
+          var previous = npcs[key];
+
+          if (!previous || count >= previous.count) {
+            npcs[key] = {
+              x: parseInt(match[1], 10),
+              y: parseInt(match[2], 10),
+              count: count,
+              timestamp: now
+            };
           }
-        });
 
-        if (count <= 0) { return; }
-
-        var previous = npcs[key];
-
-        if (!previous || count >= previous.count) {
-          npcs[key] = {
-            x: parseInt(match[1], 10),
-            y: parseInt(match[2], 10),
-            count: count,
-            timestamp: now
-          };
+          return;
         }
 
-        return;
+        // No NPC marker, but players or the user are present:
+        // remove the cached NPC.
+        var players = svg.querySelector("g.players");
+        var user = svg.querySelector("path.user");
+
+        if (players || user) {
+          delete npcs[key];
+        }
+      });
+
+      // Remove entries that have expired.
+      Object.keys(npcs).forEach(function (key) {
+        if (!npcs[key] || !npcs[key].timestamp || now - npcs[key].timestamp >= NPC_EXPIRATION) {
+          delete npcs[key];
+        }
+      });
+
+      var snapshot = JSON.stringify(npcs);
+
+      if (snapshot !== lastSnapshot) {
+        saveNPCs(npcs);
+        lastSnapshot = snapshot;
       }
 
-      // No NPC marker, but players or the user are present:
-      // remove the cached NPC.
-      var players = svg.querySelector("g.players");
-      var user = svg.querySelector("path.user");
-
-      if (players || user) {
-        delete npcs[key];
+      displayNPCs(npcs);
+    } finally {
+      if (mapObserver && map) {
+        mapObserver.observe(map, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+          attributes: true
+        });
       }
-    });
-
-    // Remove entries that have expired.
-    Object.keys(npcs).forEach(function (key) {
-      if (!npcs[key] || !npcs[key].timestamp || now - npcs[key].timestamp >= NPC_EXPIRATION) {
-        delete npcs[key];
-      }
-    });
-
-    var snapshot = JSON.stringify(npcs);
-
-    if (snapshot !== lastSnapshot) {
-      saveNPCs(npcs);
-      lastSnapshot = snapshot;
     }
-
-    displayNPCs(npcs);
   }
 
   function displayNPCs(npcs) {
@@ -199,10 +214,20 @@
   }
 
   removeSoulVisionMarkers();
+
+  mapObserver = new MutationObserver(function () {
+    scanMap();
+  });
+
+  if (map) {
+    mapObserver.observe(map, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true
+    });
+  }
+
   scanMap();
   window.setInterval(scanMap, SCAN_INTERVAL);
-
-  var mapObserver = new MutationObserver(function () { scanMap(); });
-  var map = document.querySelector("table.maptable");
-  if (map) { mapObserver.observe(map, { childList: true, subtree: true, characterData: true, attributes: true }); }
 })();
