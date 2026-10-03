@@ -12,7 +12,29 @@
   var HINT_PREFIX = "Ragnur: ";
   var STORAGE_KEY = "ragnur_hint_players_online";
   var COOKIE_KEY = "ragnur_hint_players_online";
-  var MAX_PLAYERS = 55;
+  var MAX_PLAYERS = 70;
+
+  var FIELD_PLAYER_DATA = [
+    [13, 4],
+    [20, 5],
+    [33, 5],
+    [38, 6],
+    [47, 6],
+    [52, 6],
+    [57, 7],
+    [63, 7],
+    [65, 7],
+    [68, 7],
+    [74, 8],
+    [95, 9],
+    [102, 9],
+    [114, 10],
+    [145, 12],
+    [149, 12],
+    [151, 12],
+    [159, 12],
+    [209, 13]
+  ];
 
   function getWorld() {
     var match = window.location.hostname.match(/^([^.]+)\.freewar\.de$/i);
@@ -67,6 +89,38 @@
       "; path=/; max-age=7200; SameSite=Lax";
   }
 
+  function getFieldPlayers(count) {
+    var first = FIELD_PLAYER_DATA[0];
+    var last = FIELD_PLAYER_DATA[FIELD_PLAYER_DATA.length - 1];
+
+    if (count < first[0] || count > last[0]) {
+      return Math.round(
+        -0.0001198 * count * count +
+        0.07601 * count +
+        2.888
+      );
+    }
+
+    for (var i = 0; i < FIELD_PLAYER_DATA.length; i++) {
+      if (count === FIELD_PLAYER_DATA[i][0]) {
+        return FIELD_PLAYER_DATA[i][1];
+      }
+
+      if (count < FIELD_PLAYER_DATA[i][0]) {
+        var lower = FIELD_PLAYER_DATA[i - 1];
+        var upper = FIELD_PLAYER_DATA[i];
+
+        var ratio = (count - lower[0]) / (upper[0] - lower[0]);
+        var interpolated = lower[1] +
+          ratio * (upper[1] - lower[1]);
+
+        return Math.round(interpolated);
+      }
+    }
+
+    return last[1];
+  }
+
   function addHint() {
     var hint = document.getElementById(HINT_ID);
     var count = getStoredCount();
@@ -79,8 +133,8 @@
       return;
     }
 
-    var requiredPlayers = Math.round(18.88 * Number(count) - 68.95);
-    var text = HINT_PREFIX + requiredPlayers;
+    var fieldPlayers = getFieldPlayers(Number(count));
+    var text = HINT_PREFIX + fieldPlayers;
 
     if (hint && hint.textContent === text) {
       return;
