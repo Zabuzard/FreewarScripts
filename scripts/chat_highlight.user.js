@@ -29,6 +29,7 @@
     /nimmt das Item zerbrochenes Artefakt durch einen Beutezauber auf/i,
     /doch dann siehst du, dass es der Juwelenring der Familie Gruan ist, schön und sauber geputzt/i,
     /sucht mit dem Goldsieb im Wasser und findet einen silbernen Ohrring/i,
+    /Du hast einen Blick in die Seelen der Kreaturen dieser Welt erhascht\. Du hast deinen Auftrag erfüllt\. Kehre zurück zum Auftragshaus, um die Mission abzuschließen\./i,
     /wahnsinniger Waldschlurch rennt wie wild Richtung/i
   ];
 

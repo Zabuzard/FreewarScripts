@@ -52,6 +52,7 @@ var positionOverrides = {
   "Die Hungersnot Teil 2": "101/116",
   "Urlaub Teil 2": "118/106",
   "Die Seuche": "98/102",
+  "Das Brotmesser": "74/94",
 };
 
 var npcJobs = {
