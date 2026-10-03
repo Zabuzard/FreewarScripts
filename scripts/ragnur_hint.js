@@ -10,7 +10,6 @@
 (function () {
   var HINT_ID = "ragnur-hint";
   var HINT_PREFIX = "Ragnur: ";
-  var DEFAULT_COUNT = "10";
   var STORAGE_KEY = "ragnur_hint_players_online";
   var COOKIE_KEY = "ragnur_hint_players_online";
 
@@ -52,7 +51,7 @@
       return cookieCount;
     }
 
-    return DEFAULT_COUNT;
+    return null;
   }
 
   function saveCount(count) {
@@ -69,26 +68,40 @@
 
   function addHint() {
     var hint = document.getElementById(HINT_ID);
-    var text = HINT_PREFIX + getStoredCount();
+    var count = getStoredCount();
+
+    if (count === null) {
+      if (hint) {
+        hint.remove();
+      }
+
+      return;
+    }
+
+    var requiredPlayers = Math.round(18.88 * Number(count) - 68.95);
+    var text = HINT_PREFIX + requiredPlayers;
+
+    if (hint && hint.textContent === text) {
+      return;
+    }
 
     if (!hint) {
       hint = document.createElement("div");
       hint.id = HINT_ID;
-      hint.textContent = text;
 
       hint.style.position = "fixed";
-      hint.style.top = "5px";
+      hint.style.bottom = "0px";
       hint.style.left = "5px";
-      hint.style.color = "#e0e0e0";
+      hint.style.color = "#b8b4b0";
       hint.style.fontSize = "12px";
       hint.style.fontFamily = "Arial, sans-serif";
       hint.style.zIndex = "9999";
       hint.style.pointerEvents = "none";
 
       document.body.appendChild(hint);
-    } else if (hint.textContent !== text) {
-      hint.textContent = text;
     }
+
+    hint.textContent = text;
   }
 
   function isHintMutation(mutation) {
@@ -132,11 +145,15 @@
       })
       .then(function (html) {
         var doc = new DOMParser().parseFromString(html, "text/html");
-        var match = doc.body.textContent.match(/(\d+)\s+Spieler online/i);
+        var lines = doc.body.innerHTML.split("<br>");
 
-        if (match) {
-          saveCount(match[1]);
-          addHint();
+        if (lines.length >= 2) {
+          var match = lines[1].match(/^\s*(\d+)\s+Spieler online\s*$/i);
+
+          if (match) {
+            saveCount(match[1]);
+            addHint();
+          }
         }
       })
       .catch(function () {
@@ -179,7 +196,7 @@
       });
     }
 
-    setInterval(pollOnlineCount, 1000);
+    setInterval(pollOnlineCount, 60000);
     pollOnlineCount();
   }
 
