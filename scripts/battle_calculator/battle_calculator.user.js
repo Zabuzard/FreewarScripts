@@ -445,6 +445,7 @@ function extractStatValue(statName, fallbackValue) {
 
 function initForbiddenNpcs() {
   forbiddenNpc["Schimmerstein"] = true;
+  forbiddenNpc["Seuchenflügler"] = true;
 }
 
 function initNpcCorrections() {
