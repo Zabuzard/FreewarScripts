@@ -12,6 +12,7 @@
   var HINT_PREFIX = "Ragnur: ";
   var STORAGE_KEY = "ragnur_hint_players_online";
   var COOKIE_KEY = "ragnur_hint_players_online";
+  var MAX_PLAYERS = 55;
 
   function getWorld() {
     var match = window.location.hostname.match(/^([^.]+)\.freewar\.de$/i);
@@ -70,7 +71,7 @@
     var hint = document.getElementById(HINT_ID);
     var count = getStoredCount();
 
-    if (count === null) {
+    if (count === null || Number(count) > MAX_PLAYERS) {
       if (hint) {
         hint.remove();
       }

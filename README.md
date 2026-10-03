@@ -268,3 +268,11 @@ Beim Besuchen des Feldes durch einen Spieler wird angenommen, dass das NPC
 besiegt wurde.
 
 ![Soul Vision Demo](https://i.vgy.me/3GB74F.gif)
+
+## `ragnur_hint`
+
+Fügt dem Banner einen Hinweis hinzu wieviele Spieler aktuell benötigt werden um
+in den Vorhof der Eiswelt von Ragnur einzubrechen. Wird erst angezeigt wenn die
+Spielerzahl unter 55 fällt.
+
+![Ragnur Hint](https://i.vgy.me/dRV0fD.jpg)
