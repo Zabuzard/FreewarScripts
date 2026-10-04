@@ -304,7 +304,7 @@ function computeOutcome(playerLife, playerStrengthHands, playerStrengthWeapon, p
     if (playerStrengthWeapon < npcLife) {
       return -1;
     }
-    var lifeLoss = Math.max(1, npcStrength - playerDefense);
+    var lifeLoss = Math.max(1, npcStrength - playerDefenseWeapon);
     if (lifeLoss >= playerLife) {
       return -1;
     } else {
