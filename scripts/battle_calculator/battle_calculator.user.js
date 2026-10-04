@@ -3,6 +3,7 @@
 // @namespace   Zabuza
 // @description Removes fastattack links for NPCs where the outcome of a battle is loosing for the player.
 // @include     *.freewar.de/freewar/internal/frset.php*
+// @include     *.freewar.de/freewar/internal/friset.php*
 // @version     3
 // @require https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js
 // @grant       none
@@ -17,7 +18,7 @@ var battleCalculatorResultClass = "battlecalculator-result";
 
 function getMainDocument() {
   try {
-    var frame = document.querySelector('frame[name="mainFrame"]');
+    var frame = document.querySelector('[name="mainFrame"]');
 
     if (!frame) {
       return null;
@@ -139,7 +140,7 @@ function processElement(cellElement) {
   var npcStats = extractNpcStats(cellElement);
   var npcType = getNpcType(cellElement);
   var lifeLoss = computeOutcome(playerExpectedLife, playerStrengthHands, playerStrengthWeapon, playerDefenseHands, playerDefenseWeapon, npcName, npcType, npcStats);
-  var resultText = ""
+  var resultText = "";
   if (npcType) {
     resultText += " [" + npcType + "]";
   }
@@ -298,8 +299,7 @@ function computeOutcome(playerLife, playerStrengthHands, playerStrengthWeapon, p
     playerDefense = playerDefenseWeapon;
   }
 
-  if (npcType === "Superresistence-NPC")
-  {
+  if (npcType === "Superresistence-NPC") {
     // Must be killed in a single hit with weapons only
     if (playerStrengthWeapon < npcLife) {
       return -1;
