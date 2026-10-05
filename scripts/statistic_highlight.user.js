@@ -46,7 +46,6 @@
   }
 
   function highlightMessages() {
-    console.log("hi");
     if (!isStatisticsPage()) { return; }
 
     highlightStorage("Glodo-Fische im Lager", 0.7);
