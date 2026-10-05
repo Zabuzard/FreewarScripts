@@ -50,7 +50,7 @@
 
     highlightStorage("Glodo-Fische im Lager", 0.7);
     highlightStorage("Baru-Getreide im Lager", 0.5);
-    highlightStorage("Ölfässer im Lager", 0.3);
+    highlightStorage("Ölfässer im Lager", 0.4);
     highlightStorage("Sumpfgasflaschen im Lager", 0.5);
 
     [
