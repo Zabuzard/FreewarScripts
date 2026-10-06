@@ -10,8 +10,8 @@
   var necklaces = [ // Configure this to your needs
     { name: "Landmaster", id: 247183403, icon: "⌛︎", color: "#C49A6C" },
     { name: "Amulett der Frostkälte", id: 247183421, icon: "❄", color: "#66CCFF" },
-    { name: "Amulett der Feuersbrunst", id: 247183401, icon: "🔥︎", color: "#FF6600" },
-    { name: "Amulett der Erfahrung", id: 247183479, icon: "★", color: "#FFD700" }
+    { name: "Amulett der Erfahrung", id: 247183479, icon: "★", color: "#FFD700" },
+    { name: "Talisman der Wunder (M)", id: 819048225, icon: "☽", color: "#A855F7" }
   ];
 
   var neckRow = document.getElementById("listrow_neck");
