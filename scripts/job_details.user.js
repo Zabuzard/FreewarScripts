@@ -53,6 +53,7 @@ var positionOverrides = {
   "Urlaub Teil 2": "118/106",
   "Die Seuche": "98/102",
   "Das Brotmesser": "74/94",
+  "Steginspektion Teil 2": "83/130",
 };
 
 var npcJobs = {
