@@ -125,5 +125,5 @@
     setInterval(updateTrace, CHECK_INTERVAL);
 
     var observer = new MutationObserver(function () { updateTrace(); });
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    observer.observe(document.body, { childList: true, subtree: true });
 })();
