@@ -3,7 +3,7 @@
 // @namespace   Zabuza
 // @description Assists solving the rune puzzle in Dranar
 // @include     *.freewar.de/freewar/internal/main.php*
-// @version     1
+// @version     3
 // ==/UserScript==
 
 (function () {
@@ -14,14 +14,9 @@
   var BLOCK_COLS = 3;
   var HINT_OPACITY = "0.3";
 
-  var observer = null;
   var updateScheduled = false;
   var updating = false;
-
-  // Only run on the actual rune puzzle page.
-  if (!document.body || !document.body.textContent.includes(PUZZLE_TEXT)) {
-    return;
-  }
+  var puzzleWasPresent = false;
 
   function getSymbol(img) {
     var match = img.src.match(/\/a([0-9])\.gif(?:[?#].*)?$/);
@@ -82,7 +77,7 @@
           return null;
         }
 
-        // Our own hint must still count as an empty cell.
+        // Our hint images represent empty cells, not fixed clues.
         if (img.dataset.rpsHintSymbol) {
           if (symbol === Number(img.dataset.rpsHintSymbol)) {
             symbol = 0;
@@ -94,15 +89,10 @@
           }
         }
 
-        if (symbol === 9) {
-          return {
-            unknown: true
-          };
-        }
-
-        // 0 = empty; 8 = current-position marker.
-        // Only symbols 1-6 are fixed clues.
-        if (symbol === 0 || symbol === 8) {
+        // Empty, unknown, neutral and current-position cells
+        // are all treated as empty by the solver.
+        if (symbol === 0 || symbol === 7 ||
+            symbol === 8 || symbol === 9) {
           grid[r][c] = 0;
         } else if (symbol >= 1 && symbol <= 6) {
           grid[r][c] = symbol;
@@ -112,9 +102,7 @@
       }
     }
 
-    return {
-      grid: grid
-    };
+    return grid;
   }
 
   function isValid(grid, row, col, value) {
@@ -138,68 +126,113 @@
     return true;
   }
 
-  function solve(grid) {
-    var bestRow = -1;
-    var bestCol = -1;
-    var bestCandidates = null;
-
-    // Choose the empty cell with the fewest possible symbols.
-    // This makes backtracking considerably more efficient.
+  function hasValidClues(grid) {
     for (var r = 0; r < GRID_SIZE; r++) {
       for (var c = 0; c < GRID_SIZE; c++) {
-        if (grid[r][c] !== 0) {
+        var value = grid[r][c];
+
+        if (value === 0) {
           continue;
         }
 
-        var candidates = [];
+        grid[r][c] = 0;
+        var valid = isValid(grid, r, c, value);
+        grid[r][c] = value;
 
-        for (var value = 1; value <= GRID_SIZE; value++) {
-          if (isValid(grid, r, c, value)) {
-            candidates.push(value);
-          }
-        }
-
-        if (candidates.length === 0) {
+        if (!valid) {
           return false;
         }
-
-        if (bestCandidates === null ||
-            candidates.length < bestCandidates.length) {
-          bestRow = r;
-          bestCol = c;
-          bestCandidates = candidates;
-        }
-
-        if (bestCandidates.length === 1) {
-          break;
-        }
-      }
-
-      if (bestCandidates && bestCandidates.length === 1) {
-        break;
       }
     }
 
-    if (bestCandidates === null) {
-      return true;
-    }
-
-    for (var i = 0; i < bestCandidates.length; i++) {
-      grid[bestRow][bestCol] = bestCandidates[i];
-
-      if (solve(grid)) {
-        return true;
-      }
-    }
-
-    grid[bestRow][bestCol] = 0;
-    return false;
+    return true;
   }
 
   function cloneGrid(grid) {
     return grid.map(function (row) {
       return row.slice();
     });
+  }
+
+  function countSolutions(grid, limit) {
+    var count = 0;
+    var firstSolution = null;
+
+    function search() {
+      if (count >= limit) {
+        return;
+      }
+
+      var bestRow = -1;
+      var bestCol = -1;
+      var bestCandidates = null;
+
+      // Pick the empty cell with the fewest candidates.
+      for (var r = 0; r < GRID_SIZE; r++) {
+        for (var c = 0; c < GRID_SIZE; c++) {
+          if (grid[r][c] !== 0) {
+            continue;
+          }
+
+          var candidates = [];
+
+          for (var value = 1; value <= GRID_SIZE; value++) {
+            if (isValid(grid, r, c, value)) {
+              candidates.push(value);
+            }
+          }
+
+          if (candidates.length === 0) {
+            return;
+          }
+
+          if (bestCandidates === null ||
+              candidates.length < bestCandidates.length) {
+            bestRow = r;
+            bestCol = c;
+            bestCandidates = candidates;
+          }
+
+          if (bestCandidates.length === 1) {
+            break;
+          }
+        }
+
+        if (bestCandidates && bestCandidates.length === 1) {
+          break;
+        }
+      }
+
+      // No empty cells remain: one complete solution found.
+      if (bestCandidates === null) {
+        count++;
+
+        if (count === 1) {
+          firstSolution = cloneGrid(grid);
+        }
+
+        return;
+      }
+
+      for (var i = 0; i < bestCandidates.length; i++) {
+        grid[bestRow][bestCol] = bestCandidates[i];
+        search();
+        grid[bestRow][bestCol] = 0;
+
+        if (count >= limit) {
+          return;
+        }
+      }
+    }
+
+    if (hasValidClues(grid)) {
+      search();
+    }
+
+    return {
+      count: count,
+      solution: count === 1 ? firstSolution : null
+    };
   }
 
   function isSolutionCompatible(grid, solution) {
@@ -251,7 +284,7 @@
         solution: solution
       }));
     } catch (error) {
-      // The solver can still work if storage is unavailable.
+      // Continue without persistence if storage is unavailable.
     }
   }
 
@@ -268,21 +301,20 @@
       return;
     }
 
-    var originalSrc = img.dataset.rpsOriginalSrc;
-    var originalOpacity = img.dataset.rpsOriginalOpacity;
+    var hintSymbol = Number(img.dataset.rpsHintSymbol);
+    var currentSymbol = getSymbol(img);
 
-    if (originalSrc && img.src === new URL(
-        "../images/misc/minigame/a" +
-        img.dataset.rpsHintSymbol + ".gif",
-        img.src
-    ).href) {
-      img.src = originalSrc;
-    }
+    // Restore only if the image is still our hint.
+    if (currentSymbol === hintSymbol) {
+      if (img.dataset.rpsOriginalSrc !== undefined) {
+        img.setAttribute("src", img.dataset.rpsOriginalSrc);
+      }
 
-    if (originalOpacity !== undefined) {
-      img.style.opacity = originalOpacity;
-    } else {
-      img.style.removeProperty("opacity");
+      if (img.dataset.rpsOriginalOpacity !== undefined) {
+        img.style.opacity = img.dataset.rpsOriginalOpacity;
+      } else {
+        img.style.removeProperty("opacity");
+      }
     }
 
     delete img.dataset.rpsHintSymbol;
@@ -309,7 +341,7 @@
 
         var symbol = getSymbol(img);
 
-        // Hints are only displayed on actual empty cells.
+        // Only draw hints over genuinely empty a0.gif cells.
         if (symbol !== 0) {
           continue;
         }
@@ -317,7 +349,7 @@
         var value = solution[r][c];
         var expectedSrc = new URL(
           "../images/misc/minigame/a" + value + ".gif",
-          img.src
+          document.baseURI
         ).href;
 
         if (img.dataset.rpsHintSymbol &&
@@ -349,40 +381,51 @@
     updating = true;
 
     try {
-      if (!document.body ||
-          !document.body.textContent.includes(PUZZLE_TEXT)) {
+      var puzzlePresent = document.body &&
+        document.body.textContent.includes(PUZZLE_TEXT);
+
+      if (!puzzlePresent) {
+        if (puzzleWasPresent) {
+          clearSolution();
+        }
+
+        puzzleWasPresent = false;
         return;
       }
+
+      puzzleWasPresent = true;
 
       var table = getGridTable();
 
       if (!table) {
+        clearSolution();
         return;
       }
 
-      var result = getGrid(table);
+      var grid = getGrid(table);
 
-      if (!result) {
+      if (!grid) {
         return;
       }
 
-      if (result.unknown) {
+      var cachedSolution = loadSolution();
+
+      // Always prove uniqueness against the current clues.
+      var result = countSolutions(cloneGrid(grid), 2);
+
+      if (result.count !== 1) {
         clearSolution();
         clearHints(table);
         return;
       }
 
-      var grid = result.grid;
-      var solution = loadSolution();
+      var solution = result.solution;
 
-      if (!isSolutionCompatible(grid, solution)) {
-        solution = cloneGrid(grid);
-
-        if (!solve(solution)) {
-          clearHints(table);
-          return;
-        }
-
+      // Reuse the cached solution when it matches the unique solution.
+      if (isSolutionCompatible(grid, cachedSolution) &&
+          JSON.stringify(cachedSolution) === JSON.stringify(solution)) {
+        solution = cachedSolution;
+      } else {
         saveSolution(solution);
       }
 
@@ -405,9 +448,7 @@
     }, 0);
   }
 
-  // Observe dynamic puzzle updates. Our own changes are idempotent:
-  // once a hint is correct, rendering it again does not mutate the DOM.
-  observer = new MutationObserver(function (mutations) {
+  var observer = new MutationObserver(function (mutations) {
     if (updating) {
       return;
     }
