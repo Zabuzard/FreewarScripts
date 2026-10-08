@@ -3,21 +3,26 @@
 // @namespace   Zabuza
 // @description Assists solving the rune puzzle in Dranar
 // @include     *.freewar.de/freewar/internal/main.php*
-// @version     4
+// @version     5
 // ==/UserScript==
 
 (function () {
   var PUZZLE_TEXT = "Ziel: Am Ende darf maximal ein neutrales Elemente existieren.";
+  var SECRET_TEXT = "Geheimnisvolles Element (Diesem Element sieht man nicht an, welcher Gruppe es zuzuordnen ist)";
   var STORAGE_KEY = "rune_puzzle_solver_solution";
+  var UNKNOWN_SYMBOL_KEY = "rune_puzzle_solver_unknown_symbol";
   var GRID_SIZE = 6;
   var BLOCK_ROWS = 2;
   var BLOCK_COLS = 3;
   var HINT_OPACITY = "0.3";
+  var SELECTED_BORDER = "2px solid #00aa00";
+  var UNSELECTED_BORDER = "2px solid transparent";
   var DEBUG = true;
 
   var updateScheduled = false;
   var updating = false;
   var puzzleWasPresent = false;
+  var selectedUnknownSymbol = loadUnknownSymbol();
 
   function log() {
     if (!DEBUG) {
@@ -42,6 +47,190 @@
   function getSymbol(img) {
     var match = img.src.match(/\/a([0-9])\.gif(?:[?#].*)?$/);
     return match ? Number(match[1]) : null;
+  }
+
+  function getSymbolUrl(symbol) {
+    return new URL(
+      "../images/misc/minigame/a" + symbol + ".gif",
+      document.baseURI
+    ).href;
+  }
+
+  function loadUnknownSymbol() {
+    try {
+      var stored = localStorage.getItem(UNKNOWN_SYMBOL_KEY);
+      var symbol = Number(stored);
+
+      if (symbol >= 1 && symbol <= 6) {
+        log("Loaded selected unknown symbol: a" + symbol);
+        return symbol;
+      }
+    } catch (error) {
+      warn("Failed to load selected unknown symbol:", error);
+    }
+
+    log("No unknown symbol selected.");
+    return 0;
+  }
+
+  function saveUnknownSymbol(symbol) {
+    selectedUnknownSymbol = symbol;
+
+    try {
+      if (symbol >= 1 && symbol <= 6) {
+        localStorage.setItem(UNKNOWN_SYMBOL_KEY, String(symbol));
+      } else {
+        localStorage.removeItem(UNKNOWN_SYMBOL_KEY);
+      }
+
+      log("Saved selected unknown symbol:", symbol ? "a" + symbol : "none");
+    } catch (error) {
+      warn("Failed to save selected unknown symbol:", error);
+    }
+  }
+
+  function findSecretElement() {
+    var elements = document.querySelectorAll("body *");
+    var target = null;
+
+    for (var i = 0; i < elements.length; i++) {
+      var element = elements[i];
+
+      if (!element.textContent.includes(SECRET_TEXT)) {
+        continue;
+      }
+
+      var childContainsText = false;
+
+      for (var j = 0; j < element.children.length; j++) {
+        if (element.children[j].textContent.includes(SECRET_TEXT)) {
+          childContainsText = true;
+          break;
+        }
+      }
+
+      if (!childContainsText) {
+        target = element;
+        break;
+      }
+    }
+
+    return target;
+  }
+
+  function updateSelectorAppearance(selector) {
+    var images = selector.querySelectorAll("img[data-rps-symbol]");
+
+    images.forEach(function (img) {
+      var symbol = Number(img.dataset.rpsSymbol);
+      var selected = symbol === selectedUnknownSymbol;
+
+      img.style.border = selected ? SELECTED_BORDER : UNSELECTED_BORDER;
+      img.style.backgroundColor = selected ? "#e0ffe0" : "transparent";
+      img.style.opacity = selected ? "1" : "0.8";
+    });
+  }
+
+  function addUnknownSymbolSelector() {
+    var existing = document.getElementById("rps-unknown-selector");
+    var target = findSecretElement();
+
+    if (!target) {
+      if (existing) {
+        existing.remove();
+        log("Removed unknown symbol selector: description not found.");
+      }
+
+      return;
+    }
+
+    if (existing) {
+      if (existing.parentElement === target) {
+        updateSelectorAppearance(existing);
+        return;
+      }
+
+      existing.remove();
+    }
+
+    var selector = document.createElement("div");
+    selector.id = "rps-unknown-selector";
+    selector.style.marginTop = "6px";
+    selector.style.display = "flex";
+    selector.style.alignItems = "center";
+    selector.style.gap = "4px";
+
+    for (var i = 1; i <= 6; i++) {
+      var symbol = document.createElement("img");
+
+      symbol.src = getSymbolUrl(i);
+      symbol.alt = "a" + i;
+      symbol.title = "Das unbekannte Element ist a" + i;
+      symbol.dataset.rpsSymbol = String(i);
+      symbol.style.cursor = "pointer";
+      symbol.style.boxSizing = "border-box";
+      symbol.style.padding = "2px";
+      symbol.style.width = "24px";
+      symbol.style.height = "24px";
+      symbol.style.borderRadius = "3px";
+
+      symbol.addEventListener("click", function () {
+        var chosenSymbol = Number(this.dataset.rpsSymbol);
+
+        log("Unknown symbol clicked:", "a" + chosenSymbol);
+
+        saveUnknownSymbol(chosenSymbol);
+
+        var currentSelector = document.getElementById(
+          "rps-unknown-selector"
+        );
+
+        if (currentSelector) {
+          updateSelectorAppearance(currentSelector);
+        }
+
+        clearSolution();
+        scheduleUpdate();
+      });
+
+      selector.appendChild(symbol);
+    }
+
+    var clearButton = document.createElement("span");
+    clearButton.textContent = "✕";
+    clearButton.title = "Auswahl zurücksetzen";
+    clearButton.style.cursor = "pointer";
+    clearButton.style.marginLeft = "4px";
+    clearButton.style.padding = "2px 5px";
+    clearButton.style.fontSize = "14px";
+    clearButton.style.color = "#900";
+
+    clearButton.addEventListener("click", function () {
+      log("Unknown symbol selection cleared.");
+
+      saveUnknownSymbol(0);
+
+      var currentSelector = document.getElementById(
+        "rps-unknown-selector"
+      );
+
+      if (currentSelector) {
+        updateSelectorAppearance(currentSelector);
+      }
+
+      clearSolution();
+      scheduleUpdate();
+    });
+
+    selector.appendChild(clearButton);
+    target.appendChild(selector);
+
+    updateSelectorAppearance(selector);
+
+    log("Unknown symbol selector added.", {
+      selectedSymbol: selectedUnknownSymbol || null,
+      element: target
+    });
   }
 
   function getGridTable() {
@@ -112,10 +301,20 @@
           }
         }
 
-        // Empty, unknown, neutral and current-position cells
-        // are treated as empty by the solver.
-        if (symbol === 0 || symbol === 7 ||
-            symbol === 8 || symbol === 9) {
+        if (symbol === 9) {
+          if (selectedUnknownSymbol >= 1 && selectedUnknownSymbol <= 6) {
+            grid[r][c] = selectedUnknownSymbol;
+
+            log("Using selected unknown symbol:", {
+              row: r,
+              column: c,
+              symbol: selectedUnknownSymbol
+            });
+          } else {
+            grid[r][c] = 0;
+          }
+        } else if (symbol === 0 || symbol === 7 || symbol === 8) {
+          // Empty, neutral and current-position cells.
           grid[r][c] = 0;
         } else if (symbol >= 1 && symbol <= 6) {
           grid[r][c] = symbol;
@@ -415,15 +614,19 @@
 
         var symbol = getSymbol(img);
 
+        // Existing hints represent empty cells and may need updating
+        // when the selected unknown symbol changes the solution.
+        if (img.dataset.rpsHintSymbol &&
+            symbol === Number(img.dataset.rpsHintSymbol)) {
+          symbol = 0;
+        }
+
         if (symbol !== 0) {
           continue;
         }
 
         var value = solution[r][c];
-        var expectedSrc = new URL(
-          "../images/misc/minigame/a" + value + ".gif",
-          document.baseURI
-        ).href;
+        var expectedSrc = getSymbolUrl(value);
 
         if (img.dataset.rpsHintSymbol &&
             Number(img.dataset.rpsHintSymbol) === value &&
@@ -471,6 +674,12 @@
         if (puzzleWasPresent) {
           log("Puzzle disappeared.");
           clearSolution();
+
+          var selector = document.getElementById("rps-unknown-selector");
+
+          if (selector) {
+            selector.remove();
+          }
         }
 
         puzzleWasPresent = false;
@@ -482,6 +691,8 @@
       }
 
       puzzleWasPresent = true;
+
+      addUnknownSymbolSelector();
 
       var table = getGridTable();
 
@@ -500,12 +711,12 @@
 
       var cachedSolution = loadSolution();
 
-      // Prove uniqueness against the current clues.
+      // Prove uniqueness against the current clues, including a9 selections.
       var result = countSolutions(cloneGrid(grid), 2);
 
       if (result.count !== 1) {
         log(result.count === 0
-          ? "Puzzle has no valid solutions. Waiting for more clues."
+          ? "Puzzle has no valid solutions. Check the clues or selected symbol."
           : "Puzzle has multiple solutions. Waiting for more clues.");
 
         clearSolution();
