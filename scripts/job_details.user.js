@@ -55,7 +55,43 @@ var positionOverrides = {
   "Das Brotmesser": "74/94",
   "Steginspektion Teil 2": "83/130",
 };
-
+var LONG_JOB_NAMES = [
+  "Das Artefakt von Dranar",
+  "Das Portal",
+  "Das Schabenproblem",
+  "Der Alte vom Erzmagierturm",
+  "Der Ektofronstachel",
+  "Der Grabräuber",
+  "Der verlorene Meterstab",
+  "Der wahnsinnige Waldschlurch",
+  "Die Auswilderung",
+  "Die Blutprobe",
+  "Die Finstereis-Höhle",
+  "Die Kutschfahrt",
+  "Die vergessene Kiste",
+  "Doppelköpfige Bestie",
+  "Effizienzsteigerung",
+  "Jerodar-Überfall",
+  "Magische Energiefelder",
+  "Mitarbeiter in Not",
+  "Nichts zu tun",
+  "Portalstab-Panik",
+  "Schaufelmaulwürfe",
+  "Säge allein im Wald",
+  "Die junge Zauberin",
+  "Die Suche nach Geron Ther",
+  "Der Giftgeist von Narubia",
+  "Portalstabpanik",
+  "Die verwesten Bürger",
+  "Der goldene Löffel",
+  "Die Seuche Teil 2",
+  "Der silberne Ohrring",
+  "Zu Tode erschrecken",
+  "Der Wetterkontrollkristall",
+  "Die Fischspeise",
+  "Blaue Heilzauber",
+  "Die Grotte des Todes Teil 2"
+];
 var npcJobs = {
     "Onlo": {
       jobs: ["Der Kugelknochen"],
@@ -481,10 +517,11 @@ function getJobDisplayText(jobDetails) {
     displayText += jobDetails.highlights.join(', ');
   }
 
-  if (jobDetails.reward || jobDetails.expiresAt) {
+  if (jobDetails.reward || jobDetails.expiresAt || LONG_JOB_NAMES.indexOf(jobDetails.name) !== -1) {
     if (displayText) {
       displayText += ' \\A ';
     }
+
     displayText += '(';
 
     var extraText = '';
@@ -500,6 +537,14 @@ function getJobDisplayText(jobDetails) {
 
       var remainingMinutes = Math.max(0, Math.round((jobDetails.expiresAt - Date.now()) / 60000));
       extraText += '⏱ ' + remainingMinutes + ' min';
+    }
+
+    if (LONG_JOB_NAMES.indexOf(jobDetails.name) !== -1) {
+      if (extraText) {
+        extraText += ', ';
+      }
+
+      extraText += '🐢';
     }
 
     displayText += extraText + ')';
