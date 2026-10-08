@@ -12,7 +12,7 @@
     var MAX_TILES = 30;
     var MAX_AGE = 5 * 60 * 1000;
     var CHECK_INTERVAL = 500;
-    var TRACE_OPACITY = 0.8;
+    var TRACE_OPACITY = 0.5;
 
     function loadTrace() {
         var data;
@@ -76,8 +76,6 @@
         var tiles = document.querySelectorAll("td[id^='mapx']");
 
         tiles.forEach(function (tile) {
-            tile.style.opacity = "";
-
             var match = tile.id.match(/^mapx(-?\d+)y(-?\d+)$/);
             if (!match) { return; }
 
@@ -85,6 +83,9 @@
             var y = parseInt(match[2], 10);
 
             if (position && x === position.x && y === position.y) {
+                if (tile.style.opacity === String(TRACE_OPACITY)) {
+                    tile.style.opacity = "";
+                }
                 return;
             }
 
@@ -93,7 +94,11 @@
             });
 
             if (traced) {
-                tile.style.opacity = TRACE_OPACITY;
+                if (tile.style.opacity !== String(TRACE_OPACITY)) {
+                    tile.style.opacity = TRACE_OPACITY;
+                }
+            } else if (tile.style.opacity === String(TRACE_OPACITY)) {
+                tile.style.opacity = "";
             }
         });
     }
