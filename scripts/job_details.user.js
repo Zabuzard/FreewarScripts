@@ -544,7 +544,7 @@ function getJobDisplayText(jobDetails) {
         extraText += ', ';
       }
 
-      extraText += '🐢';
+      extraText += '❌';
     }
 
     displayText += extraText + ')';
