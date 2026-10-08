@@ -55,7 +55,7 @@
   swapLink.href = "#";
   swapLink.textContent = "⇄";
   swapLink.title = "Waffen ab-/anlegen";
-  swapLink.style.color = currentAttack === "keine" && currentDefense === "keine" ? "#888888" : "#FFFFFF";
+  swapLink.style.color = currentAttack === "keine" && currentDefense === "keine" ? "#888888" : "#6879ff";
   swapLink.style.fontSize = "1.5em";
 
   swapLink.onclick = function (event) {
