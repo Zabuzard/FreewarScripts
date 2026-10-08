@@ -276,3 +276,19 @@ in den Vorhof der Eiswelt von Ragnur einzubrechen. Wird erst angezeigt wenn die
 Spielerzahl unter 70 fällt.
 
 ![Ragnur Hint](https://i.vgy.me/dRV0fD.jpg)
+
+## `map_trace`
+
+Merkt sich die zuletzt besuchten Felder und blendet sie teilweise auf der Karte
+aus, so dass man zum Beispiel leichter ein Gebiet vollständig erkunden kann,
+ohne dabei ausversehen ein Feld erneut zu besuchen.
+
+Angezeigt werden die bis zu 30 zuletzt besuchten Felder, bis zu maximal 5
+Minuten.
+
+![Laufspur](https://i.vgy.me/LFyYl1.jpg)
+
+Ein Symbol neben dem zur Aktualisierung der Karte schaltet die Funktion an und
+aus. Beim Ausschalten wird auserdem die aktuelle Laufspur gelöscht, so dass man
+bei Bedarf durch Deaktivieren und Aktivieren auch die Spur bequem
+zurücksetzen kann.

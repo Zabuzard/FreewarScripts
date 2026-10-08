@@ -9,10 +9,12 @@
 
 (function () {
     var STORAGE_KEY = "map_trace";
+    var ENABLED_STORAGE_KEY = "map_trace_enabled";
     var MAX_TILES = 30;
     var MAX_AGE = 5 * 60 * 1000;
     var CHECK_INTERVAL = 500;
     var TRACE_OPACITY = 0.5;
+    var traceEnabled = loadTraceEnabled();
 
     function loadTrace() {
         var data;
@@ -42,6 +44,31 @@
             return;
         } catch (e) {}
         document.cookie = STORAGE_KEY + "=" + encodeURIComponent(data) + "; path=/";
+    }
+
+    function loadTraceEnabled() {
+        var data;
+        try {
+            data = localStorage.getItem(ENABLED_STORAGE_KEY);
+        } catch (e) {
+            data = null;
+        }
+        if (data === null) {
+            var match = document.cookie.match(new RegExp("(?:^|; )" + ENABLED_STORAGE_KEY.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)"));
+            data = match ? decodeURIComponent(match[1]) : null;
+        }
+        if (data === null) { return true; }
+
+        return data === "true";
+    }
+
+    function saveTraceEnabled() {
+        var data = traceEnabled ? "true" : "false";
+        try {
+            localStorage.setItem(ENABLED_STORAGE_KEY, data);
+            return;
+        } catch (e) {}
+        document.cookie = ENABLED_STORAGE_KEY + "=" + data + "; path=/";
     }
 
     function getCurrentPosition() {
@@ -93,7 +120,7 @@
                 return entry.x === x && entry.y === y;
             });
 
-            if (traced) {
+            if (traceEnabled && traced) {
                 if (tile.style.opacity !== String(TRACE_OPACITY)) {
                     tile.style.opacity = TRACE_OPACITY;
                 }
@@ -126,6 +153,51 @@
         updateTileOpacity(trace, position);
     }
 
+    function createTraceToggle() {
+        var positionText = document.querySelector(".positiontext");
+        if (!positionText) { return; }
+
+        var reloadLink = positionText.querySelector("a");
+        if (!reloadLink) { return; }
+
+        if (document.getElementById("map-trace-toggle")) {
+            return;
+        }
+
+        var toggle = document.createElement("span");
+        toggle.id = "map-trace-toggle";
+        toggle.textContent = "⊙";
+        toggle.style.display = "inline-block";
+        toggle.style.width = "14px";
+        toggle.style.height = "14px";
+        toggle.style.lineHeight = "14px";
+        toggle.style.textAlign = "center";
+        toggle.style.cursor = "pointer";
+        toggle.style.marginRight = "1px";
+        toggle.style.verticalAlign = "middle";
+
+        function updateToggle() {
+            toggle.title = traceEnabled ? "Laufspur ausblenden und löschen" : "Laufspur anzeigen";
+            toggle.style.color = traceEnabled ? "#7e66a1" : "#777777";
+        }
+
+        toggle.addEventListener("click", function () {
+            traceEnabled = !traceEnabled;
+            saveTraceEnabled();
+
+            if (!traceEnabled) {
+                saveTrace([]);
+            }
+
+            updateToggle();
+            updateTrace();
+        });
+
+        updateToggle();
+        positionText.insertBefore(toggle, reloadLink);
+    }
+
+    createTraceToggle();
     updateTrace();
     setInterval(updateTrace, CHECK_INTERVAL);
 
