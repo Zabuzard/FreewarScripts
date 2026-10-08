@@ -3,7 +3,7 @@
 // @namespace   Zabuza
 // @description Assists solving the rune puzzle in Dranar
 // @include     *.freewar.de/freewar/internal/main.php*
-// @version     3
+// @version     4
 // ==/UserScript==
 
 (function () {
@@ -13,14 +13,34 @@
   var BLOCK_ROWS = 2;
   var BLOCK_COLS = 3;
   var HINT_OPACITY = "0.3";
+  var DEBUG = true;
 
   var updateScheduled = false;
   var updating = false;
   var puzzleWasPresent = false;
 
+  function log() {
+    if (!DEBUG) {
+      return;
+    }
+
+    var args = Array.prototype.slice.call(arguments);
+    args.unshift("[rune_puzzle_solver]");
+    console.log.apply(console, args);
+  }
+
+  function warn() {
+    if (!DEBUG) {
+      return;
+    }
+
+    var args = Array.prototype.slice.call(arguments);
+    args.unshift("[rune_puzzle_solver]");
+    console.warn.apply(console, args);
+  }
+
   function getSymbol(img) {
     var match = img.src.match(/\/a([0-9])\.gif(?:[?#].*)?$/);
-
     return match ? Number(match[1]) : null;
   }
 
@@ -51,10 +71,12 @@
       }
 
       if (valid) {
+        log("Grid table found:", tables[i]);
         return tables[i];
       }
     }
 
+    log("No 6x6 grid table found.");
     return null;
   }
 
@@ -68,21 +90,22 @@
         var img = table.rows[r].cells[c].querySelector("img");
 
         if (!img) {
+          warn("Missing image at row", r, "column", c);
           return null;
         }
 
         var symbol = getSymbol(img);
 
         if (symbol === null) {
+          warn("Unknown image source at row", r, "column", c, img.src);
           return null;
         }
 
-        // Our hint images represent empty cells, not fixed clues.
         if (img.dataset.rpsHintSymbol) {
           if (symbol === Number(img.dataset.rpsHintSymbol)) {
             symbol = 0;
           } else {
-            // The game changed this cell independently.
+            log("Game changed previously hinted cell:", r, c, symbol);
             delete img.dataset.rpsHintSymbol;
             delete img.dataset.rpsOriginalSrc;
             delete img.dataset.rpsOriginalOpacity;
@@ -90,17 +113,22 @@
         }
 
         // Empty, unknown, neutral and current-position cells
-        // are all treated as empty by the solver.
+        // are treated as empty by the solver.
         if (symbol === 0 || symbol === 7 ||
             symbol === 8 || symbol === 9) {
           grid[r][c] = 0;
         } else if (symbol >= 1 && symbol <= 6) {
           grid[r][c] = symbol;
         } else {
+          warn("Unsupported symbol at row", r, "column", c, symbol);
           return null;
         }
       }
     }
+
+    log("Parsed grid:\n" + grid.map(function (row) {
+      return row.join(" ");
+    }).join("\n"));
 
     return grid;
   }
@@ -140,11 +168,17 @@
         grid[r][c] = value;
 
         if (!valid) {
+          warn("Contradictory clue:", {
+            row: r,
+            column: c,
+            value: value
+          });
           return false;
         }
       }
     }
 
+    log("All visible clues are consistent.");
     return true;
   }
 
@@ -157,17 +191,19 @@
   function countSolutions(grid, limit) {
     var count = 0;
     var firstSolution = null;
+    var exploredNodes = 0;
 
     function search() {
       if (count >= limit) {
         return;
       }
 
+      exploredNodes++;
+
       var bestRow = -1;
       var bestCol = -1;
       var bestCandidates = null;
 
-      // Pick the empty cell with the fewest candidates.
       for (var r = 0; r < GRID_SIZE; r++) {
         for (var c = 0; c < GRID_SIZE; c++) {
           if (grid[r][c] !== 0) {
@@ -203,9 +239,13 @@
         }
       }
 
-      // No empty cells remain: one complete solution found.
       if (bestCandidates === null) {
         count++;
+
+        log("Found solution #" + count + ":\n" +
+          grid.map(function (row) {
+            return row.join(" ");
+          }).join("\n"));
 
         if (count === 1) {
           firstSolution = cloneGrid(grid);
@@ -225,9 +265,19 @@
       }
     }
 
+    log("Starting solution search. Limit:", limit);
+
     if (hasValidClues(grid)) {
       search();
+    } else {
+      log("Skipping search because clues contradict each other.");
     }
+
+    log("Search finished:", {
+      solutionsFound: count,
+      limit: limit,
+      exploredNodes: exploredNodes
+    });
 
     return {
       count: count,
@@ -254,6 +304,12 @@
         }
 
         if (grid[r][c] !== 0 && grid[r][c] !== value) {
+          log("Cached solution conflicts with clue:", {
+            row: r,
+            column: c,
+            clue: grid[r][c],
+            cachedValue: value
+          });
           return false;
         }
       }
@@ -267,13 +323,17 @@
       var stored = localStorage.getItem(STORAGE_KEY);
 
       if (!stored) {
+        log("No cached solution found.");
         return null;
       }
 
       var data = JSON.parse(stored);
+      var solution = data && data.solution ? data.solution : null;
 
-      return data && data.solution ? data.solution : null;
+      log(solution ? "Loaded cached solution." : "Stored data is invalid.");
+      return solution;
     } catch (error) {
+      warn("Failed to load cached solution:", error);
       return null;
     }
   }
@@ -283,16 +343,23 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         solution: solution
       }));
+
+      log("Saved unique solution to localStorage.");
     } catch (error) {
-      // Continue without persistence if storage is unavailable.
+      warn("Failed to save solution:", error);
     }
   }
 
   function clearSolution() {
     try {
+      var existed = localStorage.getItem(STORAGE_KEY) !== null;
       localStorage.removeItem(STORAGE_KEY);
+
+      if (existed) {
+        log("Cleared cached solution.");
+      }
     } catch (error) {
-      // Ignore storage errors.
+      warn("Failed to clear cached solution:", error);
     }
   }
 
@@ -304,7 +371,6 @@
     var hintSymbol = Number(img.dataset.rpsHintSymbol);
     var currentSymbol = getSymbol(img);
 
-    // Restore only if the image is still our hint.
     if (currentSymbol === hintSymbol) {
       if (img.dataset.rpsOriginalSrc !== undefined) {
         img.setAttribute("src", img.dataset.rpsOriginalSrc);
@@ -315,6 +381,8 @@
       } else {
         img.style.removeProperty("opacity");
       }
+
+      log("Restored original image:", img);
     }
 
     delete img.dataset.rpsHintSymbol;
@@ -325,12 +393,18 @@
   function clearHints(table) {
     var images = table.querySelectorAll("img[data-rps-hint-symbol]");
 
+    if (images.length > 0) {
+      log("Clearing", images.length, "hints.");
+    }
+
     images.forEach(function (img) {
       restoreHint(img);
     });
   }
 
   function renderHints(table, solution) {
+    var rendered = 0;
+
     for (var r = 0; r < GRID_SIZE; r++) {
       for (var c = 0; c < GRID_SIZE; c++) {
         var img = table.rows[r].cells[c].querySelector("img");
@@ -341,7 +415,6 @@
 
         var symbol = getSymbol(img);
 
-        // Only draw hints over genuinely empty a0.gif cells.
         if (symbol !== 0) {
           continue;
         }
@@ -369,12 +442,22 @@
 
         img.src = expectedSrc;
         img.style.opacity = HINT_OPACITY;
+        rendered++;
+
+        log("Rendered hint:", {
+          row: r,
+          column: c,
+          symbol: value
+        });
       }
     }
+
+    log("Hint rendering finished. New hints:", rendered);
   }
 
   function update() {
     if (updating) {
+      log("Update skipped: already updating.");
       return;
     }
 
@@ -386,6 +469,7 @@
 
       if (!puzzlePresent) {
         if (puzzleWasPresent) {
+          log("Puzzle disappeared.");
           clearSolution();
         }
 
@@ -393,11 +477,16 @@
         return;
       }
 
+      if (!puzzleWasPresent) {
+        log("Puzzle detected.");
+      }
+
       puzzleWasPresent = true;
 
       var table = getGridTable();
 
       if (!table) {
+        warn("Puzzle description found, but no grid table was detected.");
         clearSolution();
         return;
       }
@@ -405,15 +494,20 @@
       var grid = getGrid(table);
 
       if (!grid) {
+        warn("Could not parse grid.");
         return;
       }
 
       var cachedSolution = loadSolution();
 
-      // Always prove uniqueness against the current clues.
+      // Prove uniqueness against the current clues.
       var result = countSolutions(cloneGrid(grid), 2);
 
       if (result.count !== 1) {
+        log(result.count === 0
+          ? "Puzzle has no valid solutions. Waiting for more clues."
+          : "Puzzle has multiple solutions. Waiting for more clues.");
+
         clearSolution();
         clearHints(table);
         return;
@@ -421,15 +515,18 @@
 
       var solution = result.solution;
 
-      // Reuse the cached solution when it matches the unique solution.
       if (isSolutionCompatible(grid, cachedSolution) &&
           JSON.stringify(cachedSolution) === JSON.stringify(solution)) {
+        log("Unique solution confirmed; reusing cached solution.");
         solution = cachedSolution;
       } else {
+        log("Unique solution found; updating cache.");
         saveSolution(solution);
       }
 
       renderHints(table, solution);
+    } catch (error) {
+      console.error("[rune_puzzle_solver] Unexpected error:", error);
     } finally {
       updating = false;
     }
@@ -466,6 +563,7 @@
     });
 
     if (relevant) {
+      log("Relevant DOM mutations detected:", mutations.length);
       scheduleUpdate();
     }
   });
@@ -477,5 +575,6 @@
     attributeFilter: ["src", "style"]
   });
 
+  log("Observer installed.");
   update();
 })();
