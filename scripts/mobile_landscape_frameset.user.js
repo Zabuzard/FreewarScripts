@@ -278,6 +278,48 @@
 
   content.replaceChildren(layout);
 
+  function removeInputWidthRules() {
+    try {
+      var doc = frames.chatformFrame.contentDocument;
+      if (!doc || !doc.head) { return; }
+
+      var inputWidthStyle = doc.getElementById("user-input-width-override");
+
+      if (!inputWidthStyle) {
+        inputWidthStyle = doc.createElement("style");
+        inputWidthStyle.id = "user-input-width-override";
+        doc.head.appendChild(inputWidthStyle);
+      }
+
+      inputWidthStyle.textContent = `
+        input#sagen,
+        input#tele,
+        input#schreien,
+        input#globalchat,
+        input#group {
+          width: auto !important;
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+      `;
+
+      doc.querySelectorAll(
+        "input#sagen, input#tele, input#schreien, input#globalchat, input#group"
+      ).forEach(function (input) {
+        if (input.value.length > 4) {
+          input.value = input.value.slice(0, 4);
+        }
+      });
+    } catch (error) {
+      // Ignore inaccessible frames.
+    }
+  }
+
+  if (frames.chatformFrame) {
+    frames.chatformFrame.addEventListener("load", removeInputWidthRules);
+    removeInputWidthRules();
+  }
+
   function resizeFrames() {
     var isLandscape = window.matchMedia("(orientation: landscape)").matches;
     if (!isLandscape) { return; }
