@@ -839,62 +839,69 @@
     });
   }
 
-  function highlightLegendTile(table, symbol) {
+  function highlightLegendTiles(table, symbols) {
     clearLegendHighlight();
 
-    if (!symbol) {
+    if (!symbols || symbols.length === 0) {
       return;
     }
 
     var gridRect = table.getBoundingClientRect();
     var images = document.querySelectorAll("img");
-    var bestImage = null;
-    var bestDistance = Infinity;
 
-    for (var i = 0; i < images.length; i++) {
-      var img = images[i];
+    symbols.forEach(function (symbol) {
+      var bestImage = null;
+      var bestDistance = Infinity;
 
-      if (table.contains(img) ||
-          img.closest("#rps-unknown-selector")) {
-        continue;
+      for (var i = 0; i < images.length; i++) {
+        var img = images[i];
+
+        if (table.contains(img) ||
+            img.closest("#rps-unknown-selector")) {
+          continue;
+        }
+
+        if (getSymbol(img) !== symbol) {
+          continue;
+        }
+
+        var rect = img.getBoundingClientRect();
+        var centerY = rect.top + rect.height / 2;
+
+        if (rect.left < gridRect.right - 2 ||
+            centerY < gridRect.top ||
+            centerY > gridRect.bottom) {
+          continue;
+        }
+
+        var distance = rect.left - gridRect.right;
+
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestImage = img;
+        }
       }
 
-      if (getSymbol(img) !== symbol) {
-        continue;
+      if (!bestImage) {
+        log("Could not find legend tile a" + symbol + " to highlight.");
+        return;
       }
 
-      var rect = img.getBoundingClientRect();
-      var centerY = rect.top + rect.height / 2;
+      bestImage.dataset.rpsLegendOriginalBorder = bestImage.style.border;
+      bestImage.dataset.rpsLegendOriginalBackground =
+        bestImage.style.backgroundColor;
+      bestImage.dataset.rpsLegendOriginalFilter = bestImage.style.filter;
+      bestImage.dataset.rpsLegendHighlight = String(symbol);
 
-      if (rect.left < gridRect.right - 2 ||
-          centerY < gridRect.top ||
-          centerY > gridRect.bottom) {
-        continue;
-      }
+      bestImage.style.backgroundColor = POSITION_HIGHLIGHT;
+      bestImage.style.filter = POSITION_IMAGE_FILTER;
 
-      var distance = rect.left - gridRect.right;
+      log("Tinted and blinking legend tile:", "a" + symbol, bestImage);
+    });
+  }
 
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestImage = img;
-      }
-    }
-
-    if (!bestImage) {
-      log("Could not find legend tile a" + symbol + " to highlight.");
-      return;
-    }
-
-    bestImage.dataset.rpsLegendOriginalBorder = bestImage.style.border;
-    bestImage.dataset.rpsLegendOriginalBackground =
-      bestImage.style.backgroundColor;
-    bestImage.dataset.rpsLegendOriginalFilter = bestImage.style.filter;
-    bestImage.dataset.rpsLegendHighlight = String(symbol);
-
-    bestImage.style.backgroundColor = POSITION_HIGHLIGHT;
-    bestImage.style.filter = POSITION_IMAGE_FILTER;
-
-    log("Tinted and blinking legend tile:", "a" + symbol, bestImage);
+  function highlightLegendTile(table, symbol) {
+    highlightLegendTiles(table, symbol ? [symbol] : []);
   }
 
   function findCurrentPositionImage(table) {
@@ -1002,6 +1009,52 @@
       column: col,
       symbol: symbol
     });
+  }
+
+  function getPossiblePositionSymbols(table, grid) {
+    var img = findCurrentPositionImage(table);
+
+    if (!img) {
+      return [];
+    }
+
+    var row = -1;
+    var col = -1;
+
+    for (var r = 0; r < GRID_SIZE; r++) {
+      for (var c = 0; c < GRID_SIZE; c++) {
+        if (table.rows[r].cells[c].contains(img)) {
+          row = r;
+          col = c;
+          break;
+        }
+      }
+
+      if (row !== -1) {
+        break;
+      }
+    }
+
+    if (row === -1 || col === -1) {
+      return [];
+    }
+
+    var possibleSymbols = [];
+
+    for (var symbol = 1; symbol <= GRID_SIZE; symbol++) {
+      if (!isValid(grid, row, col, symbol)) {
+        continue;
+      }
+
+      var testGrid = cloneGrid(grid);
+      testGrid[row][col] = symbol;
+
+      if (countSolutions(testGrid, 1).count > 0) {
+        possibleSymbols.push(symbol);
+      }
+    }
+
+    return possibleSymbols;
   }
 
   function renderHints(table, solution) {
@@ -1139,7 +1192,16 @@
 
         clearSolution();
         clearHints(table);
-        clearLegendHighlight();
+
+        if (result.count > 1) {
+          var possibleSymbols = getPossiblePositionSymbols(table, grid);
+          highlightLegendTiles(table, possibleSymbols);
+
+          log("Possible symbols for current position:", possibleSymbols);
+        } else {
+          clearLegendHighlight();
+        }
+
         return;
       }
 
