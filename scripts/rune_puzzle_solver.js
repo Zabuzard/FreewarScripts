@@ -562,6 +562,58 @@
     };
   }
 
+  function detectUnknownSymbol(table) {
+    if (selectedUnknownSymbol !== 0) {
+      return false;
+    }
+
+    var possibleSymbols = [];
+    var previousSelection = selectedUnknownSymbol;
+
+    for (var symbol = 1; symbol <= 6; symbol++) {
+      selectedUnknownSymbol = symbol;
+
+      var grid = getGrid(table);
+
+      if (!grid) {
+        selectedUnknownSymbol = previousSelection;
+        return false;
+      }
+
+      var result = countSolutions(cloneGrid(grid), 1);
+
+      if (result.count > 0) {
+        possibleSymbols.push(symbol);
+      }
+
+      if (possibleSymbols.length > 1) {
+        break;
+      }
+    }
+
+    selectedUnknownSymbol = previousSelection;
+
+    if (possibleSymbols.length !== 1) {
+      log("Automatic unknown-symbol detection inconclusive:", possibleSymbols);
+      return false;
+    }
+
+    var detectedSymbol = possibleSymbols[0];
+
+    log("Automatically detected unknown symbol:", "a" + detectedSymbol);
+
+    clearSolution();
+    saveUnknownSymbol(detectedSymbol);
+
+    var selector = document.getElementById("rps-unknown-selector");
+
+    if (selector) {
+      updateSelectorAppearance(selector);
+    }
+
+    return true;
+  }
+
   function isSolutionCompatible(grid, solution) {
     if (!Array.isArray(solution) || solution.length !== GRID_SIZE) {
       return false;
@@ -977,6 +1029,10 @@
       }
 
       startTimer();
+
+      if (selectedUnknownSymbol === 0) {
+        detectUnknownSymbol(table);
+      }
 
       var grid = getGrid(table);
 
