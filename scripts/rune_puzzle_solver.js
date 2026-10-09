@@ -12,8 +12,8 @@
   var STORAGE_KEY = "rune_puzzle_solver_solution";
   var UNKNOWN_SYMBOL_KEY = "rune_puzzle_solver_unknown_symbol";
   var GRID_SIZE = 6;
-  var BLOCK_ROWS = 2;
-  var BLOCK_COLS = 3;
+  var BLOCK_ROWS = 3;
+  var BLOCK_COLS = 2;
   var HINT_OPACITY = "0.3";
   var SELECTED_BORDER = "2px solid #00aa00";
   var UNSELECTED_BORDER = "2px solid transparent";
@@ -212,6 +212,7 @@
           saveUnknownSymbol(chosenSymbol);
           log("Unknown symbol selected:", "a" + chosenSymbol);
         } else {
+          saveUnknownSymbol(0);
           log("Unknown symbol deselected:", "a" + chosenSymbol);
         }
 
@@ -322,7 +323,6 @@
             grid[r][c] = 0;
           }
         } else if (symbol === 0 || symbol === 7 || symbol === 8) {
-          // Empty, neutral and current-position cells.
           grid[r][c] = 0;
         } else if (symbol >= 1 && symbol <= 6) {
           grid[r][c] = symbol;
@@ -568,7 +568,9 @@
     } catch (error) {
       warn("Failed to clear cached solution:", error);
     }
+  }
 
+  function clearUnknownSymbol() {
     if (selectedUnknownSymbol !== 0) {
       log("Clearing selected unknown symbol:", "a" + selectedUnknownSymbol);
       saveUnknownSymbol(0);
@@ -577,7 +579,7 @@
     var selector = document.getElementById("rps-unknown-selector");
 
     if (selector) {
-      updateSelectorAppearance(selector);
+      selector.remove();
     }
   }
 
@@ -691,12 +693,7 @@
         if (puzzleWasPresent) {
           log("Puzzle disappeared.");
           clearSolution();
-
-          var selector = document.getElementById("rps-unknown-selector");
-
-          if (selector) {
-            selector.remove();
-          }
+          clearUnknownSymbol();
         }
 
         puzzleWasPresent = false;
@@ -729,8 +726,6 @@
       }
 
       var cachedSolution = loadSolution();
-
-      // Prove uniqueness against the current clues.
       var result = countSolutions(cloneGrid(grid), 2);
 
       updateSolutionStatus(result.count);
