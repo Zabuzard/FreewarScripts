@@ -17,6 +17,9 @@
   var HINT_OPACITY = "0.3";
   var SELECTED_BORDER = "2px solid #00aa00";
   var UNSELECTED_BORDER = "2px solid transparent";
+  var POSITION_HIGHLIGHT = "rgba(255, 220, 0, 0.4)";
+  var POSITION_IMAGE_FILTER = "sepia(1) saturate(5) hue-rotate(350deg) brightness(1.15)";
+  var POSITION_BLINK_STYLE_ID = "rps-position-blink-style";
   var DEBUG = false;
 
   var updateScheduled = false;
@@ -162,7 +165,7 @@
 
     display.textContent = "Fehler: " + mistakes;
     display.style.color = mistakes >= 2
-      ? "red"
+      ? "#ff8585"
       : mistakes === 1
         ? "orange"
         : "";
@@ -842,9 +845,73 @@
       bestImage.style.backgroundColor;
     bestImage.dataset.rpsLegendHighlight = String(symbol);
 
-    bestImage.style.backgroundColor = "rgba(255, 220, 0, 0.4)";
+    bestImage.style.backgroundColor = POSITION_HIGHLIGHT;
 
     log("Tinted legend tile:", "a" + symbol, bestImage);
+  }
+
+  function findCurrentPositionImage(table) {
+    var images = table.querySelectorAll("img");
+
+    for (var i = 0; i < images.length; i++) {
+      if (getSymbol(images[i]) === 8) {
+        return images[i];
+      }
+    }
+
+    return null;
+  }
+
+  function addPositionBlinkStyle() {
+    if (document.getElementById(POSITION_BLINK_STYLE_ID)) {
+      return;
+    }
+
+    var style = document.createElement("style");
+    style.id = POSITION_BLINK_STYLE_ID;
+    style.textContent = `
+      @keyframes rps-position-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      img[data-rps-position-highlight] {
+        animation: rps-position-blink 1s infinite;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  function highlightCurrentPositionImage(table) {
+    var img = findCurrentPositionImage(table);
+
+    if (!img || img.dataset.rpsPositionHighlight) {
+      return;
+    }
+
+    addPositionBlinkStyle();
+
+    img.dataset.rpsPositionOriginalFilter = img.style.filter;
+    img.dataset.rpsPositionHighlight = "true";
+    img.style.filter = POSITION_IMAGE_FILTER;
+
+    log("Tinted and blinking current-position image.", img);
+  }
+
+  function clearCurrentPositionHighlight() {
+    var images = document.querySelectorAll("img[data-rps-position-highlight]");
+
+    images.forEach(function (img) {
+      if (img.dataset.rpsPositionOriginalFilter !== undefined) {
+        img.style.filter = img.dataset.rpsPositionOriginalFilter;
+      } else {
+        img.style.removeProperty("filter");
+      }
+
+      delete img.dataset.rpsPositionHighlight;
+      delete img.dataset.rpsPositionOriginalFilter;
+    });
   }
 
   function renderCurrentPosition(table, solution) {
@@ -887,18 +954,6 @@
       column: col,
       symbol: symbol
     });
-  }
-
-  function findCurrentPositionImage(table) {
-    var images = table.querySelectorAll("img");
-
-    for (var i = 0; i < images.length; i++) {
-      if (getSymbol(images[i]) === 8) {
-        return images[i];
-      }
-    }
-
-    return null;
   }
 
   function renderHints(table, solution) {
@@ -978,6 +1033,7 @@
         clearSolution();
         clearUnknownSymbol();
         clearLegendHighlight();
+        clearCurrentPositionHighlight();
 
         if (puzzleWasPresent) {
           log("Puzzle disappeared.");
@@ -1002,10 +1058,12 @@
         updateSolutionStatus(null);
         clearSolution();
         clearLegendHighlight();
+        clearCurrentPositionHighlight();
         return;
       }
 
       startTimer();
+      highlightCurrentPositionImage(table);
 
       if (selectedUnknownSymbol === 0) {
         detectUnknownSymbol(table);
@@ -1103,7 +1161,8 @@
 
         if (target instanceof HTMLImageElement &&
             (target.dataset.rpsHintSymbol ||
-             target.dataset.rpsLegendHighlight)) {
+             target.dataset.rpsLegendHighlight ||
+             target.dataset.rpsPositionHighlight)) {
           return false;
         }
 
