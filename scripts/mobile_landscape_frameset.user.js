@@ -100,7 +100,7 @@
 
     .landscape-menu {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 7fr 3fr;
       min-width: 0;
       min-height: 0;
     }
@@ -110,7 +110,8 @@
       position: relative;
       min-width: 0;
       min-height: 0;
-      overflow: hidden;
+      overflow: auto;
+      overscroll-behavior: contain;
     }
 
     .landscape-menu-chat > iframe,
@@ -223,7 +224,9 @@
     "mapFrame",
     "mapFrameAlt",
     "chattextFrame",
-    "chattextFrameAlt"
+    "chattextFrameAlt",
+    "chatformFrame",
+    "menuFrame"
   ].forEach(function (name) {
     if (frames[name]) {
       frames[name].setAttribute("scrolling", "auto");
