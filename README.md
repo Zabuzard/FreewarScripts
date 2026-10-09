@@ -310,3 +310,10 @@ werden.
 Es ist zudem durch Auswahl auf der rechten Seite möglich das zum "unbekannten
 Symbol" zugehörige Symbol auszuwählen. Sollte jedoch nur noch ein Symbol möglich
 sein, wählt der Assistent es auch selbstständig aus.
+
+## `mobile_landscape_frameset`
+
+Passt das Layout für die Mobilversion "Kompakt" im Querformat so an,
+dass es für größere Bildschirme besser nutzbar ist.
+
+![Querformat](https://i.vgy.me/EHGySp.jpg)
