@@ -788,9 +788,16 @@
         img.style.removeProperty("background-color");
       }
 
+      if (img.dataset.rpsLegendOriginalFilter !== undefined) {
+        img.style.filter = img.dataset.rpsLegendOriginalFilter;
+      } else {
+        img.style.removeProperty("filter");
+      }
+
       delete img.dataset.rpsLegendHighlight;
       delete img.dataset.rpsLegendOriginalBorder;
       delete img.dataset.rpsLegendOriginalBackground;
+      delete img.dataset.rpsLegendOriginalFilter;
     });
   }
 
@@ -843,11 +850,13 @@
     bestImage.dataset.rpsLegendOriginalBorder = bestImage.style.border;
     bestImage.dataset.rpsLegendOriginalBackground =
       bestImage.style.backgroundColor;
+    bestImage.dataset.rpsLegendOriginalFilter = bestImage.style.filter;
     bestImage.dataset.rpsLegendHighlight = String(symbol);
 
     bestImage.style.backgroundColor = POSITION_HIGHLIGHT;
+    bestImage.style.filter = POSITION_IMAGE_FILTER;
 
-    log("Tinted legend tile:", "a" + symbol, bestImage);
+    log("Tinted and blinking legend tile:", "a" + symbol, bestImage);
   }
 
   function findCurrentPositionImage(table) {
@@ -875,7 +884,8 @@
         50% { opacity: 0.5; }
       }
 
-      img[data-rps-position-highlight] {
+      img[data-rps-position-highlight],
+      img[data-rps-legend-highlight] {
         animation: rps-position-blink 1s infinite;
       }
     `;
