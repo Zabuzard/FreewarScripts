@@ -131,6 +131,28 @@
     });
   }
 
+  function updateSolutionStatus(count) {
+    var status = document.getElementById("rps-solution-status");
+
+    if (!status) {
+      return;
+    }
+
+    status.textContent = "";
+
+    var label = document.createElement("span");
+    label.textContent = "Lösungen: ";
+    status.appendChild(label);
+
+    if (count === 0) {
+      status.appendChild(document.createTextNode("keine ❌"));
+    } else if (count === null) {
+      status.appendChild(document.createTextNode("—"));
+    } else {
+      status.appendChild(document.createTextNode(String(count)));
+    }
+  }
+
   function addUnknownSymbolSelector() {
     var existing = document.getElementById("rps-unknown-selector");
     var target = findSecretElement();
@@ -157,8 +179,14 @@
     selector.id = "rps-unknown-selector";
     selector.style.marginTop = "6px";
     selector.style.display = "flex";
-    selector.style.alignItems = "center";
+    selector.style.flexDirection = "column";
+    selector.style.alignItems = "flex-start";
     selector.style.gap = "4px";
+
+    var symbolsRow = document.createElement("div");
+    symbolsRow.style.display = "flex";
+    symbolsRow.style.alignItems = "center";
+    symbolsRow.style.gap = "4px";
 
     for (var i = 1; i <= 6; i++) {
       var symbol = document.createElement("img");
@@ -178,10 +206,8 @@
         var chosenSymbol = Number(this.dataset.rpsSymbol);
         var previousSymbol = selectedUnknownSymbol;
 
-        // Clear the old solution and selection first.
         clearSolution();
 
-        // Clicking the selected symbol toggles it off.
         if (previousSymbol !== chosenSymbol) {
           saveUnknownSymbol(chosenSymbol);
           log("Unknown symbol selected:", "a" + chosenSymbol);
@@ -190,14 +216,24 @@
         }
 
         updateSelectorAppearance(selector);
+        updateSolutionStatus(null);
         scheduleUpdate();
       });
 
-      selector.appendChild(symbol);
+      symbolsRow.appendChild(symbol);
     }
 
+    var status = document.createElement("div");
+    status.id = "rps-solution-status";
+    status.style.fontSize = "12px";
+    status.style.fontWeight = "bold";
+
+    selector.appendChild(symbolsRow);
+    selector.appendChild(status);
     target.appendChild(selector);
+
     updateSelectorAppearance(selector);
+    updateSolutionStatus(null);
 
     log("Unknown symbol selector added.", {
       selectedSymbol: selectedUnknownSymbol || null,
@@ -679,6 +715,7 @@
 
       if (!table) {
         warn("Puzzle description found, but no grid table was detected.");
+        updateSolutionStatus(null);
         clearSolution();
         return;
       }
@@ -687,6 +724,7 @@
 
       if (!grid) {
         warn("Could not parse grid.");
+        updateSolutionStatus(null);
         return;
       }
 
@@ -694,6 +732,8 @@
 
       // Prove uniqueness against the current clues.
       var result = countSolutions(cloneGrid(grid), 2);
+
+      updateSolutionStatus(result.count);
 
       if (result.count !== 1) {
         log(result.count === 0
@@ -744,11 +784,45 @@
 
     var relevant = mutations.some(function (mutation) {
       if (mutation.type === "childList") {
+        var target = mutation.target;
+
+        // Ignore changes inside our own selector and status.
+        if (target.nodeType === Node.ELEMENT_NODE &&
+            target.closest("#rps-unknown-selector")) {
+          return false;
+        }
+
+        // Ignore additions or removals consisting only of our own UI.
+        var changedNodes = Array.prototype.slice.call(mutation.addedNodes)
+          .concat(Array.prototype.slice.call(mutation.removedNodes));
+
+        if (changedNodes.length > 0 && changedNodes.every(function (node) {
+          return node.nodeType === Node.ELEMENT_NODE &&
+            (node.id === "rps-unknown-selector" ||
+             node.closest("#rps-unknown-selector"));
+        })) {
+          return false;
+        }
+
         return true;
       }
 
       if (mutation.type === "attributes") {
-        return mutation.target instanceof HTMLImageElement;
+        var target = mutation.target;
+
+        // Ignore our own hint image changes.
+        if (target instanceof HTMLImageElement &&
+            target.dataset.rpsHintSymbol) {
+          return false;
+        }
+
+        // Ignore attributes inside our selector.
+        if (target.closest &&
+            target.closest("#rps-unknown-selector")) {
+          return false;
+        }
+
+        return target instanceof HTMLImageElement;
       }
 
       return false;
