@@ -143,6 +143,31 @@
     }
   }
 
+  function updateMistakes(grid) {
+    var mistakes = 0;
+
+    for (var r = 0; r < grid.length; r++) {
+      for (var c = 0; c < grid[r].length; c++) {
+        if (grid[r][c] === 7) {
+          mistakes++;
+        }
+      }
+    }
+
+    var display = document.getElementById("rps-mistakes-status");
+
+    if (!display) {
+      return;
+    }
+
+    display.textContent = "Fehler: " + mistakes;
+    display.style.color = mistakes >= 2
+      ? "red"
+      : mistakes === 1
+        ? "orange"
+        : "";
+  }
+
   function findSecretElement() {
     var elements = document.querySelectorAll("body *");
     var target = null;
@@ -288,9 +313,15 @@
     timer.style.fontSize = "12px";
     timer.textContent = "⏱ 0:00";
 
+    var mistakes = document.createElement("div");
+    mistakes.id = "rps-mistakes-status";
+    mistakes.style.fontSize = "12px";
+    mistakes.textContent = "Fehler: 0";
+
     selector.appendChild(symbolsRow);
     selector.appendChild(status);
     selector.appendChild(timer);
+    selector.appendChild(mistakes);
     target.appendChild(selector);
 
     updateSelectorAppearance(selector);
@@ -392,8 +423,10 @@
           } else {
             grid[r][c] = 0;
           }
-        } else if (symbol === 0 || symbol === 7 || symbol === 8) {
+        } else if (symbol === 0 || symbol === 8) {
           grid[r][c] = 0;
+        } else if (symbol === 7) {
+          grid[r][c] = 7;
         } else if (symbol >= 1 && symbol <= 6) {
           grid[r][c] = symbol;
         } else {
@@ -436,7 +469,7 @@
       for (var c = 0; c < GRID_SIZE; c++) {
         var value = grid[r][c];
 
-        if (value === 0) {
+        if (value === 0 || value === 7) {
           continue;
         }
 
@@ -483,7 +516,7 @@
 
       for (var r = 0; r < GRID_SIZE; r++) {
         for (var c = 0; c < GRID_SIZE; c++) {
-          if (grid[r][c] !== 0) {
+          if (grid[r][c] !== 0 && grid[r][c] !== 7) {
             continue;
           }
 
@@ -532,9 +565,10 @@
       }
 
       for (var i = 0; i < bestCandidates.length; i++) {
+        var previousValue = grid[bestRow][bestCol];
         grid[bestRow][bestCol] = bestCandidates[i];
         search();
-        grid[bestRow][bestCol] = 0;
+        grid[bestRow][bestCol] = previousValue;
 
         if (count >= limit) {
           return;
@@ -632,7 +666,8 @@
           return false;
         }
 
-        if (grid[r][c] !== 0 && grid[r][c] !== value) {
+        if (grid[r][c] !== 0 && grid[r][c] !== 7 &&
+            grid[r][c] !== value) {
           log("Cached solution conflicts with clue:", {
             row: r,
             column: c,
@@ -1041,6 +1076,8 @@
         updateSolutionStatus(null);
         return;
       }
+
+      updateMistakes(grid);
 
       var cachedSolution = loadSolution();
       var result = countSolutions(cloneGrid(grid), 2);
