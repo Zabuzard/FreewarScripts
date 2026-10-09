@@ -95,7 +95,7 @@
 
     .landscape-panel > iframe[name="mapFrameAlt"],
     .landscape-panel > iframe[name="chattextFrameAlt"] {
-      z-index: 1;
+      display: none !important;
     }
 
     .landscape-menu {
