@@ -3,7 +3,7 @@
 // @namespace   Zabuza
 // @description Assists solving the rune puzzle in Dranar
 // @include     *.freewar.de/freewar/internal/main.php*
-// @version     5
+// @version     1
 // ==/UserScript==
 
 (function () {
@@ -176,55 +176,27 @@
 
       symbol.addEventListener("click", function () {
         var chosenSymbol = Number(this.dataset.rpsSymbol);
+        var previousSymbol = selectedUnknownSymbol;
 
-        log("Unknown symbol clicked:", "a" + chosenSymbol);
+        // Clear the old solution and selection first.
+        clearSolution();
 
-        saveUnknownSymbol(chosenSymbol);
-
-        var currentSelector = document.getElementById(
-          "rps-unknown-selector"
-        );
-
-        if (currentSelector) {
-          updateSelectorAppearance(currentSelector);
+        // Clicking the selected symbol toggles it off.
+        if (previousSymbol !== chosenSymbol) {
+          saveUnknownSymbol(chosenSymbol);
+          log("Unknown symbol selected:", "a" + chosenSymbol);
+        } else {
+          log("Unknown symbol deselected:", "a" + chosenSymbol);
         }
 
-        clearSolution();
+        updateSelectorAppearance(selector);
         scheduleUpdate();
       });
 
       selector.appendChild(symbol);
     }
 
-    var clearButton = document.createElement("span");
-    clearButton.textContent = "✕";
-    clearButton.title = "Auswahl zurücksetzen";
-    clearButton.style.cursor = "pointer";
-    clearButton.style.marginLeft = "4px";
-    clearButton.style.padding = "2px 5px";
-    clearButton.style.fontSize = "14px";
-    clearButton.style.color = "#900";
-
-    clearButton.addEventListener("click", function () {
-      log("Unknown symbol selection cleared.");
-
-      saveUnknownSymbol(0);
-
-      var currentSelector = document.getElementById(
-        "rps-unknown-selector"
-      );
-
-      if (currentSelector) {
-        updateSelectorAppearance(currentSelector);
-      }
-
-      clearSolution();
-      scheduleUpdate();
-    });
-
-    selector.appendChild(clearButton);
     target.appendChild(selector);
-
     updateSelectorAppearance(selector);
 
     log("Unknown symbol selector added.", {
@@ -560,6 +532,17 @@
     } catch (error) {
       warn("Failed to clear cached solution:", error);
     }
+
+    if (selectedUnknownSymbol !== 0) {
+      log("Clearing selected unknown symbol:", "a" + selectedUnknownSymbol);
+      saveUnknownSymbol(0);
+    }
+
+    var selector = document.getElementById("rps-unknown-selector");
+
+    if (selector) {
+      updateSelectorAppearance(selector);
+    }
   }
 
   function restoreHint(img) {
@@ -614,8 +597,6 @@
 
         var symbol = getSymbol(img);
 
-        // Existing hints represent empty cells and may need updating
-        // when the selected unknown symbol changes the solution.
         if (img.dataset.rpsHintSymbol &&
             symbol === Number(img.dataset.rpsHintSymbol)) {
           symbol = 0;
@@ -711,12 +692,12 @@
 
       var cachedSolution = loadSolution();
 
-      // Prove uniqueness against the current clues, including a9 selections.
+      // Prove uniqueness against the current clues.
       var result = countSolutions(cloneGrid(grid), 2);
 
       if (result.count !== 1) {
         log(result.count === 0
-          ? "Puzzle has no valid solutions. Check the clues or selected symbol."
+          ? "Puzzle has no valid solutions. Waiting for more clues."
           : "Puzzle has multiple solutions. Waiting for more clues.");
 
         clearSolution();
