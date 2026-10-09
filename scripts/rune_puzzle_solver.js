@@ -1026,8 +1026,9 @@
     updating = true;
 
     try {
-      var puzzlePresent = document.body &&
-        document.body.textContent.includes(PUZZLE_TEXT);
+      var bodyText = document.body ? document.body.textContent : "";
+      var puzzlePresent = bodyText.includes(PUZZLE_TEXT) &&
+        !bodyText.includes("Klicke auf eins der Elemente, um einen neuen Versuch zu starten");
 
       if (!puzzlePresent) {
         resetTimer();
