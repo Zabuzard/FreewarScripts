@@ -23,6 +23,8 @@
   var updating = false;
   var puzzleWasPresent = false;
   var selectedUnknownSymbol = loadUnknownSymbol();
+  var timerStartedAt = null;
+  var timerInterval = null;
 
   function log() {
     if (!DEBUG) {
@@ -86,6 +88,58 @@
       log("Saved selected unknown symbol:", symbol ? "a" + symbol : "none");
     } catch (error) {
       warn("Failed to save selected unknown symbol:", error);
+    }
+  }
+
+  function formatElapsedTime(seconds) {
+    var minutes = Math.floor(seconds / 60);
+    var remainingSeconds = seconds % 60;
+
+    return minutes + ":" + String(remainingSeconds).padStart(2, "0");
+  }
+
+  function updateTimerDisplay() {
+    var timer = document.getElementById("rps-timer-status");
+
+    if (!timer || timerStartedAt === null) {
+      return;
+    }
+
+    var elapsedSeconds = Math.floor((Date.now() - timerStartedAt) / 1000);
+    elapsedSeconds = Math.floor(elapsedSeconds / 5) * 5;
+
+    timer.textContent = "⏱ " + formatElapsedTime(elapsedSeconds);
+    timer.style.color = elapsedSeconds > 60 ? "orange" : "";
+  }
+
+  function startTimer() {
+    if (timerStartedAt !== null) {
+      return;
+    }
+
+    timerStartedAt = Date.now();
+    updateTimerDisplay();
+
+    timerInterval = setInterval(function () {
+      updateTimerDisplay();
+    }, 5000);
+
+    log("Puzzle timer started.");
+  }
+
+  function resetTimer() {
+    if (timerInterval !== null) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    timerStartedAt = null;
+
+    var timer = document.getElementById("rps-timer-status");
+
+    if (timer) {
+      timer.textContent = "⏱ 0:00";
+      timer.style.color = "";
     }
   }
 
@@ -229,12 +283,19 @@
     status.style.fontSize = "12px";
     status.style.fontWeight = "bold";
 
+    var timer = document.createElement("div");
+    timer.id = "rps-timer-status";
+    timer.style.fontSize = "12px";
+    timer.textContent = "⏱ 0:00";
+
     selector.appendChild(symbolsRow);
     selector.appendChild(status);
+    selector.appendChild(timer);
     target.appendChild(selector);
 
     updateSelectorAppearance(selector);
     updateSolutionStatus(null);
+    updateTimerDisplay();
 
     log("Unknown symbol selector added.", {
       selectedSymbol: selectedUnknownSymbol || null,
@@ -297,6 +358,15 @@
         if (symbol === null) {
           warn("Unknown image source at row", r, "column", c, img.src);
           return null;
+        }
+
+        if (img.dataset.rpsPositionSymbol) {
+          if (symbol === Number(img.dataset.rpsPositionSymbol)) {
+            symbol = 8;
+          } else {
+            log("Game changed the current-position image:", r, c, symbol);
+            restorePositionImage(img);
+          }
         }
 
         if (img.dataset.rpsHintSymbol) {
@@ -573,8 +643,9 @@
   function clearUnknownSymbol() {
     if (selectedUnknownSymbol !== 0) {
       log("Clearing selected unknown symbol:", "a" + selectedUnknownSymbol);
-      saveUnknownSymbol(0);
     }
+
+    saveUnknownSymbol(0);
 
     var selector = document.getElementById("rps-unknown-selector");
 
@@ -601,8 +672,6 @@
       } else {
         img.style.removeProperty("opacity");
       }
-
-      log("Restored original image:", img);
     }
 
     delete img.dataset.rpsHintSymbol;
@@ -622,6 +691,186 @@
     });
   }
 
+  function restorePositionImage(img) {
+    if (!img.dataset.rpsPositionSymbol) {
+      return;
+    }
+
+    if (img.dataset.rpsPositionOriginalSrc !== undefined) {
+      img.setAttribute("src", img.dataset.rpsPositionOriginalSrc);
+    }
+
+    if (img.dataset.rpsPositionOriginalFilter !== undefined) {
+      img.style.filter = img.dataset.rpsPositionOriginalFilter;
+    } else {
+      img.style.removeProperty("filter");
+    }
+
+    delete img.dataset.rpsPositionSymbol;
+    delete img.dataset.rpsPositionOriginalSrc;
+    delete img.dataset.rpsPositionOriginalFilter;
+  }
+
+  function clearPositionImage(table) {
+    var images = table.querySelectorAll("img[data-rps-position-symbol]");
+
+    images.forEach(function (img) {
+      restorePositionImage(img);
+    });
+  }
+
+  function clearPositionImageFromPage() {
+    var images = document.querySelectorAll("img[data-rps-position-symbol]");
+
+    images.forEach(function (img) {
+      restorePositionImage(img);
+    });
+  }
+
+  function findCurrentPositionImage(table) {
+    var images = table.querySelectorAll("img");
+
+    for (var i = 0; i < images.length; i++) {
+      var img = images[i];
+
+      if (img.dataset.rpsPositionSymbol || getSymbol(img) === 8) {
+        return img;
+      }
+    }
+
+    return null;
+  }
+
+  function clearLegendHighlight() {
+    var images = document.querySelectorAll("img[data-rps-legend-highlight]");
+
+    images.forEach(function (img) {
+      if (img.dataset.rpsLegendOriginalBorder !== undefined) {
+        img.style.border = img.dataset.rpsLegendOriginalBorder;
+      } else {
+        img.style.removeProperty("border");
+      }
+
+      if (img.dataset.rpsLegendOriginalBackground !== undefined) {
+        img.style.backgroundColor = img.dataset.rpsLegendOriginalBackground;
+      } else {
+        img.style.removeProperty("background-color");
+      }
+
+      delete img.dataset.rpsLegendHighlight;
+      delete img.dataset.rpsLegendOriginalBorder;
+      delete img.dataset.rpsLegendOriginalBackground;
+    });
+  }
+
+  function highlightLegendTile(table, symbol) {
+    clearLegendHighlight();
+
+    if (!symbol) {
+      return;
+    }
+
+    var gridRect = table.getBoundingClientRect();
+    var images = document.querySelectorAll("img");
+    var bestImage = null;
+    var bestDistance = Infinity;
+
+    for (var i = 0; i < images.length; i++) {
+      var img = images[i];
+
+      if (table.contains(img) ||
+          img.closest("#rps-unknown-selector")) {
+        continue;
+      }
+
+      if (getSymbol(img) !== symbol) {
+        continue;
+      }
+
+      var rect = img.getBoundingClientRect();
+      var centerY = rect.top + rect.height / 2;
+
+      if (rect.left < gridRect.right - 2 ||
+          centerY < gridRect.top ||
+          centerY > gridRect.bottom) {
+        continue;
+      }
+
+      var distance = rect.left - gridRect.right;
+
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestImage = img;
+      }
+    }
+
+    if (!bestImage) {
+      log("Could not find legend tile a" + symbol + " to highlight.");
+      return;
+    }
+
+    bestImage.dataset.rpsLegendOriginalBorder = bestImage.style.border;
+    bestImage.dataset.rpsLegendOriginalBackground =
+      bestImage.style.backgroundColor;
+    bestImage.dataset.rpsLegendHighlight = String(symbol);
+
+    bestImage.style.border = "2px solid #e6c300";
+    bestImage.style.backgroundColor = "#fff3a0";
+
+    log("Highlighted legend tile:", "a" + symbol, bestImage);
+  }
+
+  function renderCurrentPosition(table, solution) {
+    var img = findCurrentPositionImage(table);
+
+    if (!img) {
+      log("No current-position image found.");
+      clearLegendHighlight();
+      return;
+    }
+
+    var row = -1;
+    var col = -1;
+
+    for (var r = 0; r < GRID_SIZE; r++) {
+      for (var c = 0; c < GRID_SIZE; c++) {
+        if (table.rows[r].cells[c].contains(img)) {
+          row = r;
+          col = c;
+          break;
+        }
+      }
+
+      if (row !== -1) {
+        break;
+      }
+    }
+
+    if (row === -1 || col === -1) {
+      warn("Could not determine current-position coordinates.");
+      return;
+    }
+
+    var symbol = solution[row][col];
+
+    if (!img.dataset.rpsPositionSymbol) {
+      img.dataset.rpsPositionOriginalSrc = img.getAttribute("src");
+      img.dataset.rpsPositionOriginalFilter = img.style.filter;
+    }
+
+    img.dataset.rpsPositionSymbol = String(symbol);
+    img.src = getSymbolUrl(symbol);
+    img.style.filter = "sepia(1) saturate(6) hue-rotate(5deg)";
+
+    highlightLegendTile(table, symbol);
+
+    log("Rendered current position:", {
+      row: row,
+      column: col,
+      symbol: symbol
+    });
+  }
+
   function renderHints(table, solution) {
     var rendered = 0;
 
@@ -634,6 +883,10 @@
         }
 
         var symbol = getSymbol(img);
+
+        if (img.dataset.rpsPositionSymbol) {
+          continue;
+        }
 
         if (img.dataset.rpsHintSymbol &&
             symbol === Number(img.dataset.rpsHintSymbol)) {
@@ -690,10 +943,14 @@
         document.body.textContent.includes(PUZZLE_TEXT);
 
       if (!puzzlePresent) {
+        resetTimer();
+        clearSolution();
+        clearUnknownSymbol();
+        clearLegendHighlight();
+        clearPositionImageFromPage();
+
         if (puzzleWasPresent) {
           log("Puzzle disappeared.");
-          clearSolution();
-          clearUnknownSymbol();
         }
 
         puzzleWasPresent = false;
@@ -714,8 +971,12 @@
         warn("Puzzle description found, but no grid table was detected.");
         updateSolutionStatus(null);
         clearSolution();
+        clearLegendHighlight();
+        clearPositionImageFromPage();
         return;
       }
+
+      startTimer();
 
       var grid = getGrid(table);
 
@@ -737,6 +998,8 @@
 
         clearSolution();
         clearHints(table);
+        clearPositionImage(table);
+        clearLegendHighlight();
         return;
       }
 
@@ -752,6 +1015,7 @@
       }
 
       renderHints(table, solution);
+      renderCurrentPosition(table, solution);
     } catch (error) {
       console.error("[rune_puzzle_solver] Unexpected error:", error);
     } finally {
@@ -781,13 +1045,11 @@
       if (mutation.type === "childList") {
         var target = mutation.target;
 
-        // Ignore changes inside our own selector and status.
         if (target.nodeType === Node.ELEMENT_NODE &&
             target.closest("#rps-unknown-selector")) {
           return false;
         }
 
-        // Ignore additions or removals consisting only of our own UI.
         var changedNodes = Array.prototype.slice.call(mutation.addedNodes)
           .concat(Array.prototype.slice.call(mutation.removedNodes));
 
@@ -805,13 +1067,13 @@
       if (mutation.type === "attributes") {
         var target = mutation.target;
 
-        // Ignore our own hint image changes.
         if (target instanceof HTMLImageElement &&
-            target.dataset.rpsHintSymbol) {
+            (target.dataset.rpsHintSymbol ||
+             target.dataset.rpsPositionSymbol ||
+             target.dataset.rpsLegendHighlight)) {
           return false;
         }
 
-        // Ignore attributes inside our selector.
         if (target.closest &&
             target.closest("#rps-unknown-selector")) {
           return false;
