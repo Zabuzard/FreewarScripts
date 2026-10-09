@@ -17,7 +17,7 @@
   var HINT_OPACITY = "0.3";
   var SELECTED_BORDER = "2px solid #00aa00";
   var UNSELECTED_BORDER = "2px solid transparent";
-  var DEBUG = true;
+  var DEBUG = false;
 
   var updateScheduled = false;
   var updating = false;
