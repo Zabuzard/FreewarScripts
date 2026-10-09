@@ -18,8 +18,7 @@
   var HINT_OPACITY = "0.3";
   var SELECTED_BORDER = "2px solid #00aa00";
   var UNSELECTED_BORDER = "2px solid transparent";
-  var POSITION_HIGHLIGHT = "rgba(255, 220, 0, 0.4)";
-  var POSITION_IMAGE_FILTER = "sepia(1) saturate(5) hue-rotate(350deg) brightness(1.15)";
+  var POSITION_HIGHLIGHT = "rgba(255, 220, 0, 0.75)";
   var POSITION_BLINK_STYLE_ID = "rps-position-blink-style";
   var DEBUG = false;
 
@@ -810,32 +809,45 @@
     });
   }
 
+  function addPositionBlinkStyle() {
+    if (document.getElementById(POSITION_BLINK_STYLE_ID)) {
+      return;
+    }
+
+    var style = document.createElement("style");
+    style.id = POSITION_BLINK_STYLE_ID;
+    style.textContent = `
+      @keyframes rps-position-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      @keyframes rps-legend-tint-blink {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 1; }
+      }
+
+      .rps-legend-tint-overlay {
+        position: fixed;
+        pointer-events: none;
+        z-index: 99999;
+        background-color: ${POSITION_HIGHLIGHT};
+        animation: rps-legend-tint-blink 0.5s infinite;
+      }
+
+      img[data-rps-position-highlight] {
+        animation: rps-position-blink 1s infinite;
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
   function clearLegendHighlight() {
-    var images = document.querySelectorAll("img[data-rps-legend-highlight]");
+    var overlays = document.querySelectorAll(".rps-legend-tint-overlay");
 
-    images.forEach(function (img) {
-      if (img.dataset.rpsLegendOriginalBorder !== undefined) {
-        img.style.border = img.dataset.rpsLegendOriginalBorder;
-      } else {
-        img.style.removeProperty("border");
-      }
-
-      if (img.dataset.rpsLegendOriginalBackground !== undefined) {
-        img.style.backgroundColor = img.dataset.rpsLegendOriginalBackground;
-      } else {
-        img.style.removeProperty("background-color");
-      }
-
-      if (img.dataset.rpsLegendOriginalFilter !== undefined) {
-        img.style.filter = img.dataset.rpsLegendOriginalFilter;
-      } else {
-        img.style.removeProperty("filter");
-      }
-
-      delete img.dataset.rpsLegendHighlight;
-      delete img.dataset.rpsLegendOriginalBorder;
-      delete img.dataset.rpsLegendOriginalBackground;
-      delete img.dataset.rpsLegendOriginalFilter;
+    overlays.forEach(function (overlay) {
+      overlay.remove();
     });
   }
 
@@ -845,6 +857,8 @@
     if (!symbols || symbols.length === 0) {
       return;
     }
+
+    addPositionBlinkStyle();
 
     var gridRect = table.getBoundingClientRect();
     var images = document.querySelectorAll("img");
@@ -887,16 +901,22 @@
         return;
       }
 
-      bestImage.dataset.rpsLegendOriginalBorder = bestImage.style.border;
-      bestImage.dataset.rpsLegendOriginalBackground =
-        bestImage.style.backgroundColor;
-      bestImage.dataset.rpsLegendOriginalFilter = bestImage.style.filter;
-      bestImage.dataset.rpsLegendHighlight = String(symbol);
+      var rect = bestImage.getBoundingClientRect();
+      var overlay = document.createElement("div");
 
-      bestImage.style.backgroundColor = POSITION_HIGHLIGHT;
-      bestImage.style.filter = POSITION_IMAGE_FILTER;
+      overlay.className = "rps-legend-tint-overlay";
+      overlay.dataset.rpsLegendHighlight = String(symbol);
 
-      log("Tinted and blinking legend tile:", "a" + symbol, bestImage);
+      Object.assign(overlay.style, {
+        left: rect.left + "px",
+        top: rect.top + "px",
+        width: rect.width + "px",
+        height: rect.height + "px"
+      });
+
+      document.body.appendChild(overlay);
+
+      log("Added blinking tint overlay to legend tile:", "a" + symbol, bestImage);
     });
   }
 
@@ -916,28 +936,6 @@
     return null;
   }
 
-  function addPositionBlinkStyle() {
-    if (document.getElementById(POSITION_BLINK_STYLE_ID)) {
-      return;
-    }
-
-    var style = document.createElement("style");
-    style.id = POSITION_BLINK_STYLE_ID;
-    style.textContent = `
-      @keyframes rps-position-blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-      }
-
-      img[data-rps-position-highlight],
-      img[data-rps-legend-highlight] {
-        animation: rps-position-blink 1s infinite;
-      }
-    `;
-
-    document.head.appendChild(style);
-  }
-
   function highlightCurrentPositionImage(table) {
     var img = findCurrentPositionImage(table);
 
@@ -949,7 +947,8 @@
 
     img.dataset.rpsPositionOriginalFilter = img.style.filter;
     img.dataset.rpsPositionHighlight = "true";
-    img.style.filter = POSITION_IMAGE_FILTER;
+    img.style.filter =
+      "sepia(1) saturate(5) hue-rotate(350deg) brightness(1.15)";
 
     log("Tinted and blinking current-position image.", img);
   }
@@ -1258,7 +1257,8 @@
         if (changedNodes.length > 0 && changedNodes.every(function (node) {
           return node.nodeType === Node.ELEMENT_NODE &&
             (node.id === "rps-unknown-selector" ||
-             node.closest("#rps-unknown-selector"));
+             node.closest("#rps-unknown-selector") ||
+             node.classList.contains("rps-legend-tint-overlay"));
         })) {
           return false;
         }
@@ -1271,7 +1271,6 @@
 
         if (target instanceof HTMLImageElement &&
             (target.dataset.rpsHintSymbol ||
-             target.dataset.rpsLegendHighlight ||
              target.dataset.rpsPositionHighlight)) {
           return false;
         }

@@ -290,5 +290,23 @@ Minuten.
 
 Ein Symbol neben dem zur Aktualisierung der Karte schaltet die Funktion an und
 aus. Beim Ausschalten wird auserdem die aktuelle Laufspur gelöscht, so dass man
-bei Bedarf durch Deaktivieren und Aktivieren auch die Spur bequem
-zurücksetzen kann.
+bei Bedarf durch Deaktivieren und Aktivieren auch die Spur bequem zurücksetzen
+kann.
+
+## `rune_puzzle_solver`
+
+Assistiert während dem Lösen des Runenpuzzles. Auserdem wird die aktuelle Zeit
+und Anzahl der Fehler angezeigt.
+
+![Puzzle Demo](https://i.vgy.me/cPLbeH.gif)
+
+Zuerst müssen einige Felder geraten werden. Sobald Lösungen verfügbar sind,
+schlägt der Assistent mögliche Symbole für das aktuell ausgewählte Feld aus. Bei
+einer eindeutigen Lösung kann das Puzzle so fehlerfrei beendet werden.
+Andernfalls sind Fehler möglich; der Assistent zeigt dann auch an, sollte es
+dadurch keine Lösung zum Puzzle mehr geben. Das Puzzle muss dann neugestartet
+werden.
+
+Es ist zudem durch Auswahl auf der rechten Seite möglich das zum "unbekannten
+Symbol" zugehörige Symbol auszuwählen. Sollte jedoch nur noch ein Symbol möglich
+sein, wählt der Assistent es auch selbstständig aus.
