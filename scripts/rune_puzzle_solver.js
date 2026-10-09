@@ -11,6 +11,7 @@
   var SECRET_TEXT = "Geheimnisvolles Element (Diesem Element sieht man nicht an, welcher Gruppe es zuzuordnen ist)";
   var STORAGE_KEY = "rune_puzzle_solver_solution";
   var UNKNOWN_SYMBOL_KEY = "rune_puzzle_solver_unknown_symbol";
+  var TIMER_STORAGE_KEY = "rune_puzzle_solver_timer_started_at";
   var GRID_SIZE = 6;
   var BLOCK_ROWS = 3;
   var BLOCK_COLS = 2;
@@ -26,7 +27,7 @@
   var updating = false;
   var puzzleWasPresent = false;
   var selectedUnknownSymbol = loadUnknownSymbol();
-  var timerStartedAt = null;
+  var timerStartedAt = loadTimerStartedAt();
   var timerInterval = null;
 
   function log() {
@@ -94,6 +95,22 @@
     }
   }
 
+  function loadTimerStartedAt() {
+    try {
+      var stored = sessionStorage.getItem(TIMER_STORAGE_KEY);
+      var timestamp = Number(stored);
+
+      if (stored && Number.isFinite(timestamp) && timestamp > 0) {
+        log("Restored puzzle timer:", new Date(timestamp).toLocaleTimeString());
+        return timestamp;
+      }
+    } catch (error) {
+      warn("Failed to restore puzzle timer:", error);
+    }
+
+    return null;
+  }
+
   function formatElapsedTime(seconds) {
     var minutes = Math.floor(seconds / 60);
     var remainingSeconds = seconds % 60;
@@ -117,10 +134,25 @@
 
   function startTimer() {
     if (timerStartedAt !== null) {
+      updateTimerDisplay();
+
+      if (timerInterval === null) {
+        timerInterval = setInterval(function () {
+          updateTimerDisplay();
+        }, 5000);
+      }
+
       return;
     }
 
     timerStartedAt = Date.now();
+
+    try {
+      sessionStorage.setItem(TIMER_STORAGE_KEY, String(timerStartedAt));
+    } catch (error) {
+      warn("Failed to save puzzle timer:", error);
+    }
+
     updateTimerDisplay();
 
     timerInterval = setInterval(function () {
@@ -137,6 +169,12 @@
     }
 
     timerStartedAt = null;
+
+    try {
+      sessionStorage.removeItem(TIMER_STORAGE_KEY);
+    } catch (error) {
+      warn("Failed to clear saved puzzle timer:", error);
+    }
 
     var timer = document.getElementById("rps-timer-status");
 
