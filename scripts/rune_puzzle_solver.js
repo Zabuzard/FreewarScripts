@@ -391,15 +391,6 @@
           return null;
         }
 
-        if (img.dataset.rpsPositionSymbol) {
-          if (symbol === Number(img.dataset.rpsPositionSymbol)) {
-            symbol = 8;
-          } else {
-            log("Game changed the current-position image:", r, c, symbol);
-            restorePositionImage(img);
-          }
-        }
-
         if (img.dataset.rpsHintSymbol) {
           if (symbol === Number(img.dataset.rpsHintSymbol)) {
             symbol = 0;
@@ -778,56 +769,6 @@
     });
   }
 
-  function restorePositionImage(img) {
-    if (!img.dataset.rpsPositionSymbol) {
-      return;
-    }
-
-    if (img.dataset.rpsPositionOriginalSrc !== undefined) {
-      img.setAttribute("src", img.dataset.rpsPositionOriginalSrc);
-    }
-
-    if (img.dataset.rpsPositionOriginalFilter !== undefined) {
-      img.style.filter = img.dataset.rpsPositionOriginalFilter;
-    } else {
-      img.style.removeProperty("filter");
-    }
-
-    delete img.dataset.rpsPositionSymbol;
-    delete img.dataset.rpsPositionOriginalSrc;
-    delete img.dataset.rpsPositionOriginalFilter;
-  }
-
-  function clearPositionImage(table) {
-    var images = table.querySelectorAll("img[data-rps-position-symbol]");
-
-    images.forEach(function (img) {
-      restorePositionImage(img);
-    });
-  }
-
-  function clearPositionImageFromPage() {
-    var images = document.querySelectorAll("img[data-rps-position-symbol]");
-
-    images.forEach(function (img) {
-      restorePositionImage(img);
-    });
-  }
-
-  function findCurrentPositionImage(table) {
-    var images = table.querySelectorAll("img");
-
-    for (var i = 0; i < images.length; i++) {
-      var img = images[i];
-
-      if (img.dataset.rpsPositionSymbol || getSymbol(img) === 8) {
-        return img;
-      }
-    }
-
-    return null;
-  }
-
   function clearLegendHighlight() {
     var images = document.querySelectorAll("img[data-rps-legend-highlight]");
 
@@ -901,10 +842,9 @@
       bestImage.style.backgroundColor;
     bestImage.dataset.rpsLegendHighlight = String(symbol);
 
-    bestImage.style.border = "2px solid #e6c300";
-    bestImage.style.backgroundColor = "#fff3a0";
+    bestImage.style.backgroundColor = "rgba(255, 220, 0, 0.4)";
 
-    log("Highlighted legend tile:", "a" + symbol, bestImage);
+    log("Tinted legend tile:", "a" + symbol, bestImage);
   }
 
   function renderCurrentPosition(table, solution) {
@@ -940,22 +880,25 @@
 
     var symbol = solution[row][col];
 
-    if (!img.dataset.rpsPositionSymbol) {
-      img.dataset.rpsPositionOriginalSrc = img.getAttribute("src");
-      img.dataset.rpsPositionOriginalFilter = img.style.filter;
-    }
-
-    img.dataset.rpsPositionSymbol = String(symbol);
-    img.src = getSymbolUrl(symbol);
-    img.style.filter = "sepia(1) saturate(6) hue-rotate(5deg)";
-
     highlightLegendTile(table, symbol);
 
-    log("Rendered current position:", {
+    log("Highlighted legend for current position:", {
       row: row,
       column: col,
       symbol: symbol
     });
+  }
+
+  function findCurrentPositionImage(table) {
+    var images = table.querySelectorAll("img");
+
+    for (var i = 0; i < images.length; i++) {
+      if (getSymbol(images[i]) === 8) {
+        return images[i];
+      }
+    }
+
+    return null;
   }
 
   function renderHints(table, solution) {
@@ -971,7 +914,7 @@
 
         var symbol = getSymbol(img);
 
-        if (img.dataset.rpsPositionSymbol) {
+        if (symbol === 8) {
           continue;
         }
 
@@ -1035,7 +978,6 @@
         clearSolution();
         clearUnknownSymbol();
         clearLegendHighlight();
-        clearPositionImageFromPage();
 
         if (puzzleWasPresent) {
           log("Puzzle disappeared.");
@@ -1060,7 +1002,6 @@
         updateSolutionStatus(null);
         clearSolution();
         clearLegendHighlight();
-        clearPositionImageFromPage();
         return;
       }
 
@@ -1092,7 +1033,6 @@
 
         clearSolution();
         clearHints(table);
-        clearPositionImage(table);
         clearLegendHighlight();
         return;
       }
@@ -1163,7 +1103,6 @@
 
         if (target instanceof HTMLImageElement &&
             (target.dataset.rpsHintSymbol ||
-             target.dataset.rpsPositionSymbol ||
              target.dataset.rpsLegendHighlight)) {
           return false;
         }
