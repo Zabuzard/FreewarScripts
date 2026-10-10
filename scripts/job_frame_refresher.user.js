@@ -49,8 +49,8 @@ function routine() {
     jobLink.addEventListener("click", function() {
       //console.log("Auftrag anfordern clicked");
 
+      setTimeout(function() { reloadItemFrame(); }, 500);
       setTimeout(function() { reloadItemFrame(); }, 1000);
-      setTimeout(function() { reloadItemFrame(); }, 2000);
     });
 
     //console.log("listener attached");
