@@ -32,6 +32,8 @@
     /Du hast einen Blick in die Seelen der Kreaturen dieser Welt erhascht\. Du hast deinen Auftrag erfüllt\. Kehre zurück zum Auftragshaus, um die Mission abzuschließen\./i,
     /Goldhornziege rennt panisch in Richtung/i,
     /Stadtwache von Konlir reitet Richtung/i,
+    /betritt den Nebelsumpf/i,
+    /Der Boden bebt, als würde sich etwas sehr großes aus dem Boden an die Oberfläche graben/i,
     /wahnsinniger Waldschlurch rennt wie wild Richtung/i
   ];
 
