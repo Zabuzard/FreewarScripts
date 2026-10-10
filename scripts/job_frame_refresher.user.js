@@ -20,10 +20,13 @@ function getMainDocument() {
 function reloadItemFrame() {
   try {
     var frame = document.querySelector('frame[name="itemFrame"]');
-    if (frame && frame.contentDocument) {
-      //console.log("Reloaded");
-      frame.contentDocument.location.reload();
-    }
+    if (!frame || !frame.contentDocument) { return; }
+
+    var doc = frame.contentDocument;
+    if (!doc.querySelector("p#listrow_aka_battlep")) { return; }
+
+    //console.log("Reloaded");
+    doc.location.reload();
   } catch (e) {
     console.error("reloadItemFrame failed:", e);
   }
