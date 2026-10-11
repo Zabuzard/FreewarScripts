@@ -50,7 +50,6 @@ function routine() {
       //console.log("Auftrag anfordern clicked");
 
       setTimeout(function() { reloadItemFrame(); }, 500);
-      setTimeout(function() { reloadItemFrame(); }, 1000);
     });
 
     //console.log("listener attached");
