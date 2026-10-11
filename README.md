@@ -273,7 +273,7 @@ besiegt wurde.
 
 Fügt dem Banner einen Hinweis hinzu wieviele Spieler aktuell benötigt werden um
 in den Vorhof der Eiswelt von Ragnur einzubrechen. Wird erst angezeigt wenn die
-Spielerzahl unter 70 fällt.
+Spielerzahl unter 90 fällt.
 
 ![Ragnur Hint](https://i.vgy.me/dRV0fD.jpg)
 

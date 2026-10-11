@@ -8,7 +8,8 @@
 // ==/UserScript==
 
 (function () {
-  var highlightColor = "rgb(82, 58, 58)";
+  var highlightColor = "#523A3A";
+  var slightHighlightColor = "#545454";
 
   function isStatisticsPage() {
     var mainCaption = document.querySelector(".maincaption");
@@ -18,6 +19,11 @@
   function highlightRow(row) {
     if (row.style.backgroundColor) { return; }
     row.style.backgroundColor = highlightColor;
+  }
+
+  function highlightSlightly(row) {
+    if (row.style.backgroundColor) { return; }
+    row.style.backgroundColor = slightHighlightColor;
   }
 
   function findRowsContaining(text) {
@@ -52,6 +58,10 @@
     highlightStorage("Baru-Getreide im Lager", 0.5);
     highlightStorage("Ölfässer im Lager", 0.4);
     highlightStorage("Sumpfgasflaschen im Lager", 0.4);
+
+    findRowsMatching(/Turm der inneren Macht auf Stufe \d+.*\(Ausbau von Stufe/).forEach(highlightSlightly);
+    findRowsMatching(/Die Wolkenmühle.*Du kannst jetzt Itolos-Pulver entgegen nehmen\./).forEach(highlightSlightly);
+    findRowsMatching(/Der Kreideturm.*Du kannst dich jetzt wieder mit Flugkreide bestreuen lassen und somit fliegen\./).forEach(highlightSlightly);
 
     [
       /^Turm der inneren Macht auf Stufe \d+\s*$/,
