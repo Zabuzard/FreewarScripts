@@ -12,7 +12,7 @@
   var HINT_PREFIX = "Ragnur: ";
   var STORAGE_KEY = "ragnur_hint_players_online";
   var COOKIE_KEY = "ragnur_hint_players_online";
-  var MAX_PLAYERS = 70;
+  var MAX_PLAYERS = 90;
 
   var FIELD_PLAYER_DATA = [
     [13, 4],
