@@ -1,3 +1,4 @@
+
 import html
 import json
 import logging
@@ -23,6 +24,7 @@ MAX_CHART_POINTS = 600
 MEDIAN_WINDOW = 30
 MIN_PERCENTILE = 5
 MAX_PERCENTILE = 95
+Y_AXIS_STEP = 100
 
 TIME_RANGES = {
     "24h": ("24 Stunden", timedelta(hours=24)),
@@ -422,6 +424,32 @@ def get_median_comparison(value, stats):
     return round(percentage)
 
 
+def get_axis_date_format(range_key, start, end):
+    """Choose readable X-axis labels for the selected time span."""
+    if range_key == "24h":
+        return "time"
+
+    if range_key in ("7d", "30d"):
+        return "date"
+
+    if range_key in ("3m", "6m", "1y"):
+        return "month"
+
+    if range_key == "3y":
+        return "year"
+
+    duration_days = (end - start).total_seconds() / 86400
+
+    if duration_days <= 1:
+        return "time"
+    if duration_days <= 45:
+        return "date"
+    if duration_days <= 550:
+        return "month"
+
+    return "year"
+
+
 # == HTML dashboard ==
 
 def render_dashboard(query):
@@ -435,6 +463,8 @@ def render_dashboard(query):
         60,
         int(duration_seconds / MAX_CHART_POINTS),
     )
+
+    axis_date_format = get_axis_date_format(range_key, start, end)
 
     range_buttons = []
 
@@ -498,22 +528,46 @@ def render_dashboard(query):
         else:
             median_comparison_html = ""
 
-        if median_difference is not None and median_difference > 50:
+        if median_difference is not None and median_difference >= 50:
             value_class = "value-positive"
+            recommendation_html = (
+                '<span class="trade-icon trade-sell" '
+                'title="Verkaufssignal: Kurs liegt mindestens 50% '
+                'über dem Median" '
+                'aria-label="Verkaufen">−</span>'
+            )
         elif median_difference is not None and median_difference < -50:
             value_class = "value-negative"
+            recommendation_html = (
+                '<span class="trade-icon trade-buy" '
+                'title="Kaufsignal: Kurs liegt mehr als 50% '
+                'unter dem Median" '
+                'aria-label="Kaufen">+</span>'
+            )
         else:
             value_class = "value-normal"
+            recommendation_html = ""
+
+        # Put the additional company information into the company-name tooltip.
+        point_count = len(points)
+        hover_info = html.escape(
+            f"Letzter Kurs: {value_text}\n"
+            f"Zeitpunkt: {timestamp or 'Noch nicht erfasst'}\n"
+            f"Datenpunkte: {point_count}\n"
+            f"Zeitraum: {range_label}",
+            quote=True,
+        )
 
         cards.append(f"""
             <article class="card">
                 <div class="card-header">
                     <div class="company">
                         <span class="id">#{company_id}</span>
-                        <h2>{name}</h2>
+                        <h2 class="company-name" title="{hover_info}">{name}</h2>
                     </div>
                     <div class="current-value-wrap">
                         <div class="current-value">
+                            {recommendation_html}
                             <span class="current-value-number {value_class}">
                                 {value_text}
                             </span>
@@ -521,23 +575,18 @@ def render_dashboard(query):
                         </div>
                     </div>
                 </div>
-                <div class="last-updated">
-                    Letzter Kurs: {latest_time}
-                </div>
                 <div class="chart-wrap">
                     <svg
                         class="chart"
                         role="img"
                         aria-label="Kursverlauf: {name}"
-                        viewBox="0 0 720 250"
+                        viewBox="0 0 720 270"
                         data-points="{html.escape(points_json, quote=True)}"
                         data-stats="{html.escape(stats_json, quote=True)}"
+                        data-range="{html.escape(range_key, quote=True)}"
+                        data-axis-format="{axis_date_format}"
                     ></svg>
                     <div class="tooltip" hidden></div>
-                </div>
-                <div class="chart-footer">
-                    <span>{len(points)} Datenpunkte</span>
-                    <span>{html.escape(range_label)}</span>
                 </div>
                 <div class="chart-stats"></div>
             </article>
@@ -801,6 +850,12 @@ def render_dashboard(query):
         overflow-wrap: anywhere;
     }}
 
+    .company-name {{
+        cursor: help;
+        text-decoration: underline dotted #526780;
+        text-underline-offset: 4px;
+    }}
+
     .current-value-wrap {{
         flex-shrink: 0;
         text-align: right;
@@ -808,14 +863,15 @@ def render_dashboard(query):
 
     .current-value {{
         display: flex;
-        align-items: baseline;
+        align-items: center;
         justify-content: flex-end;
         flex-wrap: wrap;
-        gap: 6px;
-        font-size: 23px;
-        font-weight: 750;
+        gap: 8px;
+        font-size: 30px;
+        font-weight: 800;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
+        line-height: 1.2;
     }}
 
     .current-value-number {{
@@ -834,9 +890,33 @@ def render_dashboard(query):
         color: var(--accent);
     }}
 
+    .trade-icon {{
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border: 2px solid currentColor;
+        border-radius: 50%;
+        font-size: 16px;
+        font-weight: 800;
+        line-height: 1;
+        vertical-align: middle;
+        cursor: help;
+    }}
+
+    .trade-buy {{
+        color: var(--positive);
+    }}
+
+    .trade-sell {{
+        color: var(--negative);
+    }}
+
     .median-comparison {{
-        font-size: 13px;
-        font-weight: 700;
+        font-size: 18px;
+        font-weight: 750;
     }}
 
     .median-comparison.positive {{
@@ -849,12 +929,6 @@ def render_dashboard(query):
 
     .median-comparison.neutral {{
         color: var(--muted);
-    }}
-
-    .last-updated {{
-        margin-top: 8px;
-        color: var(--muted);
-        font-size: 11px;
     }}
 
     .chart-wrap {{
@@ -874,9 +948,9 @@ def render_dashboard(query):
     }}
 
     .chart .axis-label {{
-        fill: #b8c7dc;
-        font-size: 12px;
-        font-weight: 500;
+        fill: #d0dced;
+        font-size: 16px;
+        font-weight: 600;
     }}
 
     .chart .area {{
@@ -957,22 +1031,13 @@ def render_dashboard(query):
         font-size: 14px;
     }}
 
-    .chart-footer {{
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        margin-top: 8px;
-        color: var(--muted);
-        font-size: 11px;
-    }}
-
     .chart-stats {{
         display: flex;
         flex-wrap: wrap;
         gap: 8px 16px;
         margin-top: 12px;
         color: var(--muted);
-        font-size: 12px;
+        font-size: 13px;
     }}
 
     .chart-stats strong {{
@@ -1039,6 +1104,21 @@ def render_dashboard(query):
 
         .current-value {{
             justify-content: flex-start;
+            font-size: 28px;
+        }}
+
+        .trade-icon {{
+            width: 21px;
+            height: 21px;
+            font-size: 15px;
+        }}
+
+        .median-comparison {{
+            font-size: 17px;
+        }}
+
+        .chart .axis-label {{
+            font-size: 15px;
         }}
 
         .controls {{
@@ -1133,7 +1213,11 @@ def render_dashboard(query):
         Median relativ zur jeweiligen typischen Spanne zwischen Median und
         5. beziehungsweise 95. Perzentil. Der aktuelle Kurs wird grün ab
         +50% und rot unter -50% dieser Spanne dargestellt; andernfalls
-        bleibt er blau. Die Seite aktualisiert sich alle 60 Sekunden.
+        bleibt er blau. Ein rotes Minus im Kreis markiert Kurse ab +50%
+        als mögliches Verkaufssignal; ein grünes Plus im Kreis markiert
+        Kurse unter -50% als mögliches Kaufsignal. Die zusätzlichen
+        Kursinformationen erscheinen beim Überfahren des Firmennamens mit
+        der Maus. Die Seite aktualisiert sich alle 60 Sekunden.
     </footer>
 </main>
 
@@ -1142,19 +1226,38 @@ def render_dashboard(query):
     "use strict";
 
     const MEDIAN_WINDOW = {MEDIAN_WINDOW};
+    const Y_AXIS_STEP = {Y_AXIS_STEP};
 
     const numberFormat = new Intl.NumberFormat("de-DE", {{
         maximumFractionDigits: 0
     }});
 
-    const dateFormat = new Intl.DateTimeFormat("de-DE", {{
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23"
-    }});
+    const dateFormats = {{
+        time: new Intl.DateTimeFormat("de-DE", {{
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23"
+        }}),
+        date: new Intl.DateTimeFormat("de-DE", {{
+            day: "2-digit",
+            month: "2-digit"
+        }}),
+        month: new Intl.DateTimeFormat("de-DE", {{
+            month: "short",
+            year: "2-digit"
+        }}),
+        year: new Intl.DateTimeFormat("de-DE", {{
+            year: "numeric"
+        }}),
+        tooltip: new Intl.DateTimeFormat("de-DE", {{
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            hourCycle: "h23"
+        }})
+    }};
 
     function createSvgElement(name, attributes, text) {{
         const element = document.createElementNS(
@@ -1206,13 +1309,14 @@ def render_dashboard(query):
         svg.replaceChildren();
 
         const width = 720;
-        const height = 250;
-        const left = 56;
-        const right = 12;
-        const top = 12;
-        const bottom = 40;
+        const height = 270;
+        const left = 76;
+        const right = 16;
+        const top = 14;
+        const bottom = 48;
         const plotWidth = width - left - right;
         const plotHeight = height - top - bottom;
+        const axisFormat = svg.dataset.axisFormat || "date";
 
         const statsContainer = svg.parentElement
             .parentElement.querySelector(".chart-stats");
@@ -1246,7 +1350,7 @@ def render_dashboard(query):
                 y: height / 2,
                 "text-anchor": "middle",
                 fill: "#91a0b8",
-                "font-size": "13"
+                "font-size": "16"
             }}, "Keine Daten für diesen Zeitraum"));
 
             return;
@@ -1260,21 +1364,36 @@ def render_dashboard(query):
             return Number(point[0]);
         }});
 
-        let minValue = stats
+        let dataMin = stats
             ? Number(stats.min)
             : Math.min.apply(null, values);
-        let maxValue = stats
+        let dataMax = stats
             ? Number(stats.max)
             : Math.max.apply(null, values);
 
-        if (minValue === maxValue) {{
-            minValue -= 1;
-            maxValue += 1;
+        if (dataMin === dataMax) {{
+            dataMin -= Y_AXIS_STEP;
+            dataMax += Y_AXIS_STEP;
         }}
 
-        const padding = (maxValue - minValue) * 0.12;
-        minValue = Math.max(0, minValue - padding);
-        maxValue += padding;
+        /*
+         * Align the vertical scale to multiples of 100.
+         * Every horizontal grid line is exactly 100 units apart.
+         */
+        let minValue = Math.floor(dataMin / Y_AXIS_STEP) * Y_AXIS_STEP;
+        let maxValue = Math.ceil(dataMax / Y_AXIS_STEP) * Y_AXIS_STEP;
+
+        if (minValue === maxValue) {{
+            minValue -= Y_AXIS_STEP;
+            maxValue += Y_AXIS_STEP;
+        }}
+
+        /*
+         * Keep zero as the lower boundary when the data is non-negative.
+         */
+        if (dataMin >= 0 && minValue < 0) {{
+            minValue = 0;
+        }}
 
         const minTime = timestamps[0];
         const maxTime = timestamps[timestamps.length - 1];
@@ -1296,12 +1415,15 @@ def render_dashboard(query):
                     plotHeight;
         }}
 
-        for (let i = 0; i <= 4; i++) {{
-            const fraction = i / 4;
-            const y = top + fraction * plotHeight;
-            const value = Math.round(
-                maxValue - fraction * (maxValue - minValue)
-            );
+        /*
+         * Draw Y-axis labels and grid lines in exact increments of 100.
+         */
+        for (
+            let value = maxValue;
+            value >= minValue;
+            value -= Y_AXIS_STEP
+        ) {{
+            const y = yFor(value);
 
             svg.appendChild(createSvgElement("line", {{
                 x1: left,
@@ -1312,8 +1434,8 @@ def render_dashboard(query):
             }}));
 
             svg.appendChild(createSvgElement("text", {{
-                x: left - 10,
-                y: y + 4,
+                x: left - 12,
+                y: y + 5,
                 "text-anchor": "end",
                 class: "axis-label"
             }}, numberFormat.format(value)));
@@ -1323,17 +1445,18 @@ def render_dashboard(query):
             const fraction = i / 4;
             const x = left + fraction * plotWidth;
             const timestamp = minTime + fraction * timeSpan;
+            const date = new Date(timestamp);
 
             svg.appendChild(createSvgElement("text", {{
                 x: x,
-                y: height - 10,
+                y: height - 12,
                 "text-anchor": i === 0
                     ? "start"
                     : i === 4
                         ? "end"
                         : "middle",
                 class: "axis-label"
-            }}, dateFormat.format(new Date(timestamp))));
+            }}, dateFormats[axisFormat].format(date)));
         }}
 
         const coordinates = points.map(function (point) {{
@@ -1370,7 +1493,7 @@ def render_dashboard(query):
             svg.appendChild(createSvgElement("circle", {{
                 cx: point.x,
                 cy: point.y,
-                r: 2.5,
+                r: 3,
                 class: "point"
             }}));
         }});
@@ -1437,7 +1560,7 @@ def render_dashboard(query):
         const marker = createSvgElement("circle", {{
             cx: first.x,
             cy: first.y,
-            r: 4,
+            r: 5,
             class: "point",
             visibility: "hidden"
         }});
@@ -1497,7 +1620,7 @@ def render_dashboard(query):
             value.textContent = numberFormat.format(nearest.value);
 
             const date = document.createElement("div");
-            date.textContent = dateFormat.format(
+            date.textContent = dateFormats.tooltip.format(
                 new Date(nearest.timestamp)
             );
 
