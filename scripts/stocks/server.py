@@ -1,9 +1,6 @@
-
 import html
 import json
 import logging
-import math
-import random
 import re
 import sqlite3
 import threading
@@ -50,8 +47,6 @@ log = logging.getLogger("stocks")
 # == Database ==
 
 def init_db():
-    is_fresh = not DB_PATH.exists()
-
     with sqlite3.connect(DB_PATH, timeout=30) as db:
         db.execute("PRAGMA journal_mode=WAL")
         db.execute("""
@@ -73,131 +68,6 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_stock_company_time
             ON stock_values(company_id, timestamp DESC, id DESC)
         """)
-
-    if is_fresh:
-        seed_fake_data()
-
-
-def seed_fake_data():
-    """Generate smooth, realistic-looking stock histories for six companies."""
-    fake_companies = [
-        (1, "Teidam Burger Corporation"),
-        (2, "Herberge Vulkanblick Ag"),
-        (3, "Bank aller Wesen"),
-        (4, "Sandstaub Corporation"),
-        (5, "Casino des Nordens Ag"),
-        (6, "Post Corporation"),
-    ]
-
-    now = datetime.now(timezone.utc)
-    start = now - timedelta(days=182)
-    interval = timedelta(minutes=5)
-    interval_seconds = interval.total_seconds()
-    rng = random.Random(42)
-
-    profiles = {
-        1: {"base": 460, "trend": 0.08, "volatility": 2.0, "cycle": 18},
-        2: {"base": 390, "trend": -0.03, "volatility": 1.5, "cycle": 25},
-        3: {"base": 540, "trend": 0.02, "volatility": 1.0, "cycle": 35},
-        4: {"base": 330, "trend": 0.05, "volatility": 2.5, "cycle": 22},
-        5: {"base": 490, "trend": -0.06, "volatility": 3.0, "cycle": 16},
-        6: {"base": 420, "trend": 0.01, "volatility": 0.8, "cycle": 40},
-    }
-
-    with sqlite3.connect(DB_PATH, timeout=30) as db:
-        db.executemany("""
-            INSERT INTO companies (id, name)
-            VALUES (?, ?)
-            ON CONFLICT(id) DO UPDATE SET name=excluded.name
-        """, fake_companies)
-
-        state = {
-            company_id: {
-                "noise": 0.0,
-                "shock": 0.0,
-                "phase": rng.uniform(0, math.tau),
-            }
-            for company_id, _ in fake_companies
-        }
-
-        total_steps = max(
-            1,
-            int((now - start).total_seconds() / interval_seconds),
-        )
-        rows = []
-        step = 0
-        timestamp = start
-
-        while timestamp <= now:
-            progress = step / total_steps
-            timestamp_text = timestamp.isoformat(timespec="seconds")
-
-            for company_id, _ in fake_companies:
-                profile = profiles[company_id]
-                company_state = state[company_id]
-
-                trend = profile["trend"] * step / 12
-
-                long_cycle = math.sin(
-                    progress * math.tau * 2
-                    + company_state["phase"]
-                ) * profile["cycle"]
-
-                short_cycle = math.sin(
-                    step / 180
-                    + company_state["phase"] * 1.7
-                ) * profile["cycle"] * 0.35
-
-                company_state["noise"] = (
-                    company_state["noise"] * 0.92
-                    + rng.gauss(0, profile["volatility"] * 0.35)
-                )
-
-                if rng.random() < 0.0015:
-                    company_state["shock"] += (
-                        rng.choice([-1, 1])
-                        * rng.uniform(8, 25)
-                    )
-
-                company_state["shock"] *= 0.995
-
-                value = (
-                    profile["base"]
-                    + trend
-                    + long_cycle
-                    + short_cycle
-                    + company_state["noise"]
-                    + company_state["shock"]
-                )
-
-                rows.append((
-                    company_id,
-                    max(1, round(value)),
-                    timestamp_text,
-                ))
-
-            step += 1
-            timestamp += interval
-
-            if len(rows) >= 5000:
-                db.executemany("""
-                    INSERT INTO stock_values
-                        (company_id, value, timestamp)
-                    VALUES (?, ?, ?)
-                """, rows)
-                rows.clear()
-
-        if rows:
-            db.executemany("""
-                INSERT INTO stock_values
-                    (company_id, value, timestamp)
-                VALUES (?, ?, ?)
-            """, rows)
-
-    log.info(
-        "Generated smooth fake stock history for %d test companies",
-        len(fake_companies),
-    )
 
 
 def save_stocks(stocks):
@@ -441,7 +311,14 @@ def resolve_range(query):
         if end > now:
             end = now
 
-        return start, end, "Benutzerdefiniert", "custom", custom_start, custom_end
+        return (
+            start,
+            end,
+            "Benutzerdefiniert",
+            "custom",
+            custom_start,
+            custom_end,
+        )
 
     label, duration = TIME_RANGES[range_key]
     start = now - duration if duration else None
@@ -455,7 +332,7 @@ def resolve_range(query):
         if row and row[0]:
             start = datetime.fromisoformat(row[0])
         else:
-            start = now - timedelta(days=182)
+            start = now
 
     return start, now, label, range_key, "", ""
 
