@@ -386,6 +386,16 @@ def format_value(value):
     return f"{round(value):,}".replace(",", ".")
 
 
+def format_signed_value(value):
+    """Format an absolute stock-value difference with an explicit sign."""
+    rounded_value = round(value)
+
+    if rounded_value > 0:
+        return f"+{format_value(rounded_value)}"
+
+    return format_value(rounded_value)
+
+
 def format_signed_percent(value):
     rounded_value = round(value)
 
@@ -429,20 +439,17 @@ def get_axis_date_format(range_key, start, end):
     if range_key == "24h":
         return "time"
 
-    if range_key in ("7d", "30d"):
+    if range_key in ("7d", "30d", "3m"):
         return "date"
 
-    if range_key in ("3m", "6m", "1y"):
+    if range_key in ("6m", "1y", "3y"):
         return "month"
-
-    if range_key == "3y":
-        return "year"
 
     duration_days = (end - start).total_seconds() / 86400
 
     if duration_days <= 1:
         return "time"
-    if duration_days <= 45:
+    if duration_days <= 100:
         return "date"
     if duration_days <= 550:
         return "month"
@@ -482,16 +489,8 @@ def render_dashboard(query):
         name = html.escape(stock["name"])
         value = stock["value"]
         value_text = format_value(value)
+        value_display = f"{value_text}g" if value is not None else value_text
         timestamp = stock["timestamp"] or ""
-
-        if timestamp:
-            latest_time = (
-                f'<time class="local-time" '
-                f'datetime="{html.escape(timestamp, quote=True)}">'
-                f'{html.escape(timestamp)}</time>'
-            )
-        else:
-            latest_time = "Noch nicht erfasst"
 
         points = get_chart_data(
             company_id,
@@ -512,6 +511,14 @@ def render_dashboard(query):
 
         median_difference = get_median_comparison(value, stats)
 
+        if stats and value is not None:
+            absolute_difference = value - stats["median"]
+            absolute_difference_text = (
+                format_signed_value(absolute_difference) + "g"
+            )
+        else:
+            absolute_difference_text = None
+
         if median_difference is not None:
             comparison_class = (
                 "positive"
@@ -521,9 +528,15 @@ def render_dashboard(query):
                 else "neutral"
             )
             comparison_text = format_signed_percent(median_difference)
+
+            if absolute_difference_text is not None:
+                comparison_text += (
+                    f" ({absolute_difference_text})"
+                )
+
             median_comparison_html = (
                 f'<span class="median-comparison {comparison_class}">'
-                f'{comparison_text}</span>'
+                f'{html.escape(comparison_text)}</span>'
             )
         else:
             median_comparison_html = ""
@@ -532,26 +545,23 @@ def render_dashboard(query):
             value_class = "value-positive"
             recommendation_html = (
                 '<span class="trade-icon trade-sell" '
-                'title="Verkaufssignal: Kurs liegt mindestens 50% '
-                'über dem Median" '
+                'title="Verkaufssignal" '
                 'aria-label="Verkaufen">−</span>'
             )
         elif median_difference is not None and median_difference < -50:
             value_class = "value-negative"
             recommendation_html = (
                 '<span class="trade-icon trade-buy" '
-                'title="Kaufsignal: Kurs liegt mehr als 50% '
-                'unter dem Median" '
+                'title="Kaufsignal" '
                 'aria-label="Kaufen">+</span>'
             )
         else:
             value_class = "value-normal"
             recommendation_html = ""
 
-        # Put the additional company information into the company-name tooltip.
         point_count = len(points)
         hover_info = html.escape(
-            f"Letzter Kurs: {value_text}\n"
+            f"Letzter Kurs: {value_display}\n"
             f"Zeitpunkt: {timestamp or 'Noch nicht erfasst'}\n"
             f"Datenpunkte: {point_count}\n"
             f"Zeitraum: {range_label}",
@@ -569,7 +579,7 @@ def render_dashboard(query):
                         <div class="current-value">
                             {recommendation_html}
                             <span class="current-value-number {value_class}">
-                                {value_text}
+                                {html.escape(value_display)}
                             </span>
                             {median_comparison_html}
                         </div>
@@ -607,7 +617,7 @@ def render_dashboard(query):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="60">
-<title>Freewar-Aktienkurse</title>
+<title>Freewar-Aktienkurse (Welt 1)</title>
 <style>
     :root {{
         color-scheme: dark;
@@ -660,16 +670,8 @@ def render_dashboard(query):
         min-width: 0;
     }}
 
-    .eyebrow {{
-        color: var(--accent);
-        font-size: 12px;
-        font-weight: 750;
-        letter-spacing: .16em;
-        text-transform: uppercase;
-    }}
-
     h1 {{
-        margin: 10px 0;
+        margin: 0 0 10px;
         font-size: clamp(30px, 5vw, 44px);
         letter-spacing: -.04em;
     }}
@@ -866,7 +868,7 @@ def render_dashboard(query):
         align-items: center;
         justify-content: flex-end;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 7px;
         font-size: 30px;
         font-weight: 800;
         font-variant-numeric: tabular-nums;
@@ -895,12 +897,13 @@ def render_dashboard(query):
         flex-shrink: 0;
         align-items: center;
         justify-content: center;
-        width: 22px;
-        height: 22px;
-        border: 2px solid currentColor;
+        width: 17px;
+        height: 17px;
+        border: 1.5px solid currentColor;
         border-radius: 50%;
-        font-size: 16px;
-        font-weight: 800;
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        font-weight: 500;
         line-height: 1;
         vertical-align: middle;
         cursor: help;
@@ -1108,9 +1111,9 @@ def render_dashboard(query):
         }}
 
         .trade-icon {{
-            width: 21px;
-            height: 21px;
-            font-size: 15px;
+            width: 16px;
+            height: 16px;
+            font-size: 11px;
         }}
 
         .median-comparison {{
@@ -1141,10 +1144,9 @@ def render_dashboard(query):
 <main>
     <div class="header-layout">
         <header>
-            <div class="eyebrow">Welt 1 · Marktdaten</div>
-            <h1>Freewar-Aktienkurse</h1>
+            <h1>Freewar-Aktienkurse (Welt 1)</h1>
             <div class="subtitle">
-                Historische Kursentwicklung aller Unternehmen.
+                Historische Kursentwicklung aller Unternehmen in Welt 1.
             </div>
             <div class="status">
                 <span class="dot"></span>
@@ -1203,7 +1205,7 @@ def render_dashboard(query):
         Die Werte werden direkt von Freewar abgerufen.
         Die Diagramme zeigen aggregierte Kurswerte, wenn viele Messpunkte
         im gewählten Zeitraum liegen. Die gestrichelte orange Linie
-        (#fca96a) zeigt den gleitenden Median der dargestellten Datenpunkte
+        zeigt den gleitenden Median der dargestellten Datenpunkte
         (Fenster: {MEDIAN_WINDOW} Datenpunkte). Die rote Linie zeigt das
         5. Perzentil (Min (5%)), die grüne Linie das 95. Perzentil
         (Max (95%)) aller gespeicherten Messwerte des gewählten Zeitraums.
@@ -1211,13 +1213,15 @@ def render_dashboard(query):
         den Statistiken wird aus allen gespeicherten Messwerten berechnet.
         Die Prozentangabe neben dem aktuellen Kurs zeigt die Abweichung vom
         Median relativ zur jeweiligen typischen Spanne zwischen Median und
-        5. beziehungsweise 95. Perzentil. Der aktuelle Kurs wird grün ab
-        +50% und rot unter -50% dieser Spanne dargestellt; andernfalls
-        bleibt er blau. Ein rotes Minus im Kreis markiert Kurse ab +50%
-        als mögliches Verkaufssignal; ein grünes Plus im Kreis markiert
-        Kurse unter -50% als mögliches Kaufsignal. Die zusätzlichen
-        Kursinformationen erscheinen beim Überfahren des Firmennamens mit
-        der Maus. Die Seite aktualisiert sich alle 60 Sekunden.
+        5. beziehungsweise 95. Perzentil. Der Geldbetrag in Klammern zeigt
+        die absolute Differenz zwischen aktuellem Kurs und Median.
+        Der aktuelle Kurs wird grün ab +50% und rot unter -50% dieser
+        Spanne dargestellt; andernfalls bleibt er blau. Ein rotes Minus
+        im Kreis markiert Kurse ab +50% als mögliches Verkaufssignal; ein
+        grünes Plus im Kreis markiert Kurse unter -50% als mögliches
+        Kaufsignal. Die zusätzlichen Kursinformationen erscheinen beim
+        Überfahren des Firmennamens mit der Maus. Die Seite aktualisiert
+        sich alle 60 Sekunden.
     </footer>
 </main>
 
@@ -1290,6 +1294,184 @@ def render_dashboard(query):
         return Math.round((sorted[middle - 1] + sorted[middle]) / 2);
     }}
 
+    function getAxisTickConfig(rangeKey, duration) {{
+        const durationHours = duration / (60 * 60 * 1000);
+        const durationDays = durationHours / 24;
+
+        if (rangeKey === "24h") {{
+            return {{ unit: "hour", step: 3 }};
+        }}
+
+        if (rangeKey === "7d") {{
+            return {{ unit: "day", step: 1 }};
+        }}
+
+        if (rangeKey === "30d") {{
+            return {{ unit: "day", step: 5 }};
+        }}
+
+        if (rangeKey === "3m") {{
+            return {{ unit: "day", step: 14 }};
+        }}
+
+        if (rangeKey === "6m") {{
+            return {{ unit: "month", step: 1 }};
+        }}
+
+        if (rangeKey === "1y") {{
+            return {{ unit: "month", step: 2 }};
+        }}
+
+        if (rangeKey === "3y") {{
+            return {{ unit: "month", step: 6 }};
+        }}
+
+        if (durationHours <= 30) {{
+            return {{ unit: "hour", step: 3 }};
+        }}
+
+        if (durationDays <= 8) {{
+            return {{ unit: "day", step: 1 }};
+        }}
+
+        if (durationDays <= 35) {{
+            return {{ unit: "day", step: 5 }};
+        }}
+
+        if (durationDays <= 100) {{
+            return {{ unit: "day", step: 14 }};
+        }}
+
+        if (durationDays <= 200) {{
+            return {{ unit: "month", step: 1 }};
+        }}
+
+        if (durationDays <= 400) {{
+            return {{ unit: "month", step: 2 }};
+        }}
+
+        if (durationDays <= 1200) {{
+            return {{ unit: "month", step: 6 }};
+        }}
+
+        return {{ unit: "year", step: 1 }};
+    }}
+
+    function getAlignedTicks(minTime, maxTime, rangeKey) {{
+        const config = getAxisTickConfig(
+            rangeKey,
+            maxTime - minTime
+        );
+        const ticks = [];
+
+        if (config.unit === "hour") {{
+            const stepMs = config.step * 60 * 60 * 1000;
+            let timestamp = Math.ceil(minTime / stepMs) * stepMs;
+
+            while (timestamp <= maxTime) {{
+                ticks.push(timestamp);
+                timestamp += stepMs;
+            }}
+
+            return ticks;
+        }}
+
+        const start = new Date(minTime);
+        let date;
+
+        if (config.unit === "day") {{
+            date = new Date(
+                start.getFullYear(),
+                start.getMonth(),
+                start.getDate()
+            );
+
+            date.setHours(0, 0, 0, 0);
+
+            if (config.step === 1) {{
+                if (date.getTime() < minTime) {{
+                    date.setDate(date.getDate() + 1);
+                }}
+            }} else {{
+                const dayNumber = Math.floor(
+                    date.getTime() / (24 * 60 * 60 * 1000)
+                );
+                const offset = (
+                    config.step - (dayNumber % config.step)
+                ) % config.step;
+
+                date.setDate(date.getDate() + offset);
+
+                while (date.getTime() < minTime) {{
+                    date.setDate(date.getDate() + config.step);
+                }}
+            }}
+
+            while (date.getTime() <= maxTime) {{
+                ticks.push(date.getTime());
+                date.setDate(date.getDate() + config.step);
+            }}
+
+            return ticks;
+        }}
+
+        if (config.unit === "month") {{
+            const monthIndex =
+                start.getFullYear() * 12 + start.getMonth();
+
+            const alignedMonth =
+                Math.ceil(monthIndex / config.step) * config.step;
+
+            date = new Date(
+                Math.floor(alignedMonth / 12),
+                alignedMonth % 12,
+                1
+            );
+
+            while (date.getTime() < minTime) {{
+                date.setMonth(date.getMonth() + config.step);
+            }}
+
+            while (date.getTime() <= maxTime) {{
+                ticks.push(date.getTime());
+                date.setMonth(date.getMonth() + config.step);
+            }}
+
+            return ticks;
+        }}
+
+        date = new Date(start.getFullYear(), 0, 1);
+
+        while (date.getTime() < minTime) {{
+            date.setFullYear(date.getFullYear() + config.step);
+        }}
+
+        while (date.getTime() <= maxTime) {{
+            ticks.push(date.getTime());
+            date.setFullYear(date.getFullYear() + config.step);
+        }}
+
+        return ticks;
+    }}
+
+    function getTickFormat(rangeKey, duration) {{
+        const config = getAxisTickConfig(rangeKey, duration);
+
+        if (config.unit === "hour") {{
+            return dateFormats.time;
+        }}
+
+        if (config.unit === "day") {{
+            return dateFormats.date;
+        }}
+
+        if (config.unit === "month") {{
+            return dateFormats.month;
+        }}
+
+        return dateFormats.year;
+    }}
+
     function drawChart(svg) {{
         let points;
         let stats;
@@ -1316,7 +1498,7 @@ def render_dashboard(query):
         const bottom = 48;
         const plotWidth = width - left - right;
         const plotHeight = height - top - bottom;
-        const axisFormat = svg.dataset.axisFormat || "date";
+        const rangeKey = svg.dataset.range || "custom";
 
         const statsContainer = svg.parentElement
             .parentElement.querySelector(".chart-stats");
@@ -1333,7 +1515,7 @@ def render_dashboard(query):
                 item.className = stat[2];
 
                 const value = document.createElement("strong");
-                value.textContent = numberFormat.format(stat[1]);
+                value.textContent = numberFormat.format(stat[1]) + "g";
 
                 item.append(
                     document.createTextNode(stat[0] + ": "),
@@ -1376,10 +1558,6 @@ def render_dashboard(query):
             dataMax += Y_AXIS_STEP;
         }}
 
-        /*
-         * Align the vertical scale to multiples of 100.
-         * Every horizontal grid line is exactly 100 units apart.
-         */
         let minValue = Math.floor(dataMin / Y_AXIS_STEP) * Y_AXIS_STEP;
         let maxValue = Math.ceil(dataMax / Y_AXIS_STEP) * Y_AXIS_STEP;
 
@@ -1388,9 +1566,6 @@ def render_dashboard(query):
             maxValue += Y_AXIS_STEP;
         }}
 
-        /*
-         * Keep zero as the lower boundary when the data is non-negative.
-         */
         if (dataMin >= 0 && minValue < 0) {{
             minValue = 0;
         }}
@@ -1415,9 +1590,6 @@ def render_dashboard(query):
                     plotHeight;
         }}
 
-        /*
-         * Draw Y-axis labels and grid lines in exact increments of 100.
-         */
         for (
             let value = maxValue;
             value >= minValue;
@@ -1441,23 +1613,43 @@ def render_dashboard(query):
             }}, numberFormat.format(value)));
         }}
 
-        for (let i = 0; i <= 4; i++) {{
-            const fraction = i / 4;
-            const x = left + fraction * plotWidth;
-            const timestamp = minTime + fraction * timeSpan;
+        const tickFormat = getTickFormat(
+            rangeKey,
+            maxTime - minTime
+        );
+        const ticks = getAlignedTicks(
+            minTime,
+            maxTime,
+            rangeKey
+        );
+
+        ticks.forEach(function (timestamp) {{
+            const x = xFor(timestamp);
             const date = new Date(timestamp);
+
+            let anchor = "middle";
+
+            if (x < left + 35) {{
+                anchor = "start";
+            }} else if (x > width - right - 35) {{
+                anchor = "end";
+            }}
+
+            svg.appendChild(createSvgElement("line", {{
+                x1: x,
+                y1: top + plotHeight,
+                x2: x,
+                y2: top + plotHeight + 5,
+                class: "grid-line"
+            }}));
 
             svg.appendChild(createSvgElement("text", {{
                 x: x,
                 y: height - 12,
-                "text-anchor": i === 0
-                    ? "start"
-                    : i === 4
-                        ? "end"
-                        : "middle",
+                "text-anchor": anchor,
                 class: "axis-label"
-            }}, dateFormats[axisFormat].format(date)));
-        }}
+            }}, tickFormat.format(date)));
+        }});
 
         const coordinates = points.map(function (point) {{
             return {{
@@ -1617,7 +1809,7 @@ def render_dashboard(query):
             tooltip.replaceChildren();
 
             const value = document.createElement("strong");
-            value.textContent = numberFormat.format(nearest.value);
+            value.textContent = numberFormat.format(nearest.value) + "g";
 
             const date = document.createElement("div");
             date.textContent = dateFormats.tooltip.format(
