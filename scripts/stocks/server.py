@@ -30,8 +30,12 @@ TIME_RANGES = {
     "30d": ("30 Tage", timedelta(days=30)),
     "3m": ("3 Monate", timedelta(days=90)),
     "6m": ("6 Monate", timedelta(days=182)),
+    "1y": ("1 Jahr", timedelta(days=365)),
+    "3y": ("3 Jahre", timedelta(days=1095)),
     "all": ("Gesamt", None),
 }
+
+DEFAULT_RANGE = "3y"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -328,10 +332,10 @@ def parse_date(value, fallback):
 
 
 def resolve_range(query):
-    range_key = query.get("range", ["7d"])[0]
+    range_key = query.get("range", [DEFAULT_RANGE])[0]
 
     if range_key not in TIME_RANGES:
-        range_key = "7d"
+        range_key = DEFAULT_RANGE
 
     now = datetime.now(timezone.utc)
     custom_start = query.get("start", [""])[0]
@@ -390,9 +394,9 @@ def format_signed_percent(value):
 
 
 def get_median_comparison(value, stats):
-    """Express the distance from the median as a percentage of the typical range."""
+    """Express the median distance as a percentage of the typical range."""
     if value is None or not stats:
-        return ""
+        return None
 
     median = stats["median"]
     minimum = stats["min"]
@@ -402,20 +406,20 @@ def get_median_comparison(value, stats):
         typical_range = maximum - median
 
         if typical_range <= 0:
-            return ""
+            return None
 
         percentage = ((value - median) / typical_range) * 100
     elif value < median:
         typical_range = median - minimum
 
         if typical_range <= 0:
-            return ""
+            return None
 
         percentage = -((median - value) / typical_range) * 100
     else:
         percentage = 0
 
-    return format_signed_percent(percentage)
+    return round(percentage)
 
 
 # == HTML dashboard ==
@@ -476,14 +480,30 @@ def render_dashboard(query):
             separators=(",", ":"),
         )
 
-        median_comparison = get_median_comparison(value, stats)
+        median_difference = get_median_comparison(value, stats)
 
-        if median_comparison:
+        if median_difference is not None:
+            comparison_class = (
+                "positive"
+                if median_difference > 0
+                else "negative"
+                if median_difference < 0
+                else "neutral"
+            )
+            comparison_text = format_signed_percent(median_difference)
             median_comparison_html = (
-                f'<span class="median-comparison">{median_comparison}</span>'
+                f'<span class="median-comparison {comparison_class}">'
+                f'{comparison_text}</span>'
             )
         else:
             median_comparison_html = ""
+
+        if median_difference is not None and median_difference > 50:
+            value_class = "value-positive"
+        elif median_difference is not None and median_difference < -50:
+            value_class = "value-negative"
+        else:
+            value_class = "value-normal"
 
         cards.append(f"""
             <article class="card">
@@ -494,9 +514,10 @@ def render_dashboard(query):
                     </div>
                     <div class="current-value-wrap">
                         <div class="current-value">
-                            <span class="current-value-number">{value_text}</span>
+                            <span class="current-value-number {value_class}">
+                                {value_text}
+                            </span>
                             {median_comparison_html}
-                            <span class="currency-symbol">🪙</span>
                         </div>
                     </div>
                 </div>
@@ -551,6 +572,8 @@ def render_dashboard(query):
         --median: #fca96a;
         --minimum: #ff6464;
         --maximum: #4ade80;
+        --positive: #4ade80;
+        --negative: #ff6464;
     }}
 
     * {{
@@ -641,18 +664,18 @@ def render_dashboard(query):
 
     .ranges {{
         display: flex;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         gap: 6px;
         width: 100%;
     }}
 
     .range-button {{
-        flex: 1 1 0;
-        min-width: 0;
+        flex: 1 1 auto;
+        min-width: 64px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 3px 7px;
+        padding: 5px 8px;
         border: 1px solid var(--border);
         border-radius: 7px;
         color: var(--text);
@@ -660,7 +683,7 @@ def render_dashboard(query):
         text-align: center;
         white-space: nowrap;
         font-size: 12px;
-        line-height: 1.2;
+        line-height: 1.3;
         transition: background .15s, border-color .15s;
     }}
 
@@ -788,8 +811,7 @@ def render_dashboard(query):
         align-items: baseline;
         justify-content: flex-end;
         flex-wrap: wrap;
-        gap: 5px;
-        color: var(--accent);
+        gap: 6px;
         font-size: 23px;
         font-weight: 750;
         font-variant-numeric: tabular-nums;
@@ -800,17 +822,33 @@ def render_dashboard(query):
         color: var(--accent);
     }}
 
-    .median-comparison {{
-        color: var(--muted);
-        font-size: 13px;
-        font-weight: 650;
+    .current-value-number.value-positive {{
+        color: var(--positive);
     }}
 
-    .currency-symbol {{
-        color: inherit;
-        font-size: 17px;
-        font-weight: 400;
-        filter: grayscale(1);
+    .current-value-number.value-negative {{
+        color: var(--negative);
+    }}
+
+    .current-value-number.value-normal {{
+        color: var(--accent);
+    }}
+
+    .median-comparison {{
+        font-size: 13px;
+        font-weight: 700;
+    }}
+
+    .median-comparison.positive {{
+        color: var(--positive);
+    }}
+
+    .median-comparison.negative {{
+        color: var(--negative);
+    }}
+
+    .median-comparison.neutral {{
+        color: var(--muted);
     }}
 
     .last-updated {{
@@ -836,8 +874,9 @@ def render_dashboard(query):
     }}
 
     .chart .axis-label {{
-        fill: var(--muted);
-        font-size: 10px;
+        fill: #b8c7dc;
+        font-size: 12px;
+        font-weight: 500;
     }}
 
     .chart .area {{
@@ -1011,8 +1050,9 @@ def render_dashboard(query):
         }}
 
         .range-button {{
-            padding: 3px 2px;
-            font-size: 10px;
+            min-width: 58px;
+            padding: 4px 5px;
+            font-size: 11px;
         }}
     }}
 </style>
@@ -1091,8 +1131,9 @@ def render_dashboard(query):
         den Statistiken wird aus allen gespeicherten Messwerten berechnet.
         Die Prozentangabe neben dem aktuellen Kurs zeigt die Abweichung vom
         Median relativ zur jeweiligen typischen Spanne zwischen Median und
-        5. beziehungsweise 95. Perzentil. Die Seite aktualisiert sich
-        alle 60 Sekunden.
+        5. beziehungsweise 95. Perzentil. Der aktuelle Kurs wird grün ab
+        +50% und rot unter -50% dieser Spanne dargestellt; andernfalls
+        bleibt er blau. Die Seite aktualisiert sich alle 60 Sekunden.
     </footer>
 </main>
 
@@ -1166,10 +1207,10 @@ def render_dashboard(query):
 
         const width = 720;
         const height = 250;
-        const left = 48;
+        const left = 56;
         const right = 12;
         const top = 12;
-        const bottom = 35;
+        const bottom = 40;
         const plotWidth = width - left - right;
         const plotHeight = height - top - bottom;
 
@@ -1271,7 +1312,7 @@ def render_dashboard(query):
             }}));
 
             svg.appendChild(createSvgElement("text", {{
-                x: left - 8,
+                x: left - 10,
                 y: y + 4,
                 "text-anchor": "end",
                 class: "axis-label"
