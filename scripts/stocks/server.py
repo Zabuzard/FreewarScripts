@@ -1,4 +1,3 @@
-
 import html
 import json
 import logging
@@ -180,42 +179,82 @@ def get_latest_stocks():
 
 
 def get_chart_data(company_id, start, end, bucket_seconds):
-    """Return time-bucketed data to keep charts responsive."""
+    """
+    Return chronological min/max samples for each time bucket.
+
+    Each bucket contributes at most two original readings: its minimum
+    and maximum. This preserves peaks and dips without averaging them
+    away or returning every historical reading.
+    """
     with sqlite3.connect(DB_PATH, timeout=30) as db:
         rows = db.execute("""
-            SELECT
-                MAX(timestamp) AS timestamp,
-                AVG(value) AS value
+            SELECT timestamp, value, id
             FROM stock_values
             WHERE company_id = ?
               AND timestamp >= ?
               AND timestamp <= ?
-            GROUP BY CAST(
-                (julianday(timestamp) - julianday(?)) * 86400 / ?
-                AS INTEGER
-            )
-            ORDER BY MIN(timestamp)
+            ORDER BY timestamp ASC, id ASC
         """, (
             company_id,
             start.isoformat(timespec="seconds"),
             end.isoformat(timespec="seconds"),
-            start.isoformat(timespec="seconds"),
-            bucket_seconds,
         )).fetchall()
 
-    points = []
+    buckets = {}
 
-    for timestamp, value in rows:
+    for timestamp, value, row_id in rows:
         try:
             dt = datetime.fromisoformat(timestamp)
-            points.append([
+            bucket_index = int(
+                (dt - start).total_seconds() // bucket_seconds
+            )
+
+            point = (
                 int(dt.timestamp() * 1000),
-                round(value),
-            ])
-        except (TypeError, ValueError):
+                value,
+                timestamp,
+                row_id,
+            )
+
+        except (TypeError, ValueError, OverflowError):
             continue
 
-    return points
+        if bucket_index not in buckets:
+            buckets[bucket_index] = {
+                "min": point,
+                "max": point,
+            }
+            continue
+
+        bucket = buckets[bucket_index]
+
+        if value < bucket["min"][1]:
+            bucket["min"] = point
+
+        if value > bucket["max"][1]:
+            bucket["max"] = point
+
+    selected_points = []
+
+    for bucket in buckets.values():
+        minimum = bucket["min"]
+        maximum = bucket["max"]
+
+        selected_points.append(minimum)
+
+        # Do not duplicate a reading when it is both the minimum
+        # and maximum of its bucket.
+        if maximum[3] != minimum[3]:
+            selected_points.append(maximum)
+
+    # Minima and maxima must remain in chronological order so the
+    # chart does not draw misleading lines between readings.
+    selected_points.sort(key=lambda point: (point[0], point[3]))
+
+    return [
+        [timestamp_ms, value]
+        for timestamp_ms, value, _, _ in selected_points
+    ]
 
 
 def get_chart_stats(company_id, start, end):
@@ -387,13 +426,8 @@ def format_value(value):
 
 
 def format_signed_value(value):
-    """Format an absolute stock-value difference with an explicit sign."""
-    rounded_value = round(value)
-
-    if rounded_value > 0:
-        return f"+{format_value(rounded_value)}"
-
-    return format_value(rounded_value)
+    """Format the absolute stock-value difference without a sign."""
+    return format_value(abs(round(value)))
 
 
 def format_signed_percent(value):
@@ -466,9 +500,14 @@ def render_dashboard(query):
     )
 
     duration_seconds = max(60, (end - start).total_seconds())
+
+    # Each bucket contributes at most two points (min and max).
+    # Target half the point budget in buckets so the resulting series
+    # stays around MAX_CHART_POINTS or fewer.
+    target_bucket_count = max(1, MAX_CHART_POINTS // 2)
     bucket_seconds = max(
         60,
-        int(duration_seconds / MAX_CHART_POINTS),
+        int(duration_seconds / target_bucket_count),
     )
 
     axis_date_format = get_axis_date_format(range_key, start, end)
@@ -520,23 +559,38 @@ def render_dashboard(query):
             absolute_difference_text = None
 
         if median_difference is not None:
-            comparison_class = (
-                "positive"
-                if median_difference > 0
-                else "negative"
-                if median_difference < 0
-                else "neutral"
+            if median_difference >= 50:
+                comparison_class = "positive"
+                difference_class = "difference-extreme positive"
+            elif median_difference < -50:
+                comparison_class = "negative"
+                difference_class = "difference-extreme negative"
+            elif median_difference > 0:
+                comparison_class = "positive-muted"
+                difference_class = "difference-normal"
+            elif median_difference < 0:
+                comparison_class = "negative-muted"
+                difference_class = "difference-normal"
+            else:
+                comparison_class = "neutral"
+                difference_class = "difference-normal"
+
+            comparison_html = (
+                f'<span class="comparison-percent {comparison_class}">'
+                f'{html.escape(format_signed_percent(median_difference))}'
+                f'</span>'
             )
-            comparison_text = format_signed_percent(median_difference)
 
             if absolute_difference_text is not None:
-                comparison_text += (
-                    f" ({absolute_difference_text})"
+                comparison_html += (
+                    f' <span class="comparison-difference {difference_class}">'
+                    f'({html.escape(absolute_difference_text)})'
+                    f'</span>'
                 )
 
             median_comparison_html = (
-                f'<span class="median-comparison {comparison_class}">'
-                f'{html.escape(comparison_text)}</span>'
+                f'<span class="median-comparison">'
+                f'{comparison_html}</span>'
             )
         else:
             median_comparison_html = ""
@@ -633,6 +687,9 @@ def render_dashboard(query):
         --maximum: #4ade80;
         --positive: #4ade80;
         --negative: #ff6464;
+        --positive-muted: #39734d;
+        --negative-muted: #8a4141;
+        --difference: #65a9ff;
     }}
 
     * {{
@@ -869,7 +926,7 @@ def render_dashboard(query):
         justify-content: flex-end;
         flex-wrap: wrap;
         gap: 7px;
-        font-size: 30px;
+        font-size: 26px;
         font-weight: 800;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
@@ -918,20 +975,37 @@ def render_dashboard(query):
     }}
 
     .median-comparison {{
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 4px;
         font-size: 18px;
         font-weight: 750;
     }}
 
-    .median-comparison.positive {{
+    .comparison-percent.positive,
+    .comparison-difference.difference-extreme.positive {{
         color: var(--positive);
     }}
 
-    .median-comparison.negative {{
+    .comparison-percent.negative,
+    .comparison-difference.difference-extreme.negative {{
         color: var(--negative);
     }}
 
-    .median-comparison.neutral {{
+    .comparison-percent.positive-muted {{
+        color: var(--positive-muted);
+    }}
+
+    .comparison-percent.negative-muted {{
+        color: var(--negative-muted);
+    }}
+
+    .comparison-percent.neutral {{
         color: var(--muted);
+    }}
+
+    .comparison-difference.difference-normal {{
+        color: var(--difference);
     }}
 
     .chart-wrap {{
@@ -1107,7 +1181,7 @@ def render_dashboard(query):
 
         .current-value {{
             justify-content: flex-start;
-            font-size: 28px;
+            font-size: 25px;
         }}
 
         .trade-icon {{
@@ -1202,26 +1276,31 @@ def render_dashboard(query):
     </section>
 
     <footer>
-        Die Werte werden direkt von Freewar abgerufen.
-        Die Diagramme zeigen aggregierte Kurswerte, wenn viele Messpunkte
-        im gewählten Zeitraum liegen. Die gestrichelte orange Linie
-        zeigt den gleitenden Median der dargestellten Datenpunkte
-        (Fenster: {MEDIAN_WINDOW} Datenpunkte). Die rote Linie zeigt das
-        5. Perzentil (Min (5%)), die grüne Linie das 95. Perzentil
-        (Max (95%)) aller gespeicherten Messwerte des gewählten Zeitraums.
-        Dadurch haben einzelne Ausreißer weniger Einfluss. Der Median in
-        den Statistiken wird aus allen gespeicherten Messwerten berechnet.
-        Die Prozentangabe neben dem aktuellen Kurs zeigt die Abweichung vom
-        Median relativ zur jeweiligen typischen Spanne zwischen Median und
-        5. beziehungsweise 95. Perzentil. Der Geldbetrag in Klammern zeigt
-        die absolute Differenz zwischen aktuellem Kurs und Median.
-        Der aktuelle Kurs wird grün ab +50% und rot unter -50% dieser
-        Spanne dargestellt; andernfalls bleibt er blau. Ein rotes Minus
-        im Kreis markiert Kurse ab +50% als mögliches Verkaufssignal; ein
-        grünes Plus im Kreis markiert Kurse unter -50% als mögliches
-        Kaufsignal. Die zusätzlichen Kursinformationen erscheinen beim
-        Überfahren des Firmennamens mit der Maus. Die Seite aktualisiert
-        sich alle 60 Sekunden.
+        Die Aktienkurse werden direkt von Freewar abgerufen und regelmäßig
+        aktualisiert. Wähle oben einen Zeitraum aus oder lege einen eigenen
+        Zeitraum fest, um die Kursentwicklung der Unternehmen zu vergleichen.
+
+        Die Diagramme zeigen den Kursverlauf. Die gestrichelte orange Linie
+        stellt den gleitenden Median dar und glättet kurzfristige Schwankungen.
+        Die rote Linie markiert den typischen unteren Kursbereich
+        (5. Perzentil), die grüne Linie den typischen oberen Kursbereich
+        (95. Perzentil). Diese Werte helfen dabei, die aktuelle Kurslage im
+        Verhältnis zur bisherigen Entwicklung einzuschätzen. Die Statistiken
+        unter dem Diagramm zeigen außerdem den niedrigsten typischen Kurs,
+        den Median und den höchsten typischen Kurs des gewählten Zeitraums.
+
+        Neben dem aktuellen Kurs steht die prozentuale Abweichung vom Median.
+        Der Geldbetrag in Klammern zeigt die absolute Differenz zum Median,
+        ohne Vorzeichen. Bei einer Abweichung von mindestens +50 % werden
+        Kurs und Vergleichswerte grün angezeigt; unter -50 % erscheinen sie
+        rot. Dazwischen bleibt der Kurs und der Geldbetrag blau, während die
+        Prozentangabe dezent grün oder rot dargestellt wird.
+
+        Ein rotes Minus im Kreis kennzeichnet einen möglichen Verkaufshinweis,
+        ein grünes Plus einen möglichen Kaufhinweis. Diese Hinweise dienen
+        nur zur Orientierung und sind keine Garantie für die weitere
+        Kursentwicklung. Fahre mit der Maus über einen Firmennamen, um
+        zusätzliche Kursinformationen zu sehen.
     </footer>
 </main>
 
