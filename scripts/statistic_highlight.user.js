@@ -54,7 +54,7 @@
   function highlightMessages() {
     if (!isStatisticsPage()) { return; }
 
-    highlightStorage("Glodo-Fische im Lager", 0.6);
+    //highlightStorage("Glodo-Fische im Lager", 0.6);
     highlightStorage("Baru-Getreide im Lager", 0.5);
     highlightStorage("Ölfässer im Lager", 0.4);
     highlightStorage("Sumpfgasflaschen im Lager", 0.4);
