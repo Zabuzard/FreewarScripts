@@ -1,3 +1,4 @@
+
 import html
 import json
 import logging
@@ -23,6 +24,8 @@ MEDIAN_WINDOW = 30
 MIN_PERCENTILE = 5
 MAX_PERCENTILE = 95
 Y_AXIS_STEP = 100
+
+DASHBOARD_PATH = "/freewar/stocks"
 
 TIME_RANGES = {
     "24h": ("24 Stunden", timedelta(hours=24)),
@@ -437,7 +440,8 @@ def render_dashboard(query):
     for key, (label, _) in TIME_RANGES.items():
         active = " active" if key == range_key else ""
         range_buttons.append(
-            f'<a class="range-button{active}" href="/?range={key}">'
+            f'<a class="range-button{active}" '
+            f'href="{DASHBOARD_PATH}?range={key}">'
             f'{html.escape(label)}</a>'
         )
 
@@ -1143,7 +1147,7 @@ def render_dashboard(query):
                     {"".join(range_buttons)}
                 </nav>
 
-                <form class="custom-range" action="/" method="get">
+                <form class="custom-range" action="{DASHBOARD_PATH}" method="get">
                     <input type="hidden" name="range" value="custom">
                     <div class="date-field">
                         <label for="start">Von</label>
@@ -1756,7 +1760,7 @@ class StockHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlsplit(self.path)
 
-        if parsed.path != "/":
+        if parsed.path != DASHBOARD_PATH:
             self.send_error(404, "Not Found")
             return
 
@@ -1796,7 +1800,12 @@ def main():
     ).start()
 
     server = ThreadingHTTPServer((HOST, PORT), StockHandler)
-    log.info("Server listening on http://%s:%d", HOST, PORT)
+    log.info(
+        "Server listening on http://%s:%d%s",
+        HOST,
+        PORT,
+        DASHBOARD_PATH,
+    )
 
     try:
         server.serve_forever()
