@@ -1,4 +1,3 @@
-
 import html
 import json
 import logging
@@ -21,6 +20,7 @@ DB_PATH = Path(__file__).resolve().parent / "data.db"
 HOST = "0.0.0.0"
 PORT = 8000
 MAX_CHART_POINTS = 600
+MEDIAN_WINDOW = 11
 
 TIME_RANGES = {
     "24h": ("24 Stunden", timedelta(hours=24)),
@@ -120,7 +120,10 @@ def seed_fake_data():
                 VALUES (?, ?, ?)
             """, rows)
 
-    log.info("Inserted fake stock history for %d test companies", len(fake_companies))
+    log.info(
+        "Inserted fake stock history for %d test companies",
+        len(fake_companies),
+    )
 
 
 def save_stocks(stocks):
@@ -162,7 +165,7 @@ def get_latest_stocks():
                 ORDER BY sv.timestamp DESC, sv.id DESC
                 LIMIT 1
             )
-            ORDER BY c.name COLLATE NOCASE
+            ORDER BY c.id ASC
         """).fetchall()
 
     return [dict(row) for row in rows]
@@ -205,6 +208,51 @@ def get_chart_data(company_id, start, end, bucket_seconds):
             continue
 
     return points
+
+
+def get_chart_stats(company_id, start, end):
+    """Return exact minimum, maximum and median for the selected range."""
+    with sqlite3.connect(DB_PATH, timeout=30) as db:
+        rows = db.execute("""
+            SELECT value, timestamp
+            FROM stock_values
+            WHERE company_id = ?
+              AND timestamp >= ?
+              AND timestamp <= ?
+            ORDER BY timestamp, id
+        """, (
+            company_id,
+            start.isoformat(timespec="seconds"),
+            end.isoformat(timespec="seconds"),
+        )).fetchall()
+
+    if not rows:
+        return None
+
+    values = [row[0] for row in rows]
+    minimum = min(rows, key=lambda row: row[0])
+    maximum = max(rows, key=lambda row: row[0])
+    sorted_values = sorted(values)
+    middle = len(sorted_values) // 2
+
+    if len(sorted_values) % 2:
+        median = sorted_values[middle]
+    else:
+        median = (
+            sorted_values[middle - 1] + sorted_values[middle]
+        ) / 2
+
+    return {
+        "min": minimum[0],
+        "min_time": int(
+            datetime.fromisoformat(minimum[1]).timestamp() * 1000
+        ),
+        "max": maximum[0],
+        "max_time": int(
+            datetime.fromisoformat(maximum[1]).timestamp() * 1000
+        ),
+        "median": median,
+    }
 
 
 # == Stock collector ==
@@ -328,7 +376,6 @@ def format_value(value):
 
 def render_dashboard(query):
     stocks = get_latest_stocks()
-    now = datetime.now(timezone.utc)
     start, end, range_label, range_key, custom_start, custom_end = (
         resolve_range(query)
     )
@@ -372,10 +419,15 @@ def render_dashboard(query):
             end,
             bucket_seconds,
         )
+        stats = get_chart_stats(company_id, start, end)
 
         # JSON contains numeric timestamps and values only.
         points_json = json.dumps(
             points,
+            separators=(",", ":"),
+        )
+        stats_json = json.dumps(
+            stats,
             separators=(",", ":"),
         )
 
@@ -398,6 +450,7 @@ def render_dashboard(query):
                         aria-label="Kursverlauf: {name}"
                         viewBox="0 0 720 250"
                         data-points="{html.escape(points_json, quote=True)}"
+                        data-stats="{html.escape(stats_json, quote=True)}"
                     ></svg>
                     <div class="tooltip" hidden></div>
                 </div>
@@ -405,6 +458,7 @@ def render_dashboard(query):
                     <span>{len(points)} Datenpunkte</span>
                     <span>{html.escape(range_label)}</span>
                 </div>
+                <div class="chart-stats"></div>
             </article>
         """)
 
@@ -434,6 +488,9 @@ def render_dashboard(query):
         --muted: #91a0b8;
         --accent: #70ddb0;
         --grid: #28364b;
+        --median: #e5b85c;
+        --minimum: #70ddb0;
+        --maximum: #ff7777;
     }}
 
     * {{
@@ -453,8 +510,22 @@ def render_dashboard(query):
         padding: 42px 22px;
     }}
 
+    .header-layout {{
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 28px;
+        margin-bottom: 30px;
+    }}
+
     header {{
-        margin-bottom: 28px;
+        flex: 1 1 auto;
+        min-width: 0;
+    }}
+
+    .header-controls {{
+        flex: 0 1 520px;
+        min-width: 0;
     }}
 
     .eyebrow {{
@@ -495,7 +566,6 @@ def render_dashboard(query):
     }}
 
     .controls {{
-        margin: 26px 0 30px;
         padding: 18px;
         border: 1px solid var(--border);
         border-radius: 14px;
@@ -559,6 +629,7 @@ def render_dashboard(query):
 
     input[type="date"] {{
         min-height: 39px;
+        max-width: 100%;
         padding: 7px 10px;
         border: 1px solid var(--border);
         border-radius: 8px;
@@ -686,8 +757,29 @@ def render_dashboard(query):
         stroke-linejoin: round;
     }}
 
+    .chart .median-line {{
+        fill: none;
+        stroke: var(--median);
+        stroke-width: 2;
+        stroke-dasharray: 6 4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }}
+
     .chart .point {{
         fill: var(--accent);
+        stroke: var(--panel);
+        stroke-width: 2;
+    }}
+
+    .chart .min-point {{
+        fill: var(--minimum);
+        stroke: var(--panel);
+        stroke-width: 2;
+    }}
+
+    .chart .max-point {{
+        fill: var(--maximum);
         stroke: var(--panel);
         stroke-width: 2;
     }}
@@ -736,6 +828,32 @@ def render_dashboard(query):
         font-size: 11px;
     }}
 
+    .chart-stats {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 12px;
+    }}
+
+    .chart-stats strong {{
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+    }}
+
+    .chart-stats .stat-min strong {{
+        color: var(--minimum);
+    }}
+
+    .chart-stats .stat-max strong {{
+        color: var(--maximum);
+    }}
+
+    .chart-stats .stat-median strong {{
+        color: var(--median);
+    }}
+
     .empty {{
         grid-column: 1 / -1;
         padding: 36px;
@@ -750,6 +868,17 @@ def render_dashboard(query):
         color: var(--muted);
         font-size: 12px;
         line-height: 1.8;
+    }}
+
+    @media (max-width: 1000px) {{
+        .header-layout {{
+            flex-direction: column;
+        }}
+
+        .header-controls {{
+            flex: 1 1 auto;
+            width: 100%;
+        }}
     }}
 
     @media (max-width: 560px) {{
@@ -773,57 +902,61 @@ def render_dashboard(query):
 </head>
 <body>
 <main>
-    <header>
-        <div class="eyebrow">Welt 1 · Marktdaten</div>
-        <h1>Freewar-Aktienkurse</h1>
-        <div class="subtitle">
-            Historische Kursentwicklung aller Unternehmen.
-        </div>
-        <div class="status">
-            <span class="dot"></span>
-            Automatische Aktualisierung alle 5 Minuten
-        </div>
-    </header>
-
-    <section class="controls">
-        <div class="control-label">Zeitraum auswählen</div>
-        <nav class="ranges">
-            {"".join(range_buttons)}
-        </nav>
-
-        <form class="custom-range" action="/" method="get">
-            <input type="hidden" name="range" value="custom">
-            <div class="date-field">
-                <label for="start">Von</label>
-                <input
-                    type="date"
-                    id="start"
-                    name="start"
-                    value="{custom_start_value}"
-                    required
-                >
+    <div class="header-layout">
+        <header>
+            <div class="eyebrow">Welt 1 · Marktdaten</div>
+            <h1>Freewar-Aktienkurse</h1>
+            <div class="subtitle">
+                Historische Kursentwicklung aller Unternehmen.
             </div>
-            <div class="date-field">
-                <label for="end">Bis</label>
-                <input
-                    type="date"
-                    id="end"
-                    name="end"
-                    value="{custom_end_value}"
-                    required
-                >
+            <div class="status">
+                <span class="dot"></span>
+                Automatische Aktualisierung alle 5 Minuten
             </div>
-            <button class="submit-button" type="submit">
-                Zeitraum anwenden
-            </button>
-        </form>
+        </header>
 
-        <div class="range-summary">
-            Angezeigter Zeitraum:
-            <strong>{html.escape(range_label)}</strong>
-            · Alle Zeitangaben in deiner lokalen Zeitzone
+        <div class="header-controls">
+            <section class="controls">
+                <div class="control-label">Zeitraum auswählen</div>
+                <nav class="ranges">
+                    {"".join(range_buttons)}
+                </nav>
+
+                <form class="custom-range" action="/" method="get">
+                    <input type="hidden" name="range" value="custom">
+                    <div class="date-field">
+                        <label for="start">Von</label>
+                        <input
+                            type="date"
+                            id="start"
+                            name="start"
+                            value="{custom_start_value}"
+                            required
+                        >
+                    </div>
+                    <div class="date-field">
+                        <label for="end">Bis</label>
+                        <input
+                            type="date"
+                            id="end"
+                            name="end"
+                            value="{custom_end_value}"
+                            required
+                        >
+                    </div>
+                    <button class="submit-button" type="submit">
+                        Zeitraum anwenden
+                    </button>
+                </form>
+
+                <div class="range-summary">
+                    Angezeigter Zeitraum:
+                    <strong>{html.escape(range_label)}</strong>
+                    · Alle Zeitangaben in deiner lokalen Zeitzone
+                </div>
+            </section>
         </div>
-    </section>
+    </div>
 
     <section class="grid">
         {cards_html}
@@ -832,14 +965,18 @@ def render_dashboard(query):
     <footer>
         Die Werte werden direkt von Freewar abgerufen.
         Die Diagramme zeigen aggregierte Kurswerte, wenn viele Messpunkte
-        im gewählten Zeitraum liegen. Die Seite aktualisiert sich alle
-        60 Sekunden.
+        im gewählten Zeitraum liegen. Die gestrichelte Linie zeigt den
+        gleitenden Median der dargestellten Datenpunkte. Minimum, Maximum
+        und Median werden aus allen gespeicherten Messwerten des gewählten
+        Zeitraums berechnet. Die Seite aktualisiert sich alle 60 Sekunden.
     </footer>
 </main>
 
 <script>
 (function () {{
     "use strict";
+
+    const MEDIAN_WINDOW = {MEDIAN_WINDOW};
 
     const numberFormat = new Intl.NumberFormat("de-DE", {{
         maximumFractionDigits: 2
@@ -871,13 +1008,34 @@ def render_dashboard(query):
         return element;
     }}
 
+    function getMedian(values) {{
+        const sorted = values.slice().sort(function (a, b) {{
+            return a - b;
+        }});
+
+        const middle = Math.floor(sorted.length / 2);
+
+        if (sorted.length % 2) {{
+            return sorted[middle];
+        }}
+
+        return (sorted[middle - 1] + sorted[middle]) / 2;
+    }}
+
     function drawChart(svg) {{
         let points;
+        let stats;
 
         try {{
             points = JSON.parse(svg.dataset.points || "[]");
         }} catch (error) {{
             points = [];
+        }}
+
+        try {{
+            stats = JSON.parse(svg.dataset.stats || "null");
+        }} catch (error) {{
+            stats = null;
         }}
 
         svg.replaceChildren();
@@ -890,6 +1048,32 @@ def render_dashboard(query):
         const bottom = 35;
         const plotWidth = width - left - right;
         const plotHeight = height - top - bottom;
+
+        const statsContainer = svg.parentElement
+            .parentElement.querySelector(".chart-stats");
+
+        statsContainer.replaceChildren();
+
+        if (stats) {{
+            [
+                ["Minimum", stats.min, "stat-min"],
+                ["Maximum", stats.max, "stat-max"],
+                ["Median", stats.median, "stat-median"]
+            ].forEach(function (stat) {{
+                const item = document.createElement("span");
+                item.className = stat[2];
+
+                const value = document.createElement("strong");
+                value.textContent = numberFormat.format(stat[1]);
+
+                item.append(
+                    document.createTextNode(stat[0] + ": "),
+                    value
+                );
+
+                statsContainer.appendChild(item);
+            }});
+        }}
 
         if (!points.length) {{
             svg.appendChild(createSvgElement("text", {{
@@ -914,6 +1098,11 @@ def render_dashboard(query):
         let minValue = Math.min.apply(null, values);
         let maxValue = Math.max.apply(null, values);
 
+        if (stats) {{
+            minValue = Math.min(minValue, stats.min);
+            maxValue = Math.max(maxValue, stats.max);
+        }}
+
         if (minValue === maxValue) {{
             minValue -= 1;
             maxValue += 1;
@@ -928,11 +1117,13 @@ def render_dashboard(query):
         const timeSpan = Math.max(1, maxTime - minTime);
 
         function xFor(timestamp) {{
-            return left + ((timestamp - minTime) / timeSpan) * plotWidth;
+            return left +
+                ((timestamp - minTime) / timeSpan) * plotWidth;
         }}
 
         function yFor(value) {{
-            return top + ((maxValue - value) / (maxValue - minValue)) * plotHeight;
+            return top +
+                ((maxValue - value) / (maxValue - minValue)) * plotHeight;
         }}
 
         for (let i = 0; i <= 4; i++) {{
@@ -1002,6 +1193,71 @@ def render_dashboard(query):
             d: linePath,
             class: "line"
         }}));
+
+        const medianCoordinates = coordinates.map(function (point, index) {{
+            const halfWindow = Math.floor(MEDIAN_WINDOW / 2);
+            const windowStart = Math.max(
+                0,
+                Math.min(
+                    index - halfWindow,
+                    coordinates.length - MEDIAN_WINDOW
+                )
+            );
+            const windowEnd = Math.min(
+                coordinates.length,
+                windowStart + MEDIAN_WINDOW
+            );
+
+            const windowValues = coordinates
+                .slice(windowStart, windowEnd)
+                .map(function (item) {{
+                    return item.value;
+                }});
+
+            return {{
+                x: point.x,
+                y: yFor(getMedian(windowValues))
+            }};
+        }});
+
+        const medianPath = medianCoordinates.map(function (point, index) {{
+            return (index === 0 ? "M" : "L") +
+                point.x.toFixed(2) + " " + point.y.toFixed(2);
+        }}).join(" ");
+
+        svg.appendChild(createSvgElement("path", {{
+            d: medianPath,
+            class: "median-line"
+        }}));
+
+        if (stats) {{
+            [
+                {{
+                    value: stats.min,
+                    timestamp: stats.min_time,
+                    className: "min-point"
+                }},
+                {{
+                    value: stats.max,
+                    timestamp: stats.max_time,
+                    className: "max-point"
+                }}
+            ].forEach(function (stat) {{
+                if (
+                    stat.timestamp < minTime ||
+                    stat.timestamp > maxTime
+                ) {{
+                    return;
+                }}
+
+                svg.appendChild(createSvgElement("circle", {{
+                    cx: xFor(stat.timestamp),
+                    cy: yFor(stat.value),
+                    r: 5,
+                    class: stat.className
+                }}));
+            }});
+        }}
 
         const marker = createSvgElement("circle", {{
             cx: first.x,
