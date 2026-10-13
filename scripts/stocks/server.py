@@ -1,6 +1,8 @@
+
 import html
 import json
 import logging
+import math
 import random
 import re
 import sqlite3
@@ -36,7 +38,7 @@ TIME_RANGES = {
     "all": ("Gesamt", None),
 }
 
-DEFAULT_RANGE = "3y"
+DEFAULT_RANGE = "all"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -77,7 +79,7 @@ def init_db():
 
 
 def seed_fake_data():
-    """Insert temporary six-month history for the six test companies."""
+    """Generate smooth, realistic-looking stock histories for six companies."""
     fake_companies = [
         (1, "Teidam Burger Corporation"),
         (2, "Herberge Vulkanblick Ag"),
@@ -89,6 +91,18 @@ def seed_fake_data():
 
     now = datetime.now(timezone.utc)
     start = now - timedelta(days=182)
+    interval = timedelta(minutes=5)
+    interval_seconds = interval.total_seconds()
+    rng = random.Random(42)
+
+    profiles = {
+        1: {"base": 460, "trend": 0.08, "volatility": 2.0, "cycle": 18},
+        2: {"base": 390, "trend": -0.03, "volatility": 1.5, "cycle": 25},
+        3: {"base": 540, "trend": 0.02, "volatility": 1.0, "cycle": 35},
+        4: {"base": 330, "trend": 0.05, "volatility": 2.5, "cycle": 22},
+        5: {"base": 490, "trend": -0.06, "volatility": 3.0, "cycle": 16},
+        6: {"base": 420, "trend": 0.01, "volatility": 0.8, "cycle": 40},
+    }
 
     with sqlite3.connect(DB_PATH, timeout=30) as db:
         db.executemany("""
@@ -97,20 +111,73 @@ def seed_fake_data():
             ON CONFLICT(id) DO UPDATE SET name=excluded.name
         """, fake_companies)
 
+        state = {
+            company_id: {
+                "noise": 0.0,
+                "shock": 0.0,
+                "phase": rng.uniform(0, math.tau),
+            }
+            for company_id, _ in fake_companies
+        }
+
+        total_steps = max(
+            1,
+            int((now - start).total_seconds() / interval_seconds),
+        )
         rows = []
+        step = 0
         timestamp = start
 
         while timestamp <= now:
+            progress = step / total_steps
             timestamp_text = timestamp.isoformat(timespec="seconds")
 
             for company_id, _ in fake_companies:
+                profile = profiles[company_id]
+                company_state = state[company_id]
+
+                trend = profile["trend"] * step / 12
+
+                long_cycle = math.sin(
+                    progress * math.tau * 2
+                    + company_state["phase"]
+                ) * profile["cycle"]
+
+                short_cycle = math.sin(
+                    step / 180
+                    + company_state["phase"] * 1.7
+                ) * profile["cycle"] * 0.35
+
+                company_state["noise"] = (
+                    company_state["noise"] * 0.92
+                    + rng.gauss(0, profile["volatility"] * 0.35)
+                )
+
+                if rng.random() < 0.0015:
+                    company_state["shock"] += (
+                        rng.choice([-1, 1])
+                        * rng.uniform(8, 25)
+                    )
+
+                company_state["shock"] *= 0.995
+
+                value = (
+                    profile["base"]
+                    + trend
+                    + long_cycle
+                    + short_cycle
+                    + company_state["noise"]
+                    + company_state["shock"]
+                )
+
                 rows.append((
                     company_id,
-                    random.randint(300, 600),
+                    max(1, round(value)),
                     timestamp_text,
                 ))
 
-            timestamp += timedelta(minutes=5)
+            step += 1
+            timestamp += interval
 
             if len(rows) >= 5000:
                 db.executemany("""
@@ -128,7 +195,7 @@ def seed_fake_data():
             """, rows)
 
     log.info(
-        "Inserted fake stock history for %d test companies",
+        "Generated smooth fake stock history for %d test companies",
         len(fake_companies),
     )
 
@@ -179,13 +246,7 @@ def get_latest_stocks():
 
 
 def get_chart_data(company_id, start, end, bucket_seconds):
-    """
-    Return chronological min/max samples for each time bucket.
-
-    Each bucket contributes at most two original readings: its minimum
-    and maximum. This preserves peaks and dips without averaging them
-    away or returning every historical reading.
-    """
+    """Return chronological minimum and maximum readings for each time bucket."""
     with sqlite3.connect(DB_PATH, timeout=30) as db:
         rows = db.execute("""
             SELECT timestamp, value, id
@@ -208,14 +269,7 @@ def get_chart_data(company_id, start, end, bucket_seconds):
             bucket_index = int(
                 (dt - start).total_seconds() // bucket_seconds
             )
-
-            point = (
-                int(dt.timestamp() * 1000),
-                value,
-                timestamp,
-                row_id,
-            )
-
+            point = (int(dt.timestamp() * 1000), value, row_id)
         except (TypeError, ValueError, OverflowError):
             continue
 
@@ -239,26 +293,21 @@ def get_chart_data(company_id, start, end, bucket_seconds):
     for bucket in buckets.values():
         minimum = bucket["min"]
         maximum = bucket["max"]
-
         selected_points.append(minimum)
 
-        # Do not duplicate a reading when it is both the minimum
-        # and maximum of its bucket.
-        if maximum[3] != minimum[3]:
+        if maximum[2] != minimum[2]:
             selected_points.append(maximum)
 
-    # Minima and maxima must remain in chronological order so the
-    # chart does not draw misleading lines between readings.
-    selected_points.sort(key=lambda point: (point[0], point[3]))
+    selected_points.sort(key=lambda point: (point[0], point[2]))
 
     return [
         [timestamp_ms, value]
-        for timestamp_ms, value, _, _ in selected_points
+        for timestamp_ms, value, _ in selected_points
     ]
 
 
 def get_chart_stats(company_id, start, end):
-    """Return percentile-based minimum/maximum and the exact median."""
+    """Return the 5th percentile, median and 95th percentile."""
     with sqlite3.connect(DB_PATH, timeout=30) as db:
         rows = db.execute("""
             SELECT value, timestamp
@@ -276,8 +325,7 @@ def get_chart_stats(company_id, start, end):
     if not rows:
         return None
 
-    sorted_rows = sorted(rows, key=lambda row: row[0])
-    values = [row[0] for row in sorted_rows]
+    values = sorted(row[0] for row in rows)
     count = len(values)
 
     def percentile(percent):
@@ -291,19 +339,18 @@ def get_chart_stats(company_id, start, end):
             + values[upper_index] * fraction
         )
 
-    minimum = percentile(MIN_PERCENTILE)
-    maximum = percentile(MAX_PERCENTILE)
-
     middle = count // 2
 
     if count % 2:
         median = values[middle]
     else:
-        median = round((values[middle - 1] + values[middle]) / 2)
+        median = round(
+            (values[middle - 1] + values[middle]) / 2
+        )
 
     return {
-        "min": minimum,
-        "max": maximum,
+        "min": percentile(MIN_PERCENTILE),
+        "max": percentile(MAX_PERCENTILE),
         "median": median,
     }
 
@@ -316,6 +363,7 @@ def parse_stocks(source):
 
     for line in source.splitlines():
         line = line.strip()
+
         if not line:
             continue
 
@@ -383,13 +431,8 @@ def resolve_range(query):
     custom_end = query.get("end", [""])[0]
 
     if custom_start or custom_end:
-        start = parse_date(
-            custom_start,
-            now - timedelta(days=7),
-        )
+        start = parse_date(custom_start, now - timedelta(days=7))
         end_date = parse_date(custom_end, now)
-
-        # Include the full selected end date.
         end = end_date + timedelta(days=1) - timedelta(seconds=1)
 
         if start > end:
@@ -398,8 +441,7 @@ def resolve_range(query):
         if end > now:
             end = now
 
-        label = "Benutzerdefiniert"
-        return start, end, label, "custom", custom_start, custom_end
+        return start, end, "Benutzerdefiniert", "custom", custom_start, custom_end
 
     label, duration = TIME_RANGES[range_key]
     start = now - duration if duration else None
@@ -440,23 +482,21 @@ def format_signed_percent(value):
 
 
 def get_median_comparison(value, stats):
-    """Express the median distance as a percentage of the typical range."""
+    """Compare the current value with the median and typical range."""
     if value is None or not stats:
         return None
 
     median = stats["median"]
-    minimum = stats["min"]
-    maximum = stats["max"]
 
     if value > median:
-        typical_range = maximum - median
+        typical_range = stats["max"] - median
 
         if typical_range <= 0:
             return None
 
         percentage = ((value - median) / typical_range) * 100
     elif value < median:
-        typical_range = median - minimum
+        typical_range = median - stats["min"]
 
         if typical_range <= 0:
             return None
@@ -469,7 +509,6 @@ def get_median_comparison(value, stats):
 
 
 def get_axis_date_format(range_key, start, end):
-    """Choose readable X-axis labels for the selected time span."""
     if range_key == "24h":
         return "time"
 
@@ -483,8 +522,10 @@ def get_axis_date_format(range_key, start, end):
 
     if duration_days <= 1:
         return "time"
+
     if duration_days <= 100:
         return "date"
+
     if duration_days <= 550:
         return "month"
 
@@ -495,15 +536,17 @@ def get_axis_date_format(range_key, start, end):
 
 def render_dashboard(query):
     stocks = get_latest_stocks()
-    start, end, range_label, range_key, custom_start, custom_end = (
-        resolve_range(query)
-    )
+
+    (
+        start,
+        end,
+        range_label,
+        range_key,
+        custom_start,
+        custom_end,
+    ) = resolve_range(query)
 
     duration_seconds = max(60, (end - start).total_seconds())
-
-    # Each bucket contributes at most two points (min and max).
-    # Target half the point budget in buckets so the resulting series
-    # stays around MAX_CHART_POINTS or fewer.
     target_bucket_count = max(1, MAX_CHART_POINTS // 2)
     bucket_seconds = max(
         60,
@@ -531,23 +574,11 @@ def render_dashboard(query):
         value_display = f"{value_text}g" if value is not None else value_text
         timestamp = stock["timestamp"] or ""
 
-        points = get_chart_data(
-            company_id,
-            start,
-            end,
-            bucket_seconds,
-        )
+        points = get_chart_data(company_id, start, end, bucket_seconds)
         stats = get_chart_stats(company_id, start, end)
 
-        points_json = json.dumps(
-            points,
-            separators=(",", ":"),
-        )
-        stats_json = json.dumps(
-            stats,
-            separators=(",", ":"),
-        )
-
+        points_json = json.dumps(points, separators=(",", ":"))
+        stats_json = json.dumps(stats, separators=(",", ":"))
         median_difference = get_median_comparison(value, stats)
 
         if stats and value is not None:
@@ -599,25 +630,22 @@ def render_dashboard(query):
             value_class = "value-positive"
             recommendation_html = (
                 '<span class="trade-icon trade-sell" '
-                'title="Verkaufssignal" '
-                'aria-label="Verkaufen">−</span>'
+                'title="Verkaufssignal" aria-label="Verkaufen">−</span>'
             )
         elif median_difference is not None and median_difference < -50:
             value_class = "value-negative"
             recommendation_html = (
                 '<span class="trade-icon trade-buy" '
-                'title="Kaufsignal" '
-                'aria-label="Kaufen">+</span>'
+                'title="Kaufsignal" aria-label="Kaufen">+</span>'
             )
         else:
             value_class = "value-normal"
             recommendation_html = ""
 
-        point_count = len(points)
         hover_info = html.escape(
             f"Letzter Kurs: {value_display}\n"
             f"Zeitpunkt: {timestamp or 'Noch nicht erfasst'}\n"
-            f"Datenpunkte: {point_count}\n"
+            f"Datenpunkte: {len(points)}\n"
             f"Zeitraum: {range_label}",
             quote=True,
         )
@@ -657,9 +685,7 @@ def render_dashboard(query):
         """)
 
     cards_html = "\n".join(cards) or """
-        <div class="empty">
-            Noch keine Unternehmen vorhanden.
-        </div>
+        <div class="empty">Noch keine Unternehmen vorhanden.</div>
     """
 
     custom_start_value = html.escape(custom_start, quote=True)
@@ -704,9 +730,9 @@ def render_dashboard(query):
     }}
 
     main {{
-        max-width: 1400px;
+        max-width: 1600px;
         margin: auto;
-        padding: 42px 22px;
+        padding: 36px 22px;
     }}
 
     .header-layout {{
@@ -864,7 +890,7 @@ def render_dashboard(query):
     .grid {{
         display: grid;
         grid-template-columns: repeat(
-            auto-fit, minmax(min(100%, 440px), 1fr)
+            auto-fit, minmax(min(100%, 500px), 1fr)
         );
         gap: 18px;
     }}
@@ -889,6 +915,7 @@ def render_dashboard(query):
         align-items: flex-start;
         gap: 10px;
         min-width: 0;
+        flex: 1 1 auto;
     }}
 
     .id {{
@@ -906,7 +933,7 @@ def render_dashboard(query):
         font-size: 15px;
         font-weight: 650;
         line-height: 1.5;
-        overflow-wrap: anywhere;
+        white-space: nowrap;
     }}
 
     .company-name {{
@@ -1174,6 +1201,10 @@ def render_dashboard(query):
             flex-wrap: wrap;
         }}
 
+        .company {{
+            width: 100%;
+        }}
+
         .current-value-wrap {{
             margin-left: 34px;
             text-align: left;
@@ -1239,23 +1270,13 @@ def render_dashboard(query):
                     <input type="hidden" name="range" value="custom">
                     <div class="date-field">
                         <label for="start">Von</label>
-                        <input
-                            type="date"
-                            id="start"
-                            name="start"
-                            value="{custom_start_value}"
-                            required
-                        >
+                        <input type="date" id="start" name="start"
+                            value="{custom_start_value}" required>
                     </div>
                     <div class="date-field">
                         <label for="end">Bis</label>
-                        <input
-                            type="date"
-                            id="end"
-                            name="end"
-                            value="{custom_end_value}"
-                            required
-                        >
+                        <input type="date" id="end" name="end"
+                            value="{custom_end_value}" required>
                     </div>
                     <button class="submit-button" type="submit">
                         Zeitraum anwenden
@@ -1370,77 +1391,36 @@ def render_dashboard(query):
             return sorted[middle];
         }}
 
-        return Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+        return Math.round(
+            (sorted[middle - 1] + sorted[middle]) / 2
+        );
     }}
 
     function getAxisTickConfig(rangeKey, duration) {{
         const durationHours = duration / (60 * 60 * 1000);
         const durationDays = durationHours / 24;
 
-        if (rangeKey === "24h") {{
-            return {{ unit: "hour", step: 3 }};
-        }}
+        if (rangeKey === "24h") return {{ unit: "hour", step: 3 }};
+        if (rangeKey === "7d") return {{ unit: "day", step: 1 }};
+        if (rangeKey === "30d") return {{ unit: "day", step: 5 }};
+        if (rangeKey === "3m") return {{ unit: "day", step: 14 }};
+        if (rangeKey === "6m") return {{ unit: "month", step: 1 }};
+        if (rangeKey === "1y") return {{ unit: "month", step: 2 }};
+        if (rangeKey === "3y") return {{ unit: "month", step: 6 }};
 
-        if (rangeKey === "7d") {{
-            return {{ unit: "day", step: 1 }};
-        }}
-
-        if (rangeKey === "30d") {{
-            return {{ unit: "day", step: 5 }};
-        }}
-
-        if (rangeKey === "3m") {{
-            return {{ unit: "day", step: 14 }};
-        }}
-
-        if (rangeKey === "6m") {{
-            return {{ unit: "month", step: 1 }};
-        }}
-
-        if (rangeKey === "1y") {{
-            return {{ unit: "month", step: 2 }};
-        }}
-
-        if (rangeKey === "3y") {{
-            return {{ unit: "month", step: 6 }};
-        }}
-
-        if (durationHours <= 30) {{
-            return {{ unit: "hour", step: 3 }};
-        }}
-
-        if (durationDays <= 8) {{
-            return {{ unit: "day", step: 1 }};
-        }}
-
-        if (durationDays <= 35) {{
-            return {{ unit: "day", step: 5 }};
-        }}
-
-        if (durationDays <= 100) {{
-            return {{ unit: "day", step: 14 }};
-        }}
-
-        if (durationDays <= 200) {{
-            return {{ unit: "month", step: 1 }};
-        }}
-
-        if (durationDays <= 400) {{
-            return {{ unit: "month", step: 2 }};
-        }}
-
-        if (durationDays <= 1200) {{
-            return {{ unit: "month", step: 6 }};
-        }}
+        if (durationHours <= 30) return {{ unit: "hour", step: 3 }};
+        if (durationDays <= 8) return {{ unit: "day", step: 1 }};
+        if (durationDays <= 35) return {{ unit: "day", step: 5 }};
+        if (durationDays <= 100) return {{ unit: "day", step: 14 }};
+        if (durationDays <= 200) return {{ unit: "month", step: 1 }};
+        if (durationDays <= 400) return {{ unit: "month", step: 2 }};
+        if (durationDays <= 1200) return {{ unit: "month", step: 6 }};
 
         return {{ unit: "year", step: 1 }};
     }}
 
     function getAlignedTicks(minTime, maxTime, rangeKey) {{
-        const config = getAxisTickConfig(
-            rangeKey,
-            maxTime - minTime
-        );
+        const config = getAxisTickConfig(rangeKey, maxTime - minTime);
         const ticks = [];
 
         if (config.unit === "hour") {{
@@ -1464,13 +1444,10 @@ def render_dashboard(query):
                 start.getMonth(),
                 start.getDate()
             );
-
             date.setHours(0, 0, 0, 0);
 
             if (config.step === 1) {{
-                if (date.getTime() < minTime) {{
-                    date.setDate(date.getDate() + 1);
-                }}
+                if (date.getTime() < minTime) date.setDate(date.getDate() + 1);
             }} else {{
                 const dayNumber = Math.floor(
                     date.getTime() / (24 * 60 * 60 * 1000)
@@ -1495,9 +1472,7 @@ def render_dashboard(query):
         }}
 
         if (config.unit === "month") {{
-            const monthIndex =
-                start.getFullYear() * 12 + start.getMonth();
-
+            const monthIndex = start.getFullYear() * 12 + start.getMonth();
             const alignedMonth =
                 Math.ceil(monthIndex / config.step) * config.step;
 
@@ -1536,17 +1511,9 @@ def render_dashboard(query):
     function getTickFormat(rangeKey, duration) {{
         const config = getAxisTickConfig(rangeKey, duration);
 
-        if (config.unit === "hour") {{
-            return dateFormats.time;
-        }}
-
-        if (config.unit === "day") {{
-            return dateFormats.date;
-        }}
-
-        if (config.unit === "month") {{
-            return dateFormats.month;
-        }}
+        if (config.unit === "hour") return dateFormats.time;
+        if (config.unit === "day") return dateFormats.date;
+        if (config.unit === "month") return dateFormats.month;
 
         return dateFormats.year;
     }}
@@ -1579,8 +1546,8 @@ def render_dashboard(query):
         const plotHeight = height - top - bottom;
         const rangeKey = svg.dataset.range || "custom";
 
-        const statsContainer = svg.parentElement
-            .parentElement.querySelector(".chart-stats");
+        const statsContainer = svg.parentElement.parentElement
+            .querySelector(".chart-stats");
 
         statsContainer.replaceChildren();
 
@@ -1625,37 +1592,29 @@ def render_dashboard(query):
             return Number(point[0]);
         }});
 
-        let dataMin = stats
-            ? Number(stats.min)
-            : Math.min.apply(null, values);
-        let dataMax = stats
-            ? Number(stats.max)
-            : Math.max.apply(null, values);
+        const dataMin = stats ? Number(stats.min) : Math.min(...values);
+        const dataMax = stats ? Number(stats.max) : Math.max(...values);
+
+        let minValue;
+        let maxValue;
 
         if (dataMin === dataMax) {{
-            dataMin -= Y_AXIS_STEP;
-            dataMax += Y_AXIS_STEP;
+            minValue = Math.floor(dataMin / Y_AXIS_STEP) * Y_AXIS_STEP;
+            maxValue = minValue + Y_AXIS_STEP * 2;
+        }} else {{
+            minValue = Math.floor(dataMin / Y_AXIS_STEP) * Y_AXIS_STEP;
+            maxValue = Math.ceil(dataMax / Y_AXIS_STEP) * Y_AXIS_STEP;
         }}
 
-        let minValue = Math.floor(dataMin / Y_AXIS_STEP) * Y_AXIS_STEP;
-        let maxValue = Math.ceil(dataMax / Y_AXIS_STEP) * Y_AXIS_STEP;
-
-        if (minValue === maxValue) {{
-            minValue -= Y_AXIS_STEP;
-            maxValue += Y_AXIS_STEP;
-        }}
-
-        if (dataMin >= 0 && minValue < 0) {{
-            minValue = 0;
-        }}
+        if (dataMin >= 0 && minValue < 0) minValue = 0;
+        if (minValue === maxValue) maxValue += Y_AXIS_STEP;
 
         const minTime = timestamps[0];
         const maxTime = timestamps[timestamps.length - 1];
         const timeSpan = Math.max(1, maxTime - minTime);
 
         function xFor(timestamp) {{
-            return left +
-                ((timestamp - minTime) / timeSpan) * plotWidth;
+            return left + ((timestamp - minTime) / timeSpan) * plotWidth;
         }}
 
         function yFor(value) {{
@@ -1664,9 +1623,9 @@ def render_dashboard(query):
                 Math.min(maxValue, value)
             );
 
-            return top +
-                ((maxValue - clampedValue) / (maxValue - minValue)) *
-                    plotHeight;
+            return top + (
+                (maxValue - clampedValue) / (maxValue - minValue)
+            ) * plotHeight;
         }}
 
         for (
@@ -1692,27 +1651,16 @@ def render_dashboard(query):
             }}, numberFormat.format(value)));
         }}
 
-        const tickFormat = getTickFormat(
-            rangeKey,
-            maxTime - minTime
-        );
-        const ticks = getAlignedTicks(
-            minTime,
-            maxTime,
-            rangeKey
-        );
+        const tickFormat = getTickFormat(rangeKey, maxTime - minTime);
+        const ticks = getAlignedTicks(minTime, maxTime, rangeKey);
 
         ticks.forEach(function (timestamp) {{
             const x = xFor(timestamp);
             const date = new Date(timestamp);
-
             let anchor = "middle";
 
-            if (x < left + 35) {{
-                anchor = "start";
-            }} else if (x > width - right - 35) {{
-                anchor = "end";
-            }}
+            if (x < left + 35) anchor = "start";
+            else if (x > width - right - 35) anchor = "end";
 
             svg.appendChild(createSvgElement("line", {{
                 x1: x,
@@ -1740,15 +1688,18 @@ def render_dashboard(query):
         }});
 
         const linePath = coordinates.map(function (point, index) {{
-            return (index === 0 ? "M" : "L") +
-                point.x.toFixed(2) + " " + point.y.toFixed(2);
+            return (index === 0 ? "M" : "L")
+                + point.x.toFixed(2) + " "
+                + point.y.toFixed(2);
         }}).join(" ");
 
         const first = coordinates[0];
         const last = coordinates[coordinates.length - 1];
-        const areaPath = linePath +
-            " L " + last.x + " " + (top + plotHeight) +
-            " L " + first.x + " " + (top + plotHeight) + " Z";
+
+        const areaPath = linePath
+            + " L " + last.x + " " + (top + plotHeight)
+            + " L " + first.x + " " + (top + plotHeight)
+            + " Z";
 
         svg.appendChild(createSvgElement("path", {{
             d: areaPath,
@@ -1796,8 +1747,9 @@ def render_dashboard(query):
         }});
 
         const medianPath = medianCoordinates.map(function (point, index) {{
-            return (index === 0 ? "M" : "L") +
-                point.x.toFixed(2) + " " + point.y.toFixed(2);
+            return (index === 0 ? "M" : "L")
+                + point.x.toFixed(2) + " "
+                + point.y.toFixed(2);
         }}).join(" ");
 
         svg.appendChild(createSvgElement("path", {{
@@ -1807,14 +1759,8 @@ def render_dashboard(query):
 
         if (stats) {{
             [
-                {{
-                    value: stats.min,
-                    className: "min-line"
-                }},
-                {{
-                    value: stats.max,
-                    className: "max-line"
-                }}
+                {{ value: stats.min, className: "min-line" }},
+                {{ value: stats.max, className: "max-line" }}
             ].forEach(function (stat) {{
                 const y = yFor(stat.value);
 
@@ -1903,10 +1849,7 @@ def render_dashboard(query):
 
             tooltip.style.left = Math.max(
                 0,
-                Math.min(
-                    relativeX,
-                    bounds.width - tooltipWidth
-                )
+                Math.min(relativeX, bounds.width - tooltipWidth)
             ) + "px";
         }}
 
