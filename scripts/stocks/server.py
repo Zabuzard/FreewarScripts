@@ -20,7 +20,9 @@ DB_PATH = Path(__file__).resolve().parent / "data.db"
 HOST = "0.0.0.0"
 PORT = 8000
 MAX_CHART_POINTS = 600
-MEDIAN_WINDOW = 11
+MEDIAN_WINDOW = 30
+MIN_PERCENTILE = 5
+MAX_PERCENTILE = 95
 
 TIME_RANGES = {
     "24h": ("24 Stunden", timedelta(hours=24)),
@@ -211,7 +213,7 @@ def get_chart_data(company_id, start, end, bucket_seconds):
 
 
 def get_chart_stats(company_id, start, end):
-    """Return exact minimum, maximum and median for the selected range."""
+    """Return percentile-based minimum/maximum and the exact median."""
     with sqlite3.connect(DB_PATH, timeout=30) as db:
         rows = db.execute("""
             SELECT value, timestamp
@@ -229,28 +231,45 @@ def get_chart_stats(company_id, start, end):
     if not rows:
         return None
 
-    values = [row[0] for row in rows]
-    minimum = min(rows, key=lambda row: row[0])
-    maximum = max(rows, key=lambda row: row[0])
-    sorted_values = sorted(values)
-    middle = len(sorted_values) // 2
+    sorted_rows = sorted(rows, key=lambda row: row[0])
+    values = [row[0] for row in sorted_rows]
+    count = len(values)
 
-    if len(sorted_values) % 2:
-        median = sorted_values[middle]
+    def percentile(percent):
+        position = (count - 1) * percent / 100
+        lower_index = int(position)
+        upper_index = min(lower_index + 1, count - 1)
+        fraction = position - lower_index
+
+        return (
+            values[lower_index] * (1 - fraction)
+            + values[upper_index] * fraction
+        )
+
+    minimum = percentile(MIN_PERCENTILE)
+    maximum = percentile(MAX_PERCENTILE)
+
+    def nearest_timestamp(target):
+        row = min(
+            sorted_rows,
+            key=lambda item: abs(item[0] - target),
+        )
+        return int(
+            datetime.fromisoformat(row[1]).timestamp() * 1000
+        )
+
+    middle = count // 2
+
+    if count % 2:
+        median = values[middle]
     else:
-        median = (
-            sorted_values[middle - 1] + sorted_values[middle]
-        ) / 2
+        median = (values[middle - 1] + values[middle]) / 2
 
     return {
-        "min": minimum[0],
-        "min_time": int(
-            datetime.fromisoformat(minimum[1]).timestamp() * 1000
-        ),
-        "max": maximum[0],
-        "max_time": int(
-            datetime.fromisoformat(maximum[1]).timestamp() * 1000
-        ),
+        "min": minimum,
+        "min_time": nearest_timestamp(minimum),
+        "max": maximum,
+        "max_time": nearest_timestamp(maximum),
         "median": median,
     }
 
@@ -421,7 +440,6 @@ def render_dashboard(query):
         )
         stats = get_chart_stats(company_id, start, end)
 
-        # JSON contains numeric timestamps and values only.
         points_json = json.dumps(
             points,
             separators=(",", ":"),
@@ -488,7 +506,7 @@ def render_dashboard(query):
         --muted: #91a0b8;
         --accent: #70ddb0;
         --grid: #28364b;
-        --median: #e5b85c;
+        --median: #c45a08;
         --minimum: #70ddb0;
         --maximum: #ff7777;
     }}
@@ -524,7 +542,7 @@ def render_dashboard(query):
     }}
 
     .header-controls {{
-        flex: 0 1 520px;
+        flex: 0 1 660px;
         min-width: 0;
     }}
 
@@ -573,7 +591,7 @@ def render_dashboard(query):
     }}
 
     .control-label {{
-        margin-bottom: 10px;
+        margin-bottom: 6px;
         color: var(--muted);
         font-size: 12px;
         font-weight: 650;
@@ -581,18 +599,26 @@ def render_dashboard(query):
 
     .ranges {{
         display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
+        flex-wrap: nowrap;
+        gap: 6px;
+        width: 100%;
     }}
 
     .range-button {{
-        display: inline-block;
-        padding: 9px 13px;
+        flex: 1 1 0;
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 3px 7px;
         border: 1px solid var(--border);
-        border-radius: 9px;
+        border-radius: 7px;
         color: var(--text);
         text-decoration: none;
-        font-size: 13px;
+        text-align: center;
+        white-space: nowrap;
+        font-size: 12px;
+        line-height: 1.2;
         transition: background .15s, border-color .15s;
     }}
 
@@ -611,15 +637,15 @@ def render_dashboard(query):
         display: flex;
         flex-wrap: wrap;
         align-items: end;
-        gap: 12px;
-        margin-top: 18px;
-        padding-top: 16px;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 10px;
         border-top: 1px solid var(--border);
     }}
 
     .date-field {{
         display: grid;
-        gap: 6px;
+        gap: 4px;
     }}
 
     .date-field label {{
@@ -628,26 +654,27 @@ def render_dashboard(query):
     }}
 
     input[type="date"] {{
-        min-height: 39px;
+        min-height: 32px;
         max-width: 100%;
-        padding: 7px 10px;
+        padding: 4px 8px;
         border: 1px solid var(--border);
         border-radius: 8px;
         background: var(--bg);
         color: var(--text);
         font: inherit;
+        font-size: 12px;
     }}
 
     .submit-button {{
-        min-height: 39px;
-        padding: 8px 15px;
+        min-height: 32px;
+        padding: 5px 11px;
         border: 0;
         border-radius: 8px;
         background: #263b4b;
         color: var(--text);
         cursor: pointer;
         font: inherit;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 650;
     }}
 
@@ -656,7 +683,7 @@ def render_dashboard(query):
     }}
 
     .range-summary {{
-        margin-top: 12px;
+        margin-top: 8px;
         color: var(--muted);
         font-size: 12px;
     }}
@@ -746,13 +773,14 @@ def render_dashboard(query):
 
     .chart .area {{
         fill: var(--accent);
-        fill-opacity: .09;
+        fill-opacity: .025;
     }}
 
     .chart .line {{
         fill: none;
         stroke: var(--accent);
-        stroke-width: 2;
+        stroke-opacity: .35;
+        stroke-width: 1.5;
         stroke-linecap: round;
         stroke-linejoin: round;
     }}
@@ -760,14 +788,16 @@ def render_dashboard(query):
     .chart .median-line {{
         fill: none;
         stroke: var(--median);
-        stroke-width: 2;
-        stroke-dasharray: 6 4;
+        stroke-width: 3.5;
+        stroke-dasharray: 7 3;
         stroke-linecap: round;
         stroke-linejoin: round;
+        filter: drop-shadow(0 0 1px #0b1120);
     }}
 
     .chart .point {{
         fill: var(--accent);
+        fill-opacity: .45;
         stroke: var(--panel);
         stroke-width: 2;
     }}
@@ -897,6 +927,19 @@ def render_dashboard(query):
         .current-value {{
             margin-left: 34px;
         }}
+
+        .controls {{
+            padding: 12px;
+        }}
+
+        .ranges {{
+            gap: 4px;
+        }}
+
+        .range-button {{
+            padding: 3px 3px;
+            font-size: 10px;
+        }}
     }}
 </style>
 </head>
@@ -965,10 +1008,13 @@ def render_dashboard(query):
     <footer>
         Die Werte werden direkt von Freewar abgerufen.
         Die Diagramme zeigen aggregierte Kurswerte, wenn viele Messpunkte
-        im gewählten Zeitraum liegen. Die gestrichelte Linie zeigt den
-        gleitenden Median der dargestellten Datenpunkte. Minimum, Maximum
-        und Median werden aus allen gespeicherten Messwerten des gewählten
-        Zeitraums berechnet. Die Seite aktualisiert sich alle 60 Sekunden.
+        im gewählten Zeitraum liegen. Die gestrichelte orange Linie zeigt
+        den gleitenden Median der dargestellten Datenpunkte (Fenster:
+        {MEDIAN_WINDOW} Datenpunkte). Minimum und Maximum entsprechen dem
+        5. und 95. Perzentil aller gespeicherten Messwerte des gewählten
+        Zeitraums; dadurch haben einzelne Ausreißer weniger Einfluss.
+        Der Median wird aus allen gespeicherten Messwerten berechnet.
+        Die Seite aktualisiert sich alle 60 Sekunden.
     </footer>
 </main>
 
@@ -1056,8 +1102,8 @@ def render_dashboard(query):
 
         if (stats) {{
             [
-                ["Minimum", stats.min, "stat-min"],
-                ["Maximum", stats.max, "stat-max"],
+                ["Minimum (5. Perzentil)", stats.min, "stat-min"],
+                ["Maximum (95. Perzentil)", stats.max, "stat-max"],
                 ["Median", stats.median, "stat-median"]
             ].forEach(function (stat) {{
                 const item = document.createElement("span");
@@ -1095,13 +1141,12 @@ def render_dashboard(query):
             return Number(point[0]);
         }});
 
-        let minValue = Math.min.apply(null, values);
-        let maxValue = Math.max.apply(null, values);
-
-        if (stats) {{
-            minValue = Math.min(minValue, stats.min);
-            maxValue = Math.max(maxValue, stats.max);
-        }}
+        let minValue = stats
+            ? Number(stats.min)
+            : Math.min.apply(null, values);
+        let maxValue = stats
+            ? Number(stats.max)
+            : Math.max.apply(null, values);
 
         if (minValue === maxValue) {{
             minValue -= 1;
@@ -1122,8 +1167,14 @@ def render_dashboard(query):
         }}
 
         function yFor(value) {{
+            const clampedValue = Math.max(
+                minValue,
+                Math.min(maxValue, value)
+            );
+
             return top +
-                ((maxValue - value) / (maxValue - minValue)) * plotHeight;
+                ((maxValue - clampedValue) / (maxValue - minValue)) *
+                    plotHeight;
         }}
 
         for (let i = 0; i <= 4; i++) {{
