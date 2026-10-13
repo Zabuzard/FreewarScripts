@@ -1,11 +1,12 @@
 
 import html
 import logging
+import random
 import re
 import sqlite3
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
@@ -28,7 +29,9 @@ log = logging.getLogger("stocks")
 # == Database ==
 
 def init_db():
-    with sqlite3.connect(DB_PATH) as db:
+    is_fresh = not DB_PATH.exists()
+
+    with sqlite3.connect(DB_PATH, timeout=30) as db:
         db.execute("PRAGMA journal_mode=WAL")
         db.execute("""
             CREATE TABLE IF NOT EXISTS companies (
@@ -50,11 +53,71 @@ def init_db():
             ON stock_values(company_id, timestamp DESC, id DESC)
         """)
 
+    if is_fresh:
+        seed_fake_data()
+
+
+def seed_fake_data():
+    """Insert temporary historical data for the six test companies."""
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=182)
+
+    companies = [
+        (1, "Teidam Burger Corporation"),
+        (2, "Herberge Vulkanblick Ag"),
+        (3, "Bank aller Wesen"),
+        (4, "Sandstaub Corporation"),
+        (5, "Casino des Nordens Ag"),
+        (6, "Post Corporation"),
+    ]
+
+    with sqlite3.connect(DB_PATH, timeout=30) as db:
+        db.executemany("""
+            INSERT INTO companies (id, name)
+            VALUES (?, ?)
+            ON CONFLICT(id) DO UPDATE SET name=excluded.name
+        """, companies)
+
+        rows = []
+        timestamp = start
+
+        while timestamp <= now:
+            timestamp_text = timestamp.isoformat(timespec="seconds")
+
+            for company_id, _ in companies:
+                rows.append((
+                    company_id,
+                    random.randint(300, 600),
+                    timestamp_text,
+                ))
+
+            timestamp += timedelta(minutes=5)
+
+            if len(rows) >= 5000:
+                db.executemany("""
+                    INSERT INTO stock_values
+                        (company_id, value, timestamp)
+                    VALUES (?, ?, ?)
+                """, rows)
+                rows.clear()
+
+        if rows:
+            db.executemany("""
+                INSERT INTO stock_values
+                    (company_id, value, timestamp)
+                VALUES (?, ?, ?)
+            """, rows)
+
+    log.info(
+        "Inserted fake stock history for %d test companies",
+        len(companies),
+    )
+
 
 def save_stocks(stocks):
     timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-    with sqlite3.connect(DB_PATH, timeout=10) as db:
+    with sqlite3.connect(DB_PATH, timeout=30) as db:
         db.execute("PRAGMA foreign_keys=ON")
 
         db.executemany("""
@@ -78,7 +141,7 @@ def save_stocks(stocks):
 
 
 def get_latest_stocks():
-    with sqlite3.connect(DB_PATH, timeout=10) as db:
+    with sqlite3.connect(DB_PATH, timeout=30) as db:
         db.row_factory = sqlite3.Row
         rows = db.execute("""
             SELECT c.id, c.name, s.value, s.timestamp
@@ -407,14 +470,14 @@ def render_dashboard():
 class StockHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path != "/":
-            self.send_error(404, "Nicht gefunden")
+            self.send_error(404, "Not Found")
             return
 
         try:
             page = render_dashboard().encode("utf-8")
         except Exception:
             log.exception("Failed to render dashboard")
-            self.send_error(500, "Interner Serverfehler")
+            self.send_error(500, "Internal Server Error")
             return
 
         self.send_response(200)
