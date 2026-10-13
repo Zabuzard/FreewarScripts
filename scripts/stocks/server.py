@@ -30,7 +30,7 @@ TIME_RANGES = {
     "30d": ("30 Tage", timedelta(days=30)),
     "3m": ("3 Monate", timedelta(days=90)),
     "6m": ("6 Monate", timedelta(days=182)),
-    "all": ("Gesamter Zeitraum", None),
+    "all": ("Gesamt", None),
 }
 
 logging.basicConfig(
@@ -204,7 +204,7 @@ def get_chart_data(company_id, start, end, bucket_seconds):
             dt = datetime.fromisoformat(timestamp)
             points.append([
                 int(dt.timestamp() * 1000),
-                round(value, 2),
+                round(value),
             ])
         except (TypeError, ValueError):
             continue
@@ -241,7 +241,7 @@ def get_chart_stats(company_id, start, end):
         upper_index = min(lower_index + 1, count - 1)
         fraction = position - lower_index
 
-        return (
+        return round(
             values[lower_index] * (1 - fraction)
             + values[upper_index] * fraction
         )
@@ -249,27 +249,16 @@ def get_chart_stats(company_id, start, end):
     minimum = percentile(MIN_PERCENTILE)
     maximum = percentile(MAX_PERCENTILE)
 
-    def nearest_timestamp(target):
-        row = min(
-            sorted_rows,
-            key=lambda item: abs(item[0] - target),
-        )
-        return int(
-            datetime.fromisoformat(row[1]).timestamp() * 1000
-        )
-
     middle = count // 2
 
     if count % 2:
         median = values[middle]
     else:
-        median = (values[middle - 1] + values[middle]) / 2
+        median = round((values[middle - 1] + values[middle]) / 2)
 
     return {
         "min": minimum,
-        "min_time": nearest_timestamp(minimum),
         "max": maximum,
-        "max_time": nearest_timestamp(maximum),
         "median": median,
     }
 
@@ -388,7 +377,45 @@ def format_value(value):
     if value is None:
         return "Keine Daten"
 
-    return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{round(value):,}".replace(",", ".")
+
+
+def format_signed_percent(value):
+    rounded_value = round(value)
+
+    if rounded_value > 0:
+        return f"+{rounded_value}%"
+
+    return f"{rounded_value}%"
+
+
+def get_median_comparison(value, stats):
+    """Express the distance from the median as a percentage of the typical range."""
+    if value is None or not stats:
+        return ""
+
+    median = stats["median"]
+    minimum = stats["min"]
+    maximum = stats["max"]
+
+    if value > median:
+        typical_range = maximum - median
+
+        if typical_range <= 0:
+            return ""
+
+        percentage = ((value - median) / typical_range) * 100
+    elif value < median:
+        typical_range = median - minimum
+
+        if typical_range <= 0:
+            return ""
+
+        percentage = -((median - value) / typical_range) * 100
+    else:
+        percentage = 0
+
+    return format_signed_percent(percentage)
 
 
 # == HTML dashboard ==
@@ -449,6 +476,15 @@ def render_dashboard(query):
             separators=(",", ":"),
         )
 
+        median_comparison = get_median_comparison(value, stats)
+
+        if median_comparison:
+            median_comparison_html = (
+                f'<span class="median-comparison">{median_comparison}</span>'
+            )
+        else:
+            median_comparison_html = ""
+
         cards.append(f"""
             <article class="card">
                 <div class="card-header">
@@ -456,7 +492,13 @@ def render_dashboard(query):
                         <span class="id">#{company_id}</span>
                         <h2>{name}</h2>
                     </div>
-                    <div class="current-value">{value_text}</div>
+                    <div class="current-value-wrap">
+                        <div class="current-value">
+                            <span class="current-value-number">{value_text}</span>
+                            {median_comparison_html}
+                            <span class="currency-symbol">🪙</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="last-updated">
                     Letzter Kurs: {latest_time}
@@ -504,11 +546,11 @@ def render_dashboard(query):
         --border: #28364b;
         --text: #edf2fa;
         --muted: #91a0b8;
-        --accent: #70ddb0;
+        --accent: #65a9ff;
         --grid: #28364b;
-        --median: #c45a08;
-        --minimum: #70ddb0;
-        --maximum: #ff7777;
+        --median: #fca96a;
+        --minimum: #ff6464;
+        --maximum: #4ade80;
     }}
 
     * {{
@@ -584,14 +626,14 @@ def render_dashboard(query):
     }}
 
     .controls {{
-        padding: 18px;
+        padding: 7px 10px;
         border: 1px solid var(--border);
         border-radius: 14px;
         background: var(--panel);
     }}
 
     .control-label {{
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         color: var(--muted);
         font-size: 12px;
         font-weight: 650;
@@ -638,43 +680,43 @@ def render_dashboard(query):
         flex-wrap: wrap;
         align-items: end;
         gap: 8px;
-        margin-top: 12px;
-        padding-top: 10px;
+        margin-top: 7px;
+        padding-top: 7px;
         border-top: 1px solid var(--border);
     }}
 
     .date-field {{
         display: grid;
-        gap: 4px;
+        gap: 3px;
     }}
 
     .date-field label {{
         color: var(--muted);
-        font-size: 12px;
+        font-size: 11px;
     }}
 
     input[type="date"] {{
-        min-height: 32px;
+        min-height: 25px;
         max-width: 100%;
-        padding: 4px 8px;
+        padding: 2px 6px;
         border: 1px solid var(--border);
-        border-radius: 8px;
+        border-radius: 6px;
         background: var(--bg);
         color: var(--text);
         font: inherit;
-        font-size: 12px;
+        font-size: 11px;
     }}
 
     .submit-button {{
-        min-height: 32px;
-        padding: 5px 11px;
+        min-height: 25px;
+        padding: 3px 8px;
         border: 0;
-        border-radius: 8px;
+        border-radius: 6px;
         background: #263b4b;
         color: var(--text);
         cursor: pointer;
         font: inherit;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 650;
     }}
 
@@ -683,9 +725,9 @@ def render_dashboard(query):
     }}
 
     .range-summary {{
-        margin-top: 8px;
+        margin-top: 5px;
         color: var(--muted);
-        font-size: 12px;
+        font-size: 11px;
     }}
 
     .grid {{
@@ -736,12 +778,39 @@ def render_dashboard(query):
         overflow-wrap: anywhere;
     }}
 
-    .current-value {{
+    .current-value-wrap {{
         flex-shrink: 0;
+        text-align: right;
+    }}
+
+    .current-value {{
+        display: flex;
+        align-items: baseline;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 5px;
         color: var(--accent);
         font-size: 23px;
         font-weight: 750;
         font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }}
+
+    .current-value-number {{
+        color: var(--accent);
+    }}
+
+    .median-comparison {{
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 650;
+    }}
+
+    .currency-symbol {{
+        color: inherit;
+        font-size: 17px;
+        font-weight: 400;
+        filter: grayscale(1);
     }}
 
     .last-updated {{
@@ -779,7 +848,7 @@ def render_dashboard(query):
     .chart .line {{
         fill: none;
         stroke: var(--accent);
-        stroke-opacity: .35;
+        stroke-opacity: .55;
         stroke-width: 1.5;
         stroke-linecap: round;
         stroke-linejoin: round;
@@ -797,21 +866,21 @@ def render_dashboard(query):
 
     .chart .point {{
         fill: var(--accent);
-        fill-opacity: .45;
+        fill-opacity: .7;
         stroke: var(--panel);
-        stroke-width: 2;
+        stroke-width: 1.5;
     }}
 
-    .chart .min-point {{
-        fill: var(--minimum);
-        stroke: var(--panel);
+    .chart .min-line {{
+        stroke: var(--minimum);
         stroke-width: 2;
+        stroke-dasharray: 5 4;
     }}
 
-    .chart .max-point {{
-        fill: var(--maximum);
-        stroke: var(--panel);
+    .chart .max-line {{
+        stroke: var(--maximum);
         stroke-width: 2;
+        stroke-dasharray: 5 4;
     }}
 
     .chart .crosshair {{
@@ -924,12 +993,17 @@ def render_dashboard(query):
             flex-wrap: wrap;
         }}
 
-        .current-value {{
+        .current-value-wrap {{
             margin-left: 34px;
+            text-align: left;
+        }}
+
+        .current-value {{
+            justify-content: flex-start;
         }}
 
         .controls {{
-            padding: 12px;
+            padding: 7px 8px;
         }}
 
         .ranges {{
@@ -937,7 +1011,7 @@ def render_dashboard(query):
         }}
 
         .range-button {{
-            padding: 3px 3px;
+            padding: 3px 2px;
             font-size: 10px;
         }}
     }}
@@ -1008,13 +1082,17 @@ def render_dashboard(query):
     <footer>
         Die Werte werden direkt von Freewar abgerufen.
         Die Diagramme zeigen aggregierte Kurswerte, wenn viele Messpunkte
-        im gewählten Zeitraum liegen. Die gestrichelte orange Linie zeigt
-        den gleitenden Median der dargestellten Datenpunkte (Fenster:
-        {MEDIAN_WINDOW} Datenpunkte). Minimum und Maximum entsprechen dem
-        5. und 95. Perzentil aller gespeicherten Messwerte des gewählten
-        Zeitraums; dadurch haben einzelne Ausreißer weniger Einfluss.
-        Der Median wird aus allen gespeicherten Messwerten berechnet.
-        Die Seite aktualisiert sich alle 60 Sekunden.
+        im gewählten Zeitraum liegen. Die gestrichelte orange Linie
+        (#fca96a) zeigt den gleitenden Median der dargestellten Datenpunkte
+        (Fenster: {MEDIAN_WINDOW} Datenpunkte). Die rote Linie zeigt das
+        5. Perzentil (Min (5%)), die grüne Linie das 95. Perzentil
+        (Max (95%)) aller gespeicherten Messwerte des gewählten Zeitraums.
+        Dadurch haben einzelne Ausreißer weniger Einfluss. Der Median in
+        den Statistiken wird aus allen gespeicherten Messwerten berechnet.
+        Die Prozentangabe neben dem aktuellen Kurs zeigt die Abweichung vom
+        Median relativ zur jeweiligen typischen Spanne zwischen Median und
+        5. beziehungsweise 95. Perzentil. Die Seite aktualisiert sich
+        alle 60 Sekunden.
     </footer>
 </main>
 
@@ -1025,7 +1103,7 @@ def render_dashboard(query):
     const MEDIAN_WINDOW = {MEDIAN_WINDOW};
 
     const numberFormat = new Intl.NumberFormat("de-DE", {{
-        maximumFractionDigits: 2
+        maximumFractionDigits: 0
     }});
 
     const dateFormat = new Intl.DateTimeFormat("de-DE", {{
@@ -1065,7 +1143,7 @@ def render_dashboard(query):
             return sorted[middle];
         }}
 
-        return (sorted[middle - 1] + sorted[middle]) / 2;
+        return Math.round((sorted[middle - 1] + sorted[middle]) / 2);
     }}
 
     function drawChart(svg) {{
@@ -1102,9 +1180,9 @@ def render_dashboard(query):
 
         if (stats) {{
             [
-                ["Minimum (5. Perzentil)", stats.min, "stat-min"],
-                ["Maximum (95. Perzentil)", stats.max, "stat-max"],
-                ["Median", stats.median, "stat-median"]
+                ["Min (5%)", stats.min, "stat-min"],
+                ["Median", stats.median, "stat-median"],
+                ["Max (95%)", stats.max, "stat-max"]
             ].forEach(function (stat) {{
                 const item = document.createElement("span");
                 item.className = stat[2];
@@ -1180,7 +1258,9 @@ def render_dashboard(query):
         for (let i = 0; i <= 4; i++) {{
             const fraction = i / 4;
             const y = top + fraction * plotHeight;
-            const value = maxValue - fraction * (maxValue - minValue);
+            const value = Math.round(
+                maxValue - fraction * (maxValue - minValue)
+            );
 
             svg.appendChild(createSvgElement("line", {{
                 x1: left,
@@ -1245,6 +1325,15 @@ def render_dashboard(query):
             class: "line"
         }}));
 
+        coordinates.forEach(function (point) {{
+            svg.appendChild(createSvgElement("circle", {{
+                cx: point.x,
+                cy: point.y,
+                r: 2.5,
+                class: "point"
+            }}));
+        }});
+
         const medianCoordinates = coordinates.map(function (point, index) {{
             const halfWindow = Math.floor(MEDIAN_WINDOW / 2);
             const windowStart = Math.max(
@@ -1285,26 +1374,20 @@ def render_dashboard(query):
             [
                 {{
                     value: stats.min,
-                    timestamp: stats.min_time,
-                    className: "min-point"
+                    className: "min-line"
                 }},
                 {{
                     value: stats.max,
-                    timestamp: stats.max_time,
-                    className: "max-point"
+                    className: "max-line"
                 }}
             ].forEach(function (stat) {{
-                if (
-                    stat.timestamp < minTime ||
-                    stat.timestamp > maxTime
-                ) {{
-                    return;
-                }}
+                const y = yFor(stat.value);
 
-                svg.appendChild(createSvgElement("circle", {{
-                    cx: xFor(stat.timestamp),
-                    cy: yFor(stat.value),
-                    r: 5,
+                svg.appendChild(createSvgElement("line", {{
+                    x1: left,
+                    y1: y,
+                    x2: width - right,
+                    y2: y,
                     class: stat.className
                 }}));
             }});
