@@ -127,10 +127,10 @@ mit dem Auftrags-Status im Inventar arbeiten direkt und besser.
 
 ## `chat_highlight`
 
-Highlights certain chat messages. Can be configured in the user script using
-regex patterns.
+Hebt bestimmte Chatnachrichten hervor. Kann im Skript mit Regex konfiguriert
+werden.
 
-![Chat highlight](https://i.vgy.me/eQJ6rx.jpg)
+![Chat Highlight](https://i.vgy.me/eQJ6rx.jpg)
 
 ## `statistic_highlight`
 
