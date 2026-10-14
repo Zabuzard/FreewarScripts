@@ -85,7 +85,6 @@
     });
 
     saveCompanies();
-    console.log("[stock_profit] Overview scanned:", JSON.stringify(companies));
   }
 
   function handleSellingForm() {
@@ -103,12 +102,7 @@
       var amount = parseInt(amountSelect.value, 10);
       var company = companies[corpId];
 
-      console.log("[stock_profit] Submitting sale:", { corpId: corpId, amount: amount, company: company });
-
-      if (!company || isNaN(amount) || amount <= 0) {
-        console.log("[stock_profit] Cannot calculate profit: missing company data or invalid amount.");
-        return;
-      }
+      if (!company || isNaN(amount) || amount <= 0) return;
 
       var profit = (company.course - company.purchasePrice) * amount;
       var totalProfit = parseInt(getStoredValue(STORAGE_KEY) || "0", 10);
@@ -116,8 +110,6 @@
 
       totalProfit += profit;
       setStoredValue(STORAGE_KEY, totalProfit);
-
-      console.log("[stock_profit] Sale profit:", profit, "GM. Total profit:", totalProfit, "GM.");
     });
   }
 
@@ -128,7 +120,6 @@
   }
 
   loadCompanies();
-  console.log("[stock_profit] Script loaded. Saved companies:", JSON.stringify(companies));
 
   var observer = new MutationObserver(scanPage);
   observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
