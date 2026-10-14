@@ -962,6 +962,13 @@ def render_dashboard(query):
         filter: drop-shadow(0 0 1px #0b1120);
     }}
 
+    .chart .median-stat-line {{
+        stroke: var(--median);
+        stroke-width: 2;
+        stroke-dasharray: 2 5;
+        stroke-linecap: round;
+    }}
+
     .chart .point {{
         fill: var(--accent);
         fill-opacity: .7;
@@ -1641,6 +1648,7 @@ def render_dashboard(query):
         if (stats) {{
             [
                 {{ value: stats.min, className: "min-line" }},
+                {{ value: stats.median, className: "median-stat-line" }},
                 {{ value: stats.max, className: "max-line" }}
             ].forEach(function (stat) {{
                 const y = yFor(stat.value);
