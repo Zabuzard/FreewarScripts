@@ -8,6 +8,7 @@
 
 (function () {
   var STORAGE_KEY = "stock_profit_total";
+  var COMPANIES_KEY = "stock_profit_companies";
   var COOKIE_MAX_AGE = 10 * 365 * 24 * 60 * 60;
   var companies = {};
 
@@ -35,6 +36,18 @@
     return isNaN(parsed) ? null : parsed;
   }
 
+  function loadCompanies() {
+    try {
+      companies = JSON.parse(getStoredValue(COMPANIES_KEY) || "{}");
+    } catch (e) {
+      companies = {};
+    }
+  }
+
+  function saveCompanies() {
+    setStoredValue(COMPANIES_KEY, JSON.stringify(companies));
+  }
+
   function getPageType() {
     if (document.querySelector('a[href*="arrive_eval=stocksell&corp_id="]')) return "overview";
     if (document.querySelector('form[action*="arrive_eval=stocksell2"] input[name="corp_id"]') &&
@@ -46,23 +59,22 @@
     var links = document.querySelectorAll('a[href*="arrive_eval=stocksell&corp_id="]');
     if (!links.length) return;
 
-    links.forEach(function (link) {
-      var match = link.href.match(/[?&]corp_id=(\d+)/);
-      if (!match) return;
+    var cell = links[0].closest("td");
+    if (!cell) return;
 
-      var corpId = parseInt(match[1], 10);
+    var html = cell.innerHTML;
+    var sections = html.split(/Unternehmen:/);
+
+    sections.forEach(function (section) {
+      var companyMatch = section.match(/arrive_eval=watchstock&amp;corp_id=(\d+)/);
+      if (!companyMatch) companyMatch = section.match(/arrive_eval=watchstock\?corp_id=(\d+)/);
+      if (!companyMatch) return;
+
+      var corpId = parseInt(companyMatch[1], 10);
       if (corpId < 1 || corpId > 6) return;
 
-      var cell = link.closest("td");
-      if (!cell) return;
-
-      var text = cell.innerText;
-      var companyStart = text.indexOf("Kurs:");
-      if (companyStart === -1) return;
-
-      var section = text.substring(companyStart);
-      var courseMatch = section.match(/Kurs:\s*([\d.]+)\s*Goldmünzen/);
-      var purchaseMatch = section.match(/Dein durchschnittlicher Einkaufspreis:\s*([\d.]+)\s*Goldmünzen/);
+      var courseMatch = section.match(/Kurs:\s*<b>([\d.]+)<\/b>\s*Goldmünzen/);
+      var purchaseMatch = section.match(/Dein durchschnittlicher Einkaufspreis:\s*<b>([\d.]+)<\/b>\s*Goldmünzen/);
       if (!courseMatch || !purchaseMatch) return;
 
       var course = parseGold(courseMatch[1]);
@@ -71,6 +83,9 @@
 
       companies[corpId] = { course: course, purchasePrice: purchasePrice };
     });
+
+    saveCompanies();
+    console.log("[stock_profit] Overview scanned:", JSON.stringify(companies));
   }
 
   function handleSellingForm() {
@@ -78,6 +93,7 @@
     if (!form || form.dataset.stockProfitBound) return;
 
     form.dataset.stockProfitBound = "true";
+
     form.addEventListener("submit", function () {
       var corpInput = form.querySelector('input[name="corp_id"]');
       var amountSelect = form.querySelector('select[name="anzahl"]');
@@ -86,7 +102,13 @@
       var corpId = parseInt(corpInput.value, 10);
       var amount = parseInt(amountSelect.value, 10);
       var company = companies[corpId];
-      if (!company || isNaN(amount) || amount <= 0) return;
+
+      console.log("[stock_profit] Submitting sale:", { corpId: corpId, amount: amount, company: company });
+
+      if (!company || isNaN(amount) || amount <= 0) {
+        console.log("[stock_profit] Cannot calculate profit: missing company data or invalid amount.");
+        return;
+      }
 
       var profit = (company.course - company.purchasePrice) * amount;
       var totalProfit = parseInt(getStoredValue(STORAGE_KEY) || "0", 10);
@@ -94,7 +116,8 @@
 
       totalProfit += profit;
       setStoredValue(STORAGE_KEY, totalProfit);
-      console.log("[stock_profit] Sold " + amount + " shares of company " + corpId + ": " + profit + " GM profit. Total: " + totalProfit + " GM.");
+
+      console.log("[stock_profit] Sale profit:", profit, "GM. Total profit:", totalProfit, "GM.");
     });
   }
 
@@ -103,6 +126,9 @@
     if (pageType === "overview") scanOverview();
     else if (pageType === "selling") handleSellingForm();
   }
+
+  loadCompanies();
+  console.log("[stock_profit] Script loaded. Saved companies:", JSON.stringify(companies));
 
   var observer = new MutationObserver(scanPage);
   observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
