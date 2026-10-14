@@ -329,6 +329,10 @@ und Verkaufsempfehlungen an.
 
 ![Website mit Beispiel-Daten](https://i.vgy.me/ThZODy.jpg)
 
+Auserdem wird auf z.B. `http://localhost:8629/freewar/stocks/api` eine REST API
+angeboten und auf `http://localhost:8629/freewar/stocks/overview.png` eine
+Übersichtsgrafik bereitgestellt.
+
 ### `stock_profit`
 
 Merkt sich bei jedem Verkauf von Aktien an der Börse den damit erwirschafteten
