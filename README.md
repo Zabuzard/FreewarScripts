@@ -335,4 +335,11 @@ Merkt sich bei jedem Verkauf von Aktien an der Börse den damit erwirschafteten
 Reingewinn (`Kurs - durchschnittlicher Einkaufspreis`) und zeigt den damit
 bisher erreichten Profit an.
 
-![Profitanzeige](https://i.vgy.me/g9V8zi.jpg)
+![Aktienanzeige](https://i.vgy.me/s6YUar.jpg)
+
+Auserdem werden von einer
+[öffentlichen API](http://limejuice.duckdns.org:8629/freewar/stocks) historische
+Kursdaten angefragt, so dass min(5%)/median/max(95%)-Werte angezeigt werden
+können. Basierend darauf wird dann die Abweichung des aktuellen Kurses vom
+Median-Wert berechnet und eine Kauf- oder Verkaufsempfehlung bei über 50%
+Abweichung zum min/max-Wert ausgesprochen.
