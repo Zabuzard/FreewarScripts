@@ -10,6 +10,7 @@
   var STORAGE_KEY = "stock_profit_total";
   var COMPANIES_KEY = "stock_profit_companies";
   var COOKIE_MAX_AGE = 10 * 365 * 24 * 60 * 60;
+  var PROFIT_ELEMENT_ID = "stock-profit-total";
   var companies = {};
 
   function getStoredValue(key) {
@@ -34,6 +35,10 @@
   function parseGold(value) {
     var parsed = parseInt(value.replace(/\./g, "").replace(/[^\d-]/g, ""), 10);
     return isNaN(parsed) ? null : parsed;
+  }
+
+  function formatGold(value) {
+    return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   }
 
   function loadCompanies() {
@@ -85,6 +90,59 @@
     });
 
     saveCompanies();
+    updateProfitDisplay(cell);
+  }
+
+  function updateProfitDisplay(cell) {
+    var totalProfit = parseInt(getStoredValue(STORAGE_KEY) || "0", 10);
+    if (isNaN(totalProfit)) totalProfit = 0;
+
+    var profitElement = document.getElementById(PROFIT_ELEMENT_ID);
+    if (!profitElement) {
+      profitElement = document.createElement("span");
+      profitElement.id = PROFIT_ELEMENT_ID;
+
+      var description = cell.firstChild;
+      while (description && !(description.nodeType === Node.TEXT_NODE && description.textContent.trim().startsWith("Du stehst vor einem großen Gebäude"))) {
+        description = description.nextSibling;
+      }
+
+      if (description) {
+        var lastDescriptionBreak = description;
+        while (lastDescriptionBreak.nextSibling && lastDescriptionBreak.nextSibling.nodeName !== "BR") {
+          lastDescriptionBreak = lastDescriptionBreak.nextSibling;
+        }
+
+        var insertAfter = lastDescriptionBreak.nextSibling;
+        if (insertAfter && insertAfter.nodeName === "BR") {
+          insertAfter = insertAfter.nextSibling;
+          if (insertAfter && insertAfter.nodeName === "BR") insertAfter = insertAfter.nextSibling;
+        }
+
+        cell.insertBefore(profitElement, insertAfter || null);
+      } else {
+        cell.insertBefore(profitElement, cell.firstChild);
+      }
+
+      cell.insertBefore(document.createElement("br"), profitElement.nextSibling);
+      cell.insertBefore(document.createElement("br"), profitElement.nextSibling);
+    }
+
+    if (profitElement.dataset.profit !== String(totalProfit)) {
+      profitElement.textContent = "Durch Verkauf bisher erwirtschafteter Profit: ";
+
+      var amount = document.createElement("span");
+      amount.style.color = "#009900";
+      amount.style.fontWeight = "bold";
+      amount.textContent = formatGold(totalProfit);
+      profitElement.appendChild(amount);
+
+      var currency = document.createElement("strong");
+      currency.textContent = " Goldmünzen";
+      profitElement.appendChild(currency);
+
+      profitElement.dataset.profit = String(totalProfit);
+    }
   }
 
   function handleSellingForm() {
@@ -101,7 +159,6 @@
       var corpId = parseInt(corpInput.value, 10);
       var amount = parseInt(amountSelect.value, 10);
       var company = companies[corpId];
-
       if (!company || isNaN(amount) || amount <= 0) return;
 
       var profit = (company.course - company.purchasePrice) * amount;
@@ -121,7 +178,15 @@
 
   loadCompanies();
 
-  var observer = new MutationObserver(scanPage);
+  var observer = new MutationObserver(function (mutations) {
+    var relevantMutation = mutations.some(function (mutation) {
+      var target = mutation.target.nodeType === Node.ELEMENT_NODE ? mutation.target : mutation.target.parentElement;
+      return !target || !target.closest("#" + PROFIT_ELEMENT_ID);
+    });
+
+    if (relevantMutation) scanPage();
+  });
+
   observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   setInterval(scanPage, 200);
   scanPage();

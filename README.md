@@ -313,7 +313,26 @@ sein, wählt der Assistent es auch selbstständig aus.
 
 ## `mobile_landscape_frameset`
 
-Passt das Layout für die Mobilversion "Kompakt" im Querformat so an,
-dass es für größere Bildschirme besser nutzbar ist.
+Passt das Layout für die Mobilversion "Kompakt" im Querformat so an, dass es für
+größere Bildschirme besser nutzbar ist.
 
 ![Querformat](https://i.vgy.me/EHGySp.jpg)
+
+## `stocks`
+
+### `server.py`
+
+Liest aus der öffentliche API von Freewar die aktuellen Aktienwerte aus und
+speichert sie in einer Datenbank ab. Zeigt dann auf einer Website (z.B.
+`http://localhost:8629/freewar/stocks`) Langzeitgraphen der Daten, sowie Kauf-
+und Verkaufsempfehlungen an.
+
+![Website mit Beispiel-Daten](https://i.vgy.me/ThZODy.jpg)
+
+### `stock_profit`
+
+Merkt sich bei jedem Verkauf von Aktien an der Börse den damit erwirschafteten
+Reingewinn (`Kurs - durchschnittlicher Einkaufspreis`) und zeigt den damit
+bisher erreichten Profit an.
+
+![Profitanzeige](https://i.vgy.me/g9V8zi.jpg)
