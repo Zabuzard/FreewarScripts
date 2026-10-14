@@ -9,9 +9,17 @@
 (function () {
   var STORAGE_KEY = "stock_profit_total";
   var COMPANIES_KEY = "stock_profit_companies";
+  var STOCK_HISTORY_KEY = "stock_profit_history";
+  var API_URL = "http://limejuice.duckdns.org:8629/freewar/stocks/api";
+  var API_INTERVAL = 60 * 1000;
   var COOKIE_MAX_AGE = 10 * 365 * 24 * 60 * 60;
   var PROFIT_ELEMENT_ID = "stock-profit-total";
+  var HISTORY_ELEMENT_CLASS = "stock-profit-history";
   var companies = {};
+  var stockHistory = {};
+  var lastApiCall = 0;
+  var apiRequestInProgress = false;
+  var observer = null;
 
   function getStoredValue(key) {
     try {
@@ -53,6 +61,18 @@
     setStoredValue(COMPANIES_KEY, JSON.stringify(companies));
   }
 
+  function loadStockHistory() {
+    try {
+      stockHistory = JSON.parse(getStoredValue(STOCK_HISTORY_KEY) || "{}");
+    } catch (e) {
+      stockHistory = {};
+    }
+  }
+
+  function saveStockHistory() {
+    setStoredValue(STOCK_HISTORY_KEY, JSON.stringify(stockHistory));
+  }
+
   function getPageType() {
     if (document.querySelector('a[href*="arrive_eval=stocksell&corp_id="]')) return "overview";
     if (document.querySelector('form[action*="arrive_eval=stocksell2"] input[name="corp_id"]') &&
@@ -67,8 +87,7 @@
     var cell = links[0].closest("td");
     if (!cell) return;
 
-    var html = cell.innerHTML;
-    var sections = html.split(/Unternehmen:/);
+    var sections = cell.innerHTML.split(/Unternehmen:/);
 
     sections.forEach(function (section) {
       var companyMatch = section.match(/arrive_eval=watchstock&amp;corp_id=(\d+)/);
@@ -91,6 +110,7 @@
 
     saveCompanies();
     updateProfitDisplay(cell);
+    updateAllHistoryDisplays(cell);
   }
 
   function updateProfitDisplay(cell) {
@@ -124,8 +144,12 @@
         cell.insertBefore(profitElement, cell.firstChild);
       }
 
-      cell.insertBefore(document.createElement("br"), profitElement.nextSibling);
-      cell.insertBefore(document.createElement("br"), profitElement.nextSibling);
+      var firstBreak = document.createElement("br");
+      firstBreak.dataset.stockProfitOwned = "true";
+      var secondBreak = document.createElement("br");
+      secondBreak.dataset.stockProfitOwned = "true";
+      cell.insertBefore(firstBreak, profitElement.nextSibling);
+      cell.insertBefore(secondBreak, profitElement.nextSibling);
     }
 
     if (profitElement.dataset.profit !== String(totalProfit)) {
@@ -142,6 +166,174 @@
       profitElement.appendChild(currency);
 
       profitElement.dataset.profit = String(totalProfit);
+    }
+  }
+
+  function fetchStockHistory() {
+    if (apiRequestInProgress || Date.now() - lastApiCall < API_INTERVAL) return;
+
+    lastApiCall = Date.now();
+    apiRequestInProgress = true;
+
+    fetch(API_URL)
+      .then(function (response) {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.json();
+      })
+      .then(function (data) {
+        var updatedHistory = {};
+
+        Object.keys(data).forEach(function (key) {
+          var company = data[key];
+          var corpId = parseInt(key, 10);
+          if (corpId < 1 || corpId > 6 || !company) return;
+
+          var min = Number(company.min);
+          var max = Number(company.max);
+          var median = Number(company.median);
+          if (!Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(median)) return;
+
+          updatedHistory[corpId] = {
+            min: min,
+            max: max,
+            median: median
+          };
+        });
+
+        stockHistory = updatedHistory;
+        saveStockHistory();
+
+        var link = document.querySelector('a[href*="arrive_eval=stocksell&corp_id="]');
+        if (link) {
+          var cell = link.closest("td");
+          if (cell) updateAllHistoryDisplays(cell);
+        }
+      })
+      .catch(function () {})
+      .then(function () {
+        apiRequestInProgress = false;
+      });
+  }
+
+  function updateAllHistoryDisplays(cell) {
+    if (!cell) return;
+
+    if (observer) observer.disconnect();
+
+    try {
+      var sellLinks = cell.querySelectorAll('a[href*="arrive_eval=stocksell&corp_id="]');
+
+      sellLinks.forEach(function (sellLink) {
+        var match = sellLink.href.match(/arrive_eval=stocksell&corp_id=(\d+)/);
+        if (!match) return;
+
+        var corpId = parseInt(match[1], 10);
+        var history = stockHistory[corpId];
+        if (!history) return;
+
+        var historyId = "stock-profit-history-" + corpId;
+        var historyElement = cell.querySelector("#" + historyId);
+        var historyBreak = cell.querySelector("#" + historyId + "-break");
+        var historyBreakAfter = cell.querySelector("#" + historyId + "-break-after");
+
+        if (!historyElement) {
+          var companyLink = cell.querySelector(
+            'a[href*="arrive_eval=watchstock&corp_id=' + corpId + '"]'
+          );
+          if (!companyLink) return;
+
+          var node = companyLink;
+          var purchaseText = null;
+
+          while ((node = node.nextSibling)) {
+            if (node.nodeType === Node.ELEMENT_NODE &&
+              node.tagName === "A" &&
+              node.href.match(/arrive_eval=watchstock&corp_id=\d+/)) {
+              break;
+            }
+
+            if (node.nodeType === Node.TEXT_NODE &&
+              node.textContent.includes("Dein durchschnittlicher Einkaufspreis:")) {
+              purchaseText = node;
+              break;
+            }
+
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              var walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+              var textNode;
+
+              while ((textNode = walker.nextNode())) {
+                if (textNode.textContent.includes("Dein durchschnittlicher Einkaufspreis:")) {
+                  purchaseText = textNode;
+                  break;
+                }
+              }
+
+              if (purchaseText) break;
+            }
+          }
+
+          if (!purchaseText) return;
+
+          historyBreak = document.createElement("br");
+          historyBreak.id = historyId + "-break";
+          historyBreak.dataset.stockProfitOwned = "true";
+
+          historyElement = document.createElement("span");
+          historyElement.id = historyId;
+          historyElement.className = HISTORY_ELEMENT_CLASS;
+          historyElement.style.fontSize = "10px";
+          historyElement.dataset.stockProfitOwned = "true";
+
+          historyBreakAfter = document.createElement("br");
+          historyBreakAfter.id = historyId + "-break-after";
+          historyBreakAfter.dataset.stockProfitOwned = "true";
+
+          purchaseText.parentNode.insertBefore(historyBreak, purchaseText);
+          purchaseText.parentNode.insertBefore(historyElement, purchaseText);
+          purchaseText.parentNode.insertBefore(historyBreakAfter, purchaseText);
+        } else {
+          if (!historyBreak) {
+            historyBreak = document.createElement("br");
+            historyBreak.id = historyId + "-break";
+            historyBreak.dataset.stockProfitOwned = "true";
+            historyElement.parentNode.insertBefore(historyBreak, historyElement);
+          }
+
+          if (!historyBreakAfter) {
+            historyBreakAfter = document.createElement("br");
+            historyBreakAfter.id = historyId + "-break-after";
+            historyBreakAfter.dataset.stockProfitOwned = "true";
+            historyElement.parentNode.insertBefore(historyBreakAfter, historyElement.nextSibling);
+          }
+        }
+
+        // Remove redundant line breaks immediately before our history line.
+        var previous = historyBreak.previousSibling;
+        while (previous && previous.nodeType === Node.TEXT_NODE && !previous.textContent.trim()) {
+          previous = previous.previousSibling;
+        }
+
+        if (previous && previous.nodeName === "BR" && previous !== historyBreak) {
+          previous.remove();
+        }
+
+        var historyText = "(min: " + formatGold(history.min) +
+          ", median: " + formatGold(history.median) +
+          ", max: " + formatGold(history.max) + ")";
+
+        if (historyElement.textContent !== historyText) {
+          historyElement.textContent = historyText;
+        }
+      });
+    } finally {
+      if (observer) {
+        observer.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+          characterData: true
+        });
+      }
     }
   }
 
@@ -172,16 +364,34 @@
 
   function scanPage() {
     var pageType = getPageType();
-    if (pageType === "overview") scanOverview();
-    else if (pageType === "selling") handleSellingForm();
+    if (pageType === "overview") {
+      scanOverview();
+      fetchStockHistory();
+    } else if (pageType === "selling") {
+      handleSellingForm();
+    }
   }
 
   loadCompanies();
+  loadStockHistory();
 
-  var observer = new MutationObserver(function (mutations) {
+  observer = new MutationObserver(function (mutations) {
     var relevantMutation = mutations.some(function (mutation) {
       var target = mutation.target.nodeType === Node.ELEMENT_NODE ? mutation.target : mutation.target.parentElement;
-      return !target || !target.closest("#" + PROFIT_ELEMENT_ID);
+      if (!target) return true;
+
+      if (target.closest("#" + PROFIT_ELEMENT_ID)) return false;
+      if (target.closest("." + HISTORY_ELEMENT_CLASS)) return false;
+      if (target.closest('[data-stock-profit-owned="true"]')) return false;
+
+      var addedNodes = Array.from(mutation.addedNodes || []);
+      if (addedNodes.length && addedNodes.every(function (node) {
+        return node.nodeType === Node.ELEMENT_NODE &&
+          (node.matches("#" + PROFIT_ELEMENT_ID + ", ." + HISTORY_ELEMENT_CLASS + ', [data-stock-profit-owned="true"]') ||
+            node.querySelector("#" + PROFIT_ELEMENT_ID + ", ." + HISTORY_ELEMENT_CLASS + ', [data-stock-profit-owned="true"]'));
+      })) return false;
+
+      return true;
     });
 
     if (relevantMutation) scanPage();
