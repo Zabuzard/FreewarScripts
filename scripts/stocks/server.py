@@ -26,6 +26,7 @@ MAX_PERCENTILE = 95
 Y_AXIS_STEP = 100
 
 DASHBOARD_PATH = "/freewar/stocks"
+API_PATH = "/freewar/stocks/api"
 
 TIME_RANGES = {
     "24h": ("24 Stunden", timedelta(hours=24)),
@@ -387,6 +388,59 @@ def get_median_comparison(value, stats):
 
     return round(percentage)
 
+# == REST API ==
+
+def get_api_data():
+    """Return current values and full-history statistics for companies 1–6."""
+    now = datetime.now(timezone.utc)
+
+    with sqlite3.connect(DB_PATH, timeout=30) as db:
+        row = db.execute(
+            "SELECT MIN(timestamp) FROM stock_values"
+        ).fetchone()
+
+    if row and row[0]:
+        start = datetime.fromisoformat(row[0])
+
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+    else:
+        start = now
+
+    stocks = get_latest_stocks()
+    result = {}
+
+    for stock in stocks:
+        company_id = stock["id"]
+
+        if not 1 <= company_id <= 6:
+            continue
+
+        current_value = stock["value"]
+        stats = get_chart_stats(company_id, start, now)
+
+        median = stats["median"] if stats else None
+        difference = None
+        difference_gold = None
+        difference_percent = None
+
+        if current_value is not None and median is not None:
+            difference = current_value - median
+            difference_gold = abs(difference)
+            difference_percent = get_median_comparison(
+                current_value,
+                stats,
+            )
+
+        result[str(company_id)] = {
+            "name": stock["name"],
+            "current": current_value,
+            "min": stats["min"] if stats else None,
+            "max": stats["max"] if stats else None,
+            "median": median,
+        }
+
+    return result
 
 def get_axis_date_format(range_key, start, end):
     if range_key == "24h":
@@ -1762,11 +1816,34 @@ def render_dashboard(query):
 </html>"""
 
 
+
 # == HTTP server ==
 
 class StockHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlsplit(self.path)
+
+        if parsed.path == API_PATH:
+            try:
+                payload = json.dumps(
+                    get_api_data(),
+                    ensure_ascii=False,
+                ).encode("utf-8")
+            except Exception:
+                log.exception("Failed to generate stock API response")
+                self.send_error(500, "Internal Server Error")
+                return
+
+            self.send_response(200)
+            self.send_header(
+                "Content-Type",
+                "application/json; charset=utf-8",
+            )
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(payload)
+            return
 
         if parsed.path != DASHBOARD_PATH:
             self.send_error(404, "Not Found")
@@ -1794,7 +1871,6 @@ class StockHandler(BaseHTTPRequestHandler):
             self.address_string(),
             format_string % args,
         )
-
 
 # == Startup ==
 
