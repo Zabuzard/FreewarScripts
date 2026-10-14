@@ -15,6 +15,7 @@
   var COOKIE_MAX_AGE = 10 * 365 * 24 * 60 * 60;
   var PROFIT_ELEMENT_ID = "stock-profit-total";
   var HISTORY_ELEMENT_CLASS = "stock-profit-history";
+  var DEVIATION_ELEMENT_CLASS = "stock-profit-deviation";
   var companies = {};
   var stockHistory = {};
   var lastApiCall = 0;
@@ -87,6 +88,14 @@
     var cell = links[0].closest("td");
     if (!cell) return;
 
+    var courseNodes = cell.querySelectorAll("b");
+    courseNodes.forEach(function (bold) {
+      var previous = bold.previousSibling;
+      if (previous && previous.nodeType === Node.TEXT_NODE && previous.textContent.includes("Kurs:")) {
+        bold.style.color = "#65a9ff";
+      }
+    });
+
     var sections = cell.innerHTML.split(/Unternehmen:/);
 
     sections.forEach(function (section) {
@@ -97,8 +106,8 @@
       var corpId = parseInt(companyMatch[1], 10);
       if (corpId < 1 || corpId > 6) return;
 
-      var courseMatch = section.match(/Kurs:\s*<b>([\d.]+)<\/b>\s*Goldmünzen/);
-      var purchaseMatch = section.match(/Dein durchschnittlicher Einkaufspreis:\s*<b>([\d.]+)<\/b>\s*Goldmünzen/);
+      var courseMatch = section.match(/Kurs:\s*<b[^>]*>([\d.]+)<\/b>\s*Goldmünzen/);
+      var purchaseMatch = section.match(/Dein durchschnittlicher Einkaufspreis:\s*<b[^>]*>([\d.]+)<\/b>\s*Goldmünzen/);
       if (!courseMatch || !purchaseMatch) return;
 
       var course = parseGold(courseMatch[1]);
@@ -282,7 +291,6 @@
           historyElement = document.createElement("span");
           historyElement.id = historyId;
           historyElement.className = HISTORY_ELEMENT_CLASS;
-          historyElement.style.fontSize = "10px";
           historyElement.dataset.stockProfitOwned = "true";
 
           historyBreakAfter = document.createElement("br");
@@ -308,7 +316,6 @@
           }
         }
 
-        // Remove redundant line breaks immediately before our history line.
         var previous = historyBreak.previousSibling;
         while (previous && previous.nodeType === Node.TEXT_NODE && !previous.textContent.trim()) {
           previous = previous.previousSibling;
@@ -318,12 +325,99 @@
           previous.remove();
         }
 
-        var historyText = "(min: " + formatGold(history.min) +
-          ", median: " + formatGold(history.median) +
-          ", max: " + formatGold(history.max) + ")";
+        var min = Number(history.min);
+        var median = Number(history.median);
+        var max = Number(history.max);
 
-        if (historyElement.textContent !== historyText) {
-          historyElement.textContent = historyText;
+        historyElement.innerHTML = "Historie: min " + formatGold(min) +
+          ", median <b style=\"color: #fca96a;\">" + formatGold(median) + "</b>" +
+          ", max " + formatGold(max);
+
+        var historyValues = historyElement.textContent.match(
+          /Historie:\s*min\s*([\d.]+),\s*median\s*([\d.]+),\s*max\s*([\d.]+)/
+        );
+        if (!historyValues) return;
+
+        min = parseGold(historyValues[1]);
+        median = parseGold(historyValues[2]);
+        max = parseGold(historyValues[3]);
+
+        var company = companies[corpId];
+        var currentCourse = company ? Number(company.course) : null;
+        var deviation = null;
+        var goldDifference = null;
+
+        if (currentCourse !== null && Number.isFinite(currentCourse)) {
+          goldDifference = Math.abs(currentCourse - median);
+
+          if (currentCourse > median && max !== median) {
+            deviation = ((currentCourse - median) / (max - median)) * 100;
+          } else if (currentCourse < median && median !== min) {
+            deviation = ((currentCourse - median) / (median - min)) * 100;
+          } else if (currentCourse === median) {
+            deviation = 0;
+          }
+        }
+
+        var deviationId = "stock-profit-deviation-" + corpId;
+        var deviationElement = cell.querySelector("#" + deviationId);
+
+        if (deviation !== null && goldDifference !== null) {
+          if (!deviationElement) {
+            deviationElement = document.createElement("span");
+            deviationElement.id = deviationId;
+            deviationElement.className = DEVIATION_ELEMENT_CLASS;
+            deviationElement.dataset.stockProfitOwned = "true";
+            historyElement.parentNode.insertBefore(deviationElement, historyElement.nextSibling);
+          }
+
+          deviationElement.innerHTML = "";
+          var isPositive = deviation > 0;
+          var isNegative = deviation < 0;
+          var isExtreme = Math.abs(deviation) > 50;
+
+          deviationElement.style.fontWeight = isExtreme ? "bold" : "normal";
+
+          var deviationLabel = document.createTextNode(", Abweichung: ");
+          deviationElement.appendChild(deviationLabel);
+
+          var percentage = document.createElement("span");
+          percentage.style.color = isPositive
+            ? (isExtreme ? "#4ade80" : "#39734d")
+            : isNegative
+              ? (isExtreme ? "#ff6464" : "#8a4141")
+              : "#39734d";
+          percentage.textContent = (deviation > 0 ? "+" : "") + Math.round(deviation) + "%";
+          deviationElement.appendChild(percentage);
+
+          var goldAmount = document.createElement("span");
+          goldAmount.style.color = isExtreme
+            ? (isPositive ? "#4ade80" : "#ff6464")
+            : "#65a9ff";
+          goldAmount.textContent = " (" + formatGold(goldDifference) + "g)";
+          deviationElement.appendChild(goldAmount);
+
+          if (deviation < -50 || deviation > 50) {
+            var signal = document.createElement("span");
+            signal.style.marginLeft = "4px";
+            signal.style.display = "inline-block";
+            signal.style.width = "13px";
+            signal.style.height = "13px";
+            signal.style.lineHeight = "12px";
+            signal.style.textAlign = "center";
+            signal.style.border = "1px solid " + (deviation < -50 ? "#4ade80" : "#ff6464");
+            signal.style.borderRadius = "50%";
+            signal.style.color = deviation < -50 ? "#4ade80" : "#ff6464";
+            signal.style.fontSize = "11px";
+            signal.style.fontWeight = "bold";
+            signal.textContent = deviation < -50 ? "+" : "−";
+            signal.title = deviation < -50
+              ? "Aktien kaufen"
+              : "Aktien verkaufen";
+            deviationElement.appendChild(signal);
+          }
+        } else if (deviationElement) {
+          deviationElement.remove();
         }
       });
     } finally {
@@ -382,13 +476,14 @@
 
       if (target.closest("#" + PROFIT_ELEMENT_ID)) return false;
       if (target.closest("." + HISTORY_ELEMENT_CLASS)) return false;
+      if (target.closest("." + DEVIATION_ELEMENT_CLASS)) return false;
       if (target.closest('[data-stock-profit-owned="true"]')) return false;
 
       var addedNodes = Array.from(mutation.addedNodes || []);
       if (addedNodes.length && addedNodes.every(function (node) {
         return node.nodeType === Node.ELEMENT_NODE &&
-          (node.matches("#" + PROFIT_ELEMENT_ID + ", ." + HISTORY_ELEMENT_CLASS + ', [data-stock-profit-owned="true"]') ||
-            node.querySelector("#" + PROFIT_ELEMENT_ID + ", ." + HISTORY_ELEMENT_CLASS + ', [data-stock-profit-owned="true"]'));
+          (node.matches("#" + PROFIT_ELEMENT_ID + ", ." + HISTORY_ELEMENT_CLASS + ", ." + DEVIATION_ELEMENT_CLASS + ', [data-stock-profit-owned="true"]') ||
+            node.querySelector("#" + PROFIT_ELEMENT_ID + ", ." + HISTORY_ELEMENT_CLASS + ", ." + DEVIATION_ELEMENT_CLASS + ', [data-stock-profit-owned="true"]'));
       })) return false;
 
       return true;
