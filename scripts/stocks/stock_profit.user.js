@@ -176,6 +176,26 @@
 
       profitElement.dataset.profit = String(totalProfit);
     }
+
+    var historyLinkId = "stock-profit-history-link";
+    var historyLink = document.getElementById(historyLinkId);
+
+    if (!historyLink) {
+      var linkBreak = document.createElement("br");
+      linkBreak.id = historyLinkId + "-break";
+      linkBreak.dataset.stockProfitOwned = "true";
+
+      historyLink = document.createElement("a");
+      historyLink.id = historyLinkId;
+      historyLink.href = "http://limejuice.duckdns.org:8629/freewar/stocks";
+      historyLink.target = "_blank";
+      historyLink.rel = "noopener noreferrer";
+      historyLink.textContent = "(Kurshistorien)";
+      historyLink.dataset.stockProfitOwned = "true";
+
+      profitElement.parentNode.insertBefore(linkBreak, profitElement.nextSibling);
+      profitElement.parentNode.insertBefore(historyLink, linkBreak.nextSibling);
+    }
   }
 
   function fetchStockHistory() {
