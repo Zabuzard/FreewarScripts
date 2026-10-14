@@ -1,4 +1,3 @@
-
 import html
 import json
 import logging
@@ -11,6 +10,9 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 from urllib.request import Request, urlopen
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+import hashlib
+import struct
+import zlib
 
 # == Configuration ==
 
@@ -27,6 +29,13 @@ Y_AXIS_STEP = 100
 
 DASHBOARD_PATH = "/freewar/stocks"
 API_PATH = "/freewar/stocks/api"
+OVERVIEW_PATH = "/freewar/stocks/overview.png"
+
+_overview_cache_lock = threading.Lock()
+_overview_cache = {
+    "etag": None,
+    "payload": None,
+}
 
 TIME_RANGES = {
     "24h": ("24 Stunden", timedelta(hours=24)),
@@ -97,6 +106,7 @@ def save_stocks(stocks):
             for company_id, _, value in stocks
         ])
 
+    invalidate_overview_cache()
     log.info("Saved %d stock values", len(stocks))
 
 
@@ -387,6 +397,297 @@ def get_median_comparison(value, stats):
         percentage = 0
 
     return round(percentage)
+
+
+def render_overview_png():
+    """Render a transparent stock overview PNG without external packages."""
+    width = 700
+    height = 150
+    #pixels = bytearray(width * height * 4)
+    pixels = bytearray(width * height * 4)
+    for i in range(3, len(pixels), 4):
+        pixels[i] = 255
+
+    colors = {
+        "text": (100, 105, 115, 255),
+        "muted": (145, 160, 184, 255),
+        "accent": (101, 169, 255, 255),
+        "median": (252, 169, 106, 255),
+        "positive": (74, 222, 128, 255),
+        "negative": (255, 100, 100, 255),
+        "positive_muted": (57, 115, 77, 255),
+        "negative_muted": (138, 65, 65, 255),
+    }
+
+    # Five-by-seven bitmap font with lowercase and German characters.
+    glyphs = {
+        " ": (0, 0, 0, 0, 0, 0, 0),
+        "-": (0, 0, 0, 31, 0, 0, 0),
+        "+": (0, 4, 4, 31, 4, 4, 0),
+        ".": (0, 0, 0, 0, 0, 12, 12),
+        ",": (0, 0, 0, 0, 12, 12, 8),
+        ":": (0, 12, 12, 0, 12, 12, 0),
+        "%": (17, 2, 4, 8, 17, 0, 0),
+        "/": (1, 2, 4, 8, 16, 0, 0),
+        "…": (0, 0, 0, 0, 0, 21, 0),
+        "(": (4, 8, 16, 16, 16, 8, 4),
+        ")": (4, 2, 1, 1, 1, 2, 4),
+
+        "0": (14, 17, 19, 21, 25, 17, 14),
+        "1": (4, 12, 4, 4, 4, 4, 14),
+        "2": (14, 17, 1, 2, 4, 8, 31),
+        "3": (30, 1, 1, 14, 1, 17, 14),
+        "4": (2, 6, 10, 18, 31, 2, 2),
+        "5": (31, 16, 16, 30, 1, 17, 14),
+        "6": (6, 8, 16, 30, 17, 17, 14),
+        "7": (31, 1, 2, 4, 8, 8, 8),
+        "8": (14, 17, 17, 14, 17, 17, 14),
+        "9": (14, 17, 17, 15, 1, 2, 12),
+
+        "A": (14, 17, 17, 31, 17, 17, 17),
+        "B": (30, 17, 17, 30, 17, 17, 30),
+        "C": (14, 17, 16, 16, 16, 17, 14),
+        "D": (28, 18, 17, 17, 17, 18, 28),
+        "E": (31, 16, 16, 30, 16, 16, 31),
+        "F": (31, 16, 16, 30, 16, 16, 16),
+        "G": (14, 17, 16, 23, 17, 17, 15),
+        "H": (17, 17, 17, 31, 17, 17, 17),
+        "I": (14, 4, 4, 4, 4, 4, 14),
+        "J": (7, 2, 2, 2, 2, 18, 12),
+        "K": (17, 18, 20, 24, 20, 18, 17),
+        "L": (16, 16, 16, 16, 16, 16, 31),
+        "M": (17, 27, 21, 21, 17, 17, 17),
+        "N": (17, 25, 25, 21, 19, 19, 17),
+        "O": (14, 17, 17, 17, 17, 17, 14),
+        "P": (30, 17, 17, 30, 16, 16, 16),
+        "Q": (14, 17, 17, 17, 21, 18, 13),
+        "R": (30, 17, 17, 30, 20, 18, 17),
+        "S": (15, 16, 16, 14, 1, 1, 30),
+        "T": (31, 4, 4, 4, 4, 4, 4),
+        "U": (17, 17, 17, 17, 17, 17, 14),
+        "V": (17, 17, 17, 17, 17, 10, 4),
+        "W": (17, 17, 17, 21, 21, 21, 10),
+        "X": (17, 17, 10, 4, 10, 17, 17),
+        "Y": (17, 17, 10, 4, 4, 4, 4),
+        "Z": (31, 1, 2, 4, 8, 16, 31),
+
+        "a": (0, 0, 14, 1, 15, 17, 15),
+        "b": (16, 16, 22, 25, 17, 17, 30),
+        "c": (0, 0, 14, 17, 16, 17, 14),
+        "d": (1, 1, 13, 19, 17, 17, 15),
+        "e": (0, 0, 14, 17, 31, 16, 14),
+        "f": (6, 9, 8, 28, 8, 8, 8),
+        "g": (0, 15, 17, 17, 15, 1, 14),
+        "h": (16, 16, 22, 25, 17, 17, 17),
+        "i": (4, 0, 12, 4, 4, 4, 14),
+        "j": (2, 0, 6, 2, 2, 18, 12),
+        "k": (16, 16, 18, 20, 24, 20, 18),
+        "l": (12, 4, 4, 4, 4, 4, 14),
+        "m": (0, 0, 26, 21, 21, 21, 21),
+        "n": (0, 0, 22, 25, 17, 17, 17),
+        "o": (0, 0, 14, 17, 17, 17, 14),
+        "p": (0, 30, 17, 17, 30, 16, 16),
+        "q": (0, 15, 17, 17, 15, 1, 1),
+        "r": (0, 0, 22, 25, 16, 16, 16),
+        "s": (0, 0, 15, 16, 14, 1, 30),
+        "t": (8, 8, 28, 8, 8, 9, 6),
+        "u": (0, 0, 17, 17, 17, 19, 13),
+        "v": (0, 0, 17, 17, 17, 10, 4),
+        "w": (0, 0, 17, 17, 21, 21, 10),
+        "x": (0, 0, 17, 10, 4, 10, 17),
+        "y": (0, 17, 17, 17, 15, 1, 14),
+        "z": (0, 0, 31, 2, 4, 8, 31),
+
+        "Ä": (10, 0, 14, 17, 31, 17, 17),
+        "Ö": (10, 0, 14, 17, 17, 17, 14),
+        "Ü": (10, 0, 17, 17, 17, 17, 14),
+        "ä": (10, 0, 14, 1, 15, 17, 15),
+        "ö": (10, 0, 14, 17, 17, 17, 14),
+        "ü": (10, 0, 17, 17, 17, 19, 13),
+        "ß": (12, 18, 18, 28, 18, 18, 28),
+    }
+
+    def set_pixel(x, y, color):
+        if 0 <= x < width and 0 <= y < height:
+            offset = (y * width + x) * 4
+            pixels[offset:offset + 4] = bytes(color)
+
+    FONT_SCALE = 2
+    GLYPH_WIDTH = 5
+    GLYPH_HEIGHT = 7
+    CHAR_SPACING = 1
+    CHAR_ADVANCE = (GLYPH_WIDTH + CHAR_SPACING) * FONT_SCALE
+
+    def draw_text(x, y, value, color, max_width=None):
+        value = str(value)
+        cursor = x
+
+        for char in value:
+            glyph = glyphs.get(char, glyphs.get(char.upper(), glyphs[" "]))
+
+            if max_width is not None:
+                if cursor + GLYPH_WIDTH * FONT_SCALE - x > max_width:
+                    break
+
+            for row, bits in enumerate(glyph):
+                for col in range(GLYPH_WIDTH):
+                    if bits & (1 << (GLYPH_WIDTH - 1 - col)):
+                        for sy in range(FONT_SCALE):
+                            for sx in range(FONT_SCALE):
+                                set_pixel(
+                                    cursor + col * FONT_SCALE + sx,
+                                    y + row * FONT_SCALE + sy,
+                                    color,
+                                )
+
+            cursor += CHAR_ADVANCE
+
+        return cursor
+
+    def draw_right(x, y, value, color):
+        value = str(value)
+        draw_text(x - len(value) * CHAR_ADVANCE + FONT_SCALE, y, value, color)
+
+    def png_chunk(chunk_type, data):
+        chunk = chunk_type + data
+        return (
+            struct.pack(">I", len(data))
+            + chunk
+            + struct.pack(">I", zlib.crc32(chunk) & 0xffffffff)
+        )
+
+    now = datetime.now(timezone.utc)
+
+    with sqlite3.connect(DB_PATH, timeout=30) as db:
+        earliest = db.execute(
+            "SELECT MIN(timestamp) FROM stock_values"
+        ).fetchone()[0]
+
+    if earliest:
+        start = datetime.fromisoformat(earliest)
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+    else:
+        start = now
+
+    stocks = sorted(get_latest_stocks(), key=lambda stock: stock["id"])
+
+    first_row_y = 2
+    row_height = 24
+    max_rows = (height - first_row_y) // row_height
+
+    name_x = 4
+    current_x = 380
+    median_x = 390
+    percent_x = 540
+    gold_x = 620
+
+    for i, stock in enumerate(stocks[:max_rows]):
+        y = first_row_y + i * row_height
+        current = stock["value"]
+        stats = get_chart_stats(stock["id"], start, now)
+
+        median = stats["median"] if stats else None
+        percentage = get_median_comparison(current, stats)
+        gold = (
+            abs(current - median)
+            if current is not None and median is not None
+            else None
+        )
+
+        draw_text(
+            name_x,
+            y,
+            stock["name"],
+            colors["text"],
+            current_x - name_x - 8,
+        )
+
+        current_text = (
+            f"{format_value(current)}g"
+            if current is not None else "-"
+        )
+        current_color = colors["text"]
+
+        if percentage is not None:
+            if percentage >= 50:
+                current_color = colors["positive"]
+            elif percentage < -50:
+                current_color = colors["negative"]
+
+        draw_right(current_x, y, current_text, current_color)
+
+        median_text = (
+            f"({format_value(median)})"
+            if median is not None else "(-)"
+        )
+        draw_text(median_x, y, median_text, colors["median"])
+
+        percentage_text = (
+            format_signed_percent(percentage)
+            if percentage is not None else "-"
+        )
+        percentage_color = colors["muted"]
+
+        if percentage is not None:
+            if percentage >= 50:
+                percentage_color = colors["positive"]
+            elif percentage < -50:
+                percentage_color = colors["negative"]
+            elif percentage > 0:
+                percentage_color = colors["positive_muted"]
+            elif percentage < 0:
+                percentage_color = colors["negative_muted"]
+
+        draw_right(percent_x, y, percentage_text, percentage_color)
+
+        gold_text = (
+            f"({format_value(gold)}g)"
+            if gold is not None else "(-)"
+        )
+        gold_color = colors["accent"]
+
+        if percentage is not None:
+            if percentage >= 50:
+                gold_color = colors["positive"]
+            elif percentage < -50:
+                gold_color = colors["negative"]
+
+        draw_right(gold_x, y, gold_text, gold_color)
+
+    raw = bytearray()
+    stride = width * 4
+
+    for y in range(height):
+        raw.append(0)
+        raw.extend(pixels[y * stride:(y + 1) * stride])
+
+    png = bytearray(b"\x89PNG\r\n\x1a\n")
+    png.extend(png_chunk(
+        b"IHDR",
+        struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0),
+    ))
+    png.extend(png_chunk(b"IDAT", zlib.compress(bytes(raw), 9)))
+    png.extend(png_chunk(b"IEND", b""))
+
+    return bytes(png)
+
+def get_cached_overview_png():
+    with _overview_cache_lock:
+        if _overview_cache["payload"] is None:
+            payload = render_overview_png()
+            etag = '"' + hashlib.sha256(payload).hexdigest() + '"'
+
+            _overview_cache["payload"] = payload
+            _overview_cache["etag"] = etag
+
+        return _overview_cache["payload"], _overview_cache["etag"]
+
+
+def invalidate_overview_cache():
+    with _overview_cache_lock:
+        _overview_cache["payload"] = None
+        _overview_cache["etag"] = None
 
 # == REST API ==
 
@@ -1822,6 +2123,30 @@ def render_dashboard(query):
 class StockHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlsplit(self.path)
+
+        if parsed.path == OVERVIEW_PATH:
+            try:
+                payload, etag = get_cached_overview_png()
+            except Exception:
+                log.exception("Failed to generate stock overview image")
+                self.send_error(500, "Internal Server Error")
+                return
+
+            if self.headers.get("If-None-Match") == etag:
+                self.send_response(304)
+                self.send_header("Cache-Control", "no-cache, must-revalidate")
+                self.send_header("ETag", etag)
+                self.end_headers()
+                return
+
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "no-cache, must-revalidate")
+            self.send_header("ETag", etag)
+            self.end_headers()
+            self.wfile.write(payload)
+            return
 
         if parsed.path == API_PATH:
             try:
