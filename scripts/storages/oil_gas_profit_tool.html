@@ -563,7 +563,7 @@
           <button type="button" data-level="35" class="active">Stufe 35 · 2 Monate Lernzeit</button>
           <button type="button" data-level="90">Stufe 90 · 2 Jahre Lernzeit</button>
         </div>
-        <p class="hint">Ein Preset setzt beide Fähigkeiten auf dieselbe Stufe.</p>
+        <p class="hint">Ein Preset setzt beide Fähigkeiten auf angegebene Stufe.</p>
       </div>
 
       <div class="panel frequency-panel">
@@ -612,7 +612,7 @@
           <div class="price-list" id="gas-prices"></div>
         </section>
       </div>
-      <p class="price-note">Die Verkaufspreise werden für Gewinn und Amortisierung verwendet.</p>
+      <p class="price-note">Die Verkaufspreise werden für Gewinn und Amortisierung verwendet. Die Kosten für die Herrstellung von gelöstem Klebeöl und gelöstem Pappgas werden bereits berücksichtigt.</p>
     </section>
 
     <div class="results-title">
@@ -753,18 +753,18 @@
 
       var oilPriceLabels = {
         oil: "Öl",
-        dissolvedGlueOil: "Gelöstes Klebeöl",
-        whiteOil: "Weißes Öl",
+        dissolvedGlueOil: "gelöstes Klebeöl",
+        whiteOil: "weißes Öl",
         silkOil: "Seidenöl",
         cubeOil: "Würfelöl"
       };
 
       var gasPriceLabels = {
         gas: "Sumpfgas",
-        dissolvedCardboardGas: "Gelöstes Pappgas",
+        dissolvedCardboardGas: "gelöstes Pappgas",
         deepGas: "Tiefengas",
         stoneGas: "Steingas",
-        strangeGas: "Seltsames Gas"
+        strangeGas: "seltsames Gas"
       };
 
       function durationSeconds(days, hours, minutes, seconds) {
