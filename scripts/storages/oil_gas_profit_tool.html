@@ -1,736 +1,832 @@
+
 <!DOCTYPE html>
 <html lang="de">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Lohnt sich das?</title>
-    <style>
-        :root {
-            color-scheme: dark;
-            --bg: #121613;
-            --surface: #1b211d;
-            --surface-2: #242c26;
-            --border: #343e36;
-            --text: #f0f3ef;
-            --muted: #a4afa6;
-            --accent: #b8dc9b;
-            --oil: #e3bd70;
-            --gas: #83d4b5;
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            background: var(--bg);
-            color: var(--text);
-            font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        }
-
-        main {
-            width: min(1080px, calc(100% - 32px));
-            margin: 0 auto;
-            padding: 44px 0 56px;
-        }
-
-        header {
-            margin-bottom: 28px;
-        }
-
-        .eyebrow {
-            margin: 0 0 8px;
-            color: var(--accent);
-            font-size: .75rem;
-            font-weight: 700;
-            letter-spacing: .13em;
-            text-transform: uppercase;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: clamp(2.4rem, 6vw, 3.5rem);
-            letter-spacing: -.055em;
-            line-height: 1.05;
-        }
-
-        .subtitle {
-            max-width: 620px;
-            margin: 12px 0 0;
-            color: var(--muted);
-        }
-
-        .settings {
-            display: grid;
-            grid-template-columns: 1.2fr .8fr;
-            gap: 16px;
-            margin-bottom: 30px;
-        }
-
-        .panel {
-            min-width: 0;
-            padding: 22px;
-            border: 1px solid var(--border);
-            border-radius: 15px;
-            background: var(--surface);
-        }
-
-        h2 {
-            margin: 0 0 17px;
-            font-size: 1rem;
-        }
-
-        .skills {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 6px;
-            color: var(--muted);
-            font-size: .85rem;
-        }
-
-        .number-wrap {
-            position: relative;
-        }
-
-        input,
-        select {
-            width: 100%;
-            padding: 11px 12px;
-            border: 1px solid #455147;
-            border-radius: 9px;
-            background: #131814;
-            color: var(--text);
-            font: inherit;
-            outline: none;
-        }
-
-        input {
-            padding-right: 48px;
-        }
-
-        input:focus,
-        select:focus {
-            border-color: var(--accent);
-        }
-
-        .suffix {
-            position: absolute;
-            top: 50%;
-            right: 12px;
-            transform: translateY(-50%);
-            color: var(--muted);
-            font-size: .82rem;
-            pointer-events: none;
-        }
-
-        .presets {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 15px;
-        }
-
-        button {
-            padding: 8px 12px;
-            border: 1px solid #455147;
-            border-radius: 999px;
-            background: var(--surface-2);
-            color: var(--text);
-            font: inherit;
-            font-size: .82rem;
-            cursor: pointer;
-        }
-
-        button:hover {
-            border-color: var(--accent);
-        }
-
-        button.active {
-            border-color: var(--accent);
-            background: var(--accent);
-            color: #172016;
-            font-weight: 700;
-        }
-
-        .hint {
-            margin: 10px 0 0;
-            color: var(--muted);
-            font-size: .77rem;
-        }
-
-        .frequency-panel {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .frequency-panel select {
-            margin-top: 1px;
-        }
-
-        .frequency-hint {
-            margin-top: auto;
-            padding-top: 20px;
-            color: var(--muted);
-            font-size: .82rem;
-        }
-
-        .results-title {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 14px;
-        }
-
-        .results-title h2 {
-            margin: 0;
-            font-size: 1.3rem;
-            letter-spacing: -.025em;
-        }
-
-        .results-title p {
-            margin: 0;
-            color: var(--muted);
-            font-size: .8rem;
-        }
-
-        .columns {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            align-items: start;
-        }
-
-        .resource-head {
-            display: flex;
-            align-items: center;
-            gap: 11px;
-            margin-bottom: 16px;
-        }
-
-        .resource-symbol {
-            display: grid;
-            place-items: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 11px;
-            background: #352f20;
-            color: var(--oil);
-            font-size: 1.25rem;
-            font-weight: 750;
-        }
-
-        .gas .resource-symbol {
-            background: #20362e;
-            color: var(--gas);
-        }
-
-        .resource-head h3 {
-            margin: 0;
-            font-size: 1.12rem;
-        }
-
-        .resource-head p {
-            margin: 2px 0 0;
-            color: var(--muted);
-            font-size: .8rem;
-        }
-
-        .tier-list {
-            display: grid;
-            gap: 11px;
-        }
-
-        .tier {
-            padding: 15px;
-            border: 1px solid var(--border);
-            border-radius: 11px;
-            background: #171d19;
-        }
-
-        .tier-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 7px;
-        }
-
-        .tier-head h4 {
-            margin: 0;
-            font-size: .98rem;
-        }
-
-        .tag {
-            padding: 3px 8px;
-            border: 1px solid #5b4c2c;
-            border-radius: 99px;
-            color: var(--oil);
-            font-size: .73rem;
-            white-space: nowrap;
-        }
-
-        .gas .tag {
-            border-color: #315847;
-            color: var(--gas);
-        }
-
-        .storage {
-            margin: 0 0 13px;
-            color: var(--muted);
-            font-size: .81rem;
-        }
-
-        .storage strong {
-            color: var(--text);
-            font-weight: 600;
-        }
-
-        .metrics {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .metric {
-            min-width: 0;
-            padding: 10px;
-            border-radius: 8px;
-            background: var(--surface-2);
-        }
-
-        .metric span {
-            display: block;
-            margin-bottom: 4px;
-            color: var(--muted);
-            font-size: .75rem;
-        }
-
-        .metric strong {
-            display: block;
-            font-size: .98rem;
-            overflow-wrap: anywhere;
-        }
-
-        .metric.wide {
-            display: flex;
-            grid-column: 1 / -1;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .metric.wide span {
-            margin: 0;
-        }
-
-        .pending {
-            color: #89958b !important;
-            font-size: .83rem !important;
-            font-weight: 500 !important;
-        }
-
-        .prices {
-            margin-bottom: 30px;
-        }
-
-        .price-columns {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .price-list {
-            display: grid;
-            gap: 13px;
-        }
-
-        .price-row {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            align-items: end;
-            gap: 8px;
-        }
-
-        .price-row label {
-            margin-bottom: 6px;
-        }
-
-        .price-input-wrap {
-            position: relative;
-        }
-
-        .price-input-wrap input {
-            padding-right: 12px;
-        }
-
-        .price-reset {
-            width: 42px;
-            height: 43px;
-            padding: 0;
-            border-radius: 9px;
-            font-size: 1.2rem;
-            line-height: 1;
-        }
-
-        .price-reset:hover {
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .price-note {
-            margin: 14px 0 0;
-            color: var(--muted);
-            font-size: .78rem;
-        }
-
-        footer {
-            margin-top: 22px;
-            color: var(--muted);
-            font-size: .78rem;
-        }
-
-        @media (max-width: 720px) {
-            main {
-                padding-top: 30px;
-            }
-
-            .settings,
-            .columns,
-            .price-columns {
-                grid-template-columns: 1fr;
-            }
-
-            .panel {
-                padding: 17px;
-            }
-
-            .results-title {
-                align-items: flex-start;
-                flex-direction: column;
-                gap: 4px;
-            }
-        }
-
-        @media (max-width: 380px) {
-            .skills {
-                grid-template-columns: 1fr;
-            }
-
-            .tier {
-                padding: 12px;
-            }
-
-            .metric {
-                padding: 8px;
-            }
-
-            .metric strong {
-                font-size: .9rem;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lohnt sich das?</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #121613;
+      --surface: #1b211d;
+      --surface-2: #242c26;
+      --border: #343e36;
+      --text: #f0f3ef;
+      --muted: #a4afa6;
+      --accent: #b8dc9b;
+      --oil: #e3bd70;
+      --gas: #83d4b5;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1500px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 32px;
+    }
+
+    header {
+      margin-bottom: 16px;
+    }
+
+    .eyebrow {
+      margin: 0 0 4px;
+      color: var(--accent);
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      letter-spacing: -.055em;
+      line-height: 1.05;
+    }
+
+    .subtitle {
+      max-width: 800px;
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(250px, .7fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .panel {
+      min-width: 0;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+    }
+
+    h2 {
+      margin: 0 0 9px;
+      font-size: .95rem;
+    }
+
+    .skills {
+      display: grid;
+      grid-template-columns: max-content max-content;
+      gap: 16px;
+    }
+
+    .skills > div {
+      display: grid;
+      grid-template-columns: auto auto;
+      justify-content: start;
+      align-items: center;
+      gap: 9px;
+    }
+
+    label {
+      display: block;
+      margin: 0;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    .number-wrap {
+      position: relative;
+      width: 9.5ch;
+    }
+
+    input,
+    select {
+      min-width: 0;
+      padding: 6px 9px;
+      border: 1px solid #455147;
+      border-radius: 8px;
+      background: #131814;
+      color: var(--text);
+      font: inherit;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    .number-wrap input {
+      width: 100%;
+      padding: 6px 29px 6px 7px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .suffix {
+      position: absolute;
+      top: 50%;
+      right: 6px;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: .72rem;
+      pointer-events: none;
+    }
+
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 9px;
+    }
+
+    button {
+      padding: 5px 9px;
+      border: 1px solid #455147;
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text);
+      font: inherit;
+      font-size: .75rem;
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    button.active {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #172016;
+      font-weight: 700;
+    }
+
+    .hint {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: .72rem;
+    }
+
+    .frequency-panel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .frequency-panel > div {
+      display: grid;
+      grid-template-columns: auto auto;
+      justify-content: start;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .frequency-panel h2 {
+      margin: 0;
+    }
+
+    .frequency-panel label {
+      display: none;
+    }
+
+    .frequency-panel select {
+      width: 145px;
+      padding-right: 24px;
+    }
+
+    .frequency-hint {
+      margin: auto 0 0;
+      padding-top: 8px;
+      color: var(--muted);
+      font-size: .74rem;
+    }
+
+    .results-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 9px;
+    }
+
+    .results-title h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      letter-spacing: -.025em;
+    }
+
+    .results-title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .75rem;
+    }
+
+    .columns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      align-items: start;
+    }
+
+    .resource-head {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 10px;
+    }
+
+    .resource-symbol {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      border-radius: 9px;
+      background: #352f20;
+      color: var(--oil);
+      font-size: 1.1rem;
+      font-weight: 750;
+    }
+
+    .gas .resource-symbol {
+      background: #20362e;
+      color: var(--gas);
+    }
+
+    .resource-head h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .resource-head p {
+      margin: 1px 0 0;
+      color: var(--muted);
+      font-size: .74rem;
+    }
+
+    .tier-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .tier {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #171d19;
+    }
+
+    .tier-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .tier-head h4 {
+      margin: 0;
+      font-size: .9rem;
+    }
+
+    .tag {
+      padding: 2px 7px;
+      border: 1px solid #5b4c2c;
+      border-radius: 99px;
+      color: var(--oil);
+      font-size: .68rem;
+      white-space: nowrap;
+    }
+
+    .gas .tag {
+      border-color: #315847;
+      color: var(--gas);
+    }
+
+    .storage {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: .76rem;
+    }
+
+    .storage strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 7px;
+      border-radius: 7px;
+      background: var(--surface-2);
+    }
+
+    .metric span {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--muted);
+      font-size: .68rem;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: .88rem;
+      overflow-wrap: anywhere;
+    }
+
+    .metric.wide {
+      display: flex;
+      grid-column: 1 / -1;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .metric.wide span {
+      margin: 0;
+    }
+
+    .pending {
+      color: #89958b !important;
+      font-size: .78rem !important;
+      font-weight: 500 !important;
+    }
+
+    .prices {
+      margin-bottom: 16px;
+    }
+
+    .price-columns {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .price-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 16px;
+      row-gap: 7px;
+    }
+
+    .price-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 30px;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .price-row > div {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 10ch;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .price-row label {
+      min-width: 0;
+      font-size: .76rem;
+      line-height: 1.2;
+    }
+
+    .price-input-wrap {
+      min-width: 0;
+    }
+
+    .price-input-wrap input {
+        display: block;
+        width: 10ch;
+        max-width: 100%;
+        padding: 5px 4px;
+        text-align: right;
+        font-size: .8rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .price-reset {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      line-height: 1;
+    }
+
+    .price-reset:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .price-note {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: .72rem;
+    }
+
+    footer {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: .72rem;
+    }
+
+    @media (max-width: 1000px) {
+      .settings {
+        grid-template-columns: minmax(0, 1.2fr) minmax(220px, .8fr);
+      }
+
+      .price-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: calc(100% - 20px);
+        padding-top: 20px;
+      }
+
+      .settings,
+      .columns,
+      .price-columns {
+        grid-template-columns: 1fr;
+      }
+
+      .price-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .frequency-panel > div {
+        grid-template-columns: auto auto;
+      }
+
+      .tier-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      .panel {
+        padding: 11px;
+      }
+
+      .skills {
+        gap: 10px;
+      }
+
+      .skills > div {
+        grid-template-columns: auto auto;
+        gap: 6px;
+      }
+
+      .presets {
+        gap: 4px;
+      }
+
+      button {
+        padding: 5px 7px;
+        font-size: .72rem;
+      }
+
+      .results-title {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .price-list {
+        grid-template-columns: 1fr;
+      }
+
+      .tier {
+        padding: 9px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .skills {
+        grid-template-columns: 1fr;
+      }
+
+      .skills > div {
+        grid-template-columns: 110px 9.5ch;
+      }
+
+      .tier-list {
+        grid-template-columns: 1fr;
+      }
+
+      .frequency-panel > div {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .frequency-panel select {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
-
 <body>
-    <main>
-        <header>
-            <p class="eyebrow">Freewar · Investitionsrechner</p>
-            <h1>Lohnt sich das?</h1>
-            <p class="subtitle">Berechne Kosten, Gewinn und Amortisierung für Ölturm und Sumpfgasanlage – passend zu
-                deinen Fähigkeiten und deiner Abholfrequenz.</p>
-        </header>
+  <main>
+    <header>
+      <p class="eyebrow">Freewar · Investitionsrechner</p>
+      <h1>Lohnt sich das?</h1>
+      <p class="subtitle">Berechne Kosten, Gewinn und Amortisierung für Ölturm und Sumpfgasanlage – passend zu deinen Fähigkeiten und deiner Abholfrequenz.</p>
+    </header>
 
-        <section class="settings" aria-label="Einstellungen">
-            <div class="panel">
-                <h2>Deine Fähigkeiten</h2>
-                <div class="skills">
-                    <div>
-                        <label for="bauwesen">Bauwesen</label>
-                        <div class="number-wrap">
-                            <input id="bauwesen" type="number" min="0" max="90" step="1" value="0">
-                            <span class="suffix">/ 90</span>
-                        </div>
-                    </div>
-                    <div>
-                        <label for="lagerlogistik">Lagerlogistik</label>
-                        <div class="number-wrap">
-                            <input id="lagerlogistik" type="number" min="0" max="90" step="1" value="0">
-                            <span class="suffix">/ 90</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="presets" aria-label="Fähigkeiten-Voreinstellungen">
-                    <button type="button" data-level="0" class="active">Stufe 0</button>
-                    <button type="button" data-level="35">Stufe 35 · 1 Monat Lernzeit</button>
-                    <button type="button" data-level="90">Stufe 90 · 1 Jahr Lernzeit</button>
-                </div>
-                <p class="hint">Ein Preset setzt beide Fähigkeiten auf dieselbe Stufe.</p>
+    <section class="settings" aria-label="Einstellungen">
+      <div class="panel">
+        <h2>Deine Fähigkeiten</h2>
+        <div class="skills">
+          <div>
+            <label for="bauwesen">Bauwesen</label>
+            <div class="number-wrap">
+              <input id="bauwesen" type="number" min="0" max="90" step="1" value="35">
+              <span class="suffix">/ 90</span>
             </div>
-
-            <div class="panel frequency-panel">
-                <div>
-                    <h2>Abholfrequenz</h2>
-                    <label for="frequenz">Wie oft holst du ab?</label>
-                    <select id="frequenz">
-                        <option value="3">3 pro Tag</option>
-                        <option value="2">2 pro Tag</option>
-                        <option value="1" selected>1 pro Tag</option>
-                        <option value="0.5">Alle 2 Tage</option>
-                        <option value="0.333333">Alle 3 Tage</option>
-                        <option value="0.142857">1 pro Woche</option>
-                    </select>
-                </div>
-                <p class="frequency-hint">Die gewählte Frequenz wird später zur Berechnung der benötigten Lagerstufe
-                    verwendet.</p>
+          </div>
+          <div>
+            <label for="lagerlogistik">Lagerlogistik</label>
+            <div class="number-wrap">
+              <input id="lagerlogistik" type="number" min="0" max="90" step="1" value="35">
+              <span class="suffix">/ 90</span>
             </div>
-        </section>
-
-        <section class="prices" aria-labelledby="prices-title">
-            <div class="results-title">
-                <h2 id="prices-title">Verkaufspreise</h2>
-                <p>Bearbeite die Preise oder setze sie einzeln auf den Standardwert zurück.</p>
-            </div>
-
-            <div class="price-columns">
-                <section class="panel resource oil" aria-labelledby="oil-prices-title">
-                    <div class="resource-head">
-                        <div class="resource-symbol" aria-hidden="true">Ö</div>
-                        <div>
-                            <h3 id="oil-prices-title">Öl</h3>
-                            <p>Verkaufspreise pro Einheit</p>
-                        </div>
-                    </div>
-                    <div class="price-list" id="oil-prices"></div>
-                </section>
-
-                <section class="panel resource gas" aria-labelledby="gas-prices-title">
-                    <div class="resource-head">
-                        <div class="resource-symbol" aria-hidden="true">S</div>
-                        <div>
-                            <h3 id="gas-prices-title">Sumpfgas</h3>
-                            <p>Verkaufspreise pro Einheit</p>
-                        </div>
-                    </div>
-                    <div class="price-list" id="gas-prices"></div>
-                </section>
-            </div>
-            <p class="price-note">Die Verkaufspreise werden später für die Berechnung von Gewinn und Amortisierung
-                verwendet.</p>
-        </section>
-
-        <div class="results-title">
-            <h2>Ausbauoptionen</h2>
-            <p>Vergleiche Kosten, Ertrag und Amortisierung für die verschiedenen Ausbaustufen.</p>
+          </div>
         </div>
+        <div class="presets" aria-label="Fähigkeiten-Voreinstellungen">
+          <button type="button" data-level="0">Stufe 0</button>
+          <button type="button" data-level="35" class="active">Stufe 35 · 2 Monate Lernzeit</button>
+          <button type="button" data-level="90">Stufe 90 · 2 Jahre Lernzeit</button>
+        </div>
+        <p class="hint">Ein Preset setzt beide Fähigkeiten auf dieselbe Stufe.</p>
+      </div>
 
-        <section class="columns" aria-label="Ausbauoptionen im Vergleich">
-            <section class="panel resource oil" aria-labelledby="oil-title">
-                <div class="resource-head">
-                    <div class="resource-symbol" aria-hidden="true">Ö</div>
-                    <div>
-                        <h3 id="oil-title">Ölturm</h3>
-                        <p>Ausbau auf Stufe 40–47</p>
-                    </div>
-                </div>
-                <div class="tier-list" id="oil-tiers"></div>
-            </section>
+      <div class="panel frequency-panel">
+        <div>
+          <h2>Abholfrequenz</h2>
+          <label for="frequenz">Wie oft holst du ab?</label>
+          <select id="frequenz">
+            <option value="3" selected>3 pro Tag</option>
+            <option value="2">2 pro Tag</option>
+            <option value="1">1 pro Tag</option>
+            <option value="0.5">Alle 2 Tage</option>
+            <option value="0.333333">Alle 3 Tage</option>
+            <option value="0.142857">1 pro Woche</option>
+          </select>
+        </div>
+        <p class="frequency-hint">Die gewählte Frequenz bestimmt die benötigte Lagerstufe.</p>
+      </div>
+    </section>
 
-            <section class="panel resource gas" aria-labelledby="gas-title">
-                <div class="resource-head">
-                    <div class="resource-symbol" aria-hidden="true">S</div>
-                    <div>
-                        <h3 id="gas-title">Sumpfgasanlage</h3>
-                        <p>Ausbau auf Stufe 61</p>
-                    </div>
-                </div>
-                <div class="tier-list" id="gas-tiers"></div>
-            </section>
+    <section class="prices" aria-labelledby="prices-title">
+      <div class="results-title">
+        <h2 id="prices-title">Verkaufspreise</h2>
+        <p>Preise bearbeiten oder einzeln zurücksetzen.</p>
+      </div>
+
+      <div class="price-columns">
+        <section class="panel resource oil" aria-labelledby="oil-prices-title">
+          <div class="resource-head">
+            <div class="resource-symbol" aria-hidden="true">Ö</div>
+            <div>
+              <h3 id="oil-prices-title">Öl</h3>
+              <p>Verkaufspreise pro Einheit</p>
+            </div>
+          </div>
+          <div class="price-list" id="oil-prices"></div>
         </section>
 
-        <footer>Die Ergebnisse zeigen dir, welche Ausbaustufe sich bei deinen Fähigkeiten und deiner Abholfrequenz am
-            ehesten lohnt.</footer>
-    </main>
-    <script>
-        (function () {
-            "use strict";
+        <section class="panel resource gas" aria-labelledby="gas-prices-title">
+          <div class="resource-head">
+            <div class="resource-symbol" aria-hidden="true">S</div>
+            <div>
+              <h3 id="gas-prices-title">Sumpfgas</h3>
+              <p>Verkaufspreise pro Einheit</p>
+            </div>
+          </div>
+          <div class="price-list" id="gas-prices"></div>
+        </section>
+      </div>
+      <p class="price-note">Die Verkaufspreise werden für Gewinn und Amortisierung verwendet.</p>
+    </section>
 
-            var oilLevels = [40, 41, 44, 47];
-            var gasLevels = [50, 51, 56, 61];
+    <div class="results-title">
+      <h2>Ausbauoptionen</h2>
+      <p>Vergleiche Kosten, Ertrag und Amortisierung.</p>
+    </div>
 
-            var oilProductionPerDay = 48.99;
-            var gasProductionPerDay = 304.2;
+    <section class="columns" aria-label="Ausbauoptionen im Vergleich">
+      <section class="panel resource oil" aria-labelledby="oil-title">
+        <div class="resource-head">
+          <div class="resource-symbol" aria-hidden="true">Ö</div>
+          <div>
+            <h3 id="oil-title">Ölturm</h3>
+            <p>Ausbau auf Stufe 40–47</p>
+          </div>
+        </div>
+        <div class="tier-list" id="oil-tiers"></div>
+      </section>
 
-            var defaultPrices = {
-                oil: {
-                    oil: 245,
-                    dissolvedGlueOil: 90000,
-                    whiteOil: 5000,
-                    silkOil: 50000,
-                    cubeOil: 230000
-                },
-                gas: {
-                    gas: 46,
-                    dissolvedCardboardGas: 45000,
-                    deepGas: 5000,
-                    stoneGas: 55000,
-                    strangeGas: 220000
-                }
-            };
+      <section class="panel resource gas" aria-labelledby="gas-title">
+        <div class="resource-head">
+          <div class="resource-symbol" aria-hidden="true">S</div>
+          <div>
+            <h3 id="gas-title">Sumpfgasanlage</h3>
+            <p>Ausbau auf Stufe 61</p>
+          </div>
+        </div>
+        <div class="tier-list" id="gas-tiers"></div>
+      </section>
+    </section>
 
-            var sellingPrices = {
-                oil: Object.assign({}, defaultPrices.oil),
-                gas: Object.assign({}, defaultPrices.gas)
-            };
+    <footer>Die Ergebnisse zeigen dir, welche Ausbaustufe sich bei deinen Fähigkeiten und deiner Abholfrequenz am ehesten lohnt.</footer>
+  </main>
 
-            var oilPriceLabels = {
-                oil: "Öl",
-                dissolvedGlueOil: "Gelöstes Klebeöl",
-                whiteOil: "Weißes Öl",
-                silkOil: "Seidenöl",
-                cubeOil: "Würfelöl"
-            };
+  <script>
+    (function () {
+      "use strict";
 
-            var gasPriceLabels = {
-                gas: "Sumpfgas",
-                dissolvedCardboardGas: "Gelöstes Pappgas",
-                deepGas: "Tiefengas",
-                stoneGas: "Steingas",
-                strangeGas: "Seltsames Gas"
-            };
+      var oilLevels = [40, 41, 44, 47];
+      var gasLevels = [50, 51, 56, 61];
 
-            var bauInput = document.getElementById("bauwesen");
-            var lagerInput = document.getElementById("lagerlogistik");
-            var frequencyInput = document.getElementById("frequenz");
-            var presetButtons = Array.from(document.querySelectorAll("[data-level]"));
+      var oilProductionPerDay = 48.99;
+      var gasProductionPerDay = 304.2;
 
-            function formatPrice(value) {
-                return Number(value).toLocaleString("de-DE");
-            }
+      var defaultPrices = {
+        oil: {
+          oil: 245,
+          dissolvedGlueOil: 90000,
+          whiteOil: 5000,
+          silkOil: 50000,
+          cubeOil: 230000
+        },
+        gas: {
+          gas: 46,
+          dissolvedCardboardGas: 45000,
+          deepGas: 5000,
+          stoneGas: 55000,
+          strangeGas: 220000
+        }
+      };
 
-            function renderPriceInputs(resource, containerId, labels) {
-                var container = document.getElementById(containerId);
+      var sellingPrices = {
+        oil: Object.assign({}, defaultPrices.oil),
+        gas: Object.assign({}, defaultPrices.gas)
+      };
 
-                container.innerHTML = Object.keys(defaultPrices[resource]).map(function (key) {
-                    var id = resource + "-price-" + key;
+      var oilPriceLabels = {
+        oil: "Öl",
+        dissolvedGlueOil: "Gelöstes Klebeöl",
+        whiteOil: "Weißes Öl",
+        silkOil: "Seidenöl",
+        cubeOil: "Würfelöl"
+      };
 
-                    return '<div class="price-row">' +
-                        '<div>' +
-                        '<label for="' + id + '">' + labels[key] + '</label>' +
-                        '<div class="price-input-wrap">' +
-                        '<input id="' + id + '" type="number" min="0" step="1" value="' + defaultPrices[resource][key] + '" data-resource="' + resource + '" data-price-key="' + key + '">' +
-                        '</div>' +
-                        '</div>' +
-                        '<button class="price-reset" type="button" data-reset-resource="' + resource + '" data-reset-key="' + key + '" aria-label="' + labels[key] + ' auf Standardwert zurücksetzen" title="Auf Standardwert zurücksetzen">×</button>' +
-                        '</div>';
-                }).join("");
+      var gasPriceLabels = {
+        gas: "Sumpfgas",
+        dissolvedCardboardGas: "Gelöstes Pappgas",
+        deepGas: "Tiefengas",
+        stoneGas: "Steingas",
+        strangeGas: "Seltsames Gas"
+      };
 
-                container.querySelectorAll("[data-price-key]").forEach(function (input) {
-                    input.addEventListener("input", function () {
-                        var priceResource = input.dataset.resource;
-                        var key = input.dataset.priceKey;
-                        var value = input.value === "" ? "" : Number(input.value);
+      var bauInput = document.getElementById("bauwesen");
+      var lagerInput = document.getElementById("lagerlogistik");
+      var frequencyInput = document.getElementById("frequenz");
+      var presetButtons = Array.from(document.querySelectorAll("[data-level]"));
 
-                        sellingPrices[priceResource][key] = value;
-                    });
-                });
+      function renderPriceInputs(resource, containerId, labels) {
+        var container = document.getElementById(containerId);
 
-                container.querySelectorAll("[data-reset-key]").forEach(function (button) {
-                    button.addEventListener("click", function () {
-                        var priceResource = button.dataset.resetResource;
-                        var key = button.dataset.resetKey;
-                        var input = document.getElementById(priceResource + "-price-" + key);
+        container.innerHTML = Object.keys(defaultPrices[resource]).map(function (key) {
+          var id = resource + "-price-" + key;
 
-                        sellingPrices[priceResource][key] = defaultPrices[priceResource][key];
-                        input.value = defaultPrices[priceResource][key];
-                        input.dispatchEvent(new Event("input", { bubbles: true }));
-                    });
-                });
-            }
+          return '<div class="price-row">' +
+            '<div>' +
+              '<label for="' + id + '">' + labels[key] + '</label>' +
+              '<div class="price-input-wrap">' +
+                '<input id="' + id + '" type="number" min="0" step="1" value="' + defaultPrices[resource][key] + '" data-resource="' + resource + '" data-price-key="' + key + '">' +
+              '</div>' +
+            '</div>' +
+            '<button class="price-reset" type="button" data-reset-resource="' + resource + '" data-reset-key="' + key + '" aria-label="' + labels[key] + ' auf Standardwert zurücksetzen" title="Auf Standardwert zurücksetzen">×</button>' +
+          '</div>';
+        }).join("");
 
-            function clampSkill(input) {
-                var value = Number.parseInt(input.value, 10);
-                if (!Number.isFinite(value)) value = 0;
-                value = Math.max(0, Math.min(90, value));
-                input.value = value;
-                return value;
-            }
+        container.querySelectorAll("[data-price-key]").forEach(function (input) {
+          input.addEventListener("input", function () {
+            var priceResource = input.dataset.resource;
+            var key = input.dataset.priceKey;
+            var value = input.value === "" ? "" : Number(input.value);
 
-            function getStorageLevel(productionPerDay) {
-                var frequency = Number(frequencyInput.value);
-                return Math.ceil(productionPerDay / frequency);
-            }
+            sellingPrices[priceResource][key] = value;
+          });
+        });
 
-            function tierMarkup(level, resource) {
-                var productionPerDay = resource === "oil" ? oilProductionPerDay : gasProductionPerDay;
-                var storageLevel = getStorageLevel(productionPerDay);
-                var storageName = resource === "oil" ? "Öl-Lager" : "Sumpfgas-Lager";
+        container.querySelectorAll("[data-reset-key]").forEach(function (button) {
+          button.addEventListener("click", function () {
+            var priceResource = button.dataset.resetResource;
+            var key = button.dataset.resetKey;
+            var input = document.getElementById(priceResource + "-price-" + key);
 
-                return '<article class="tier">' +
-                    '<div class="tier-head"><h4>Stufe ' + level + '</h4><span class="tag">Ausbau</span></div>' +
-                    '<p class="storage">' + storageName + ': <strong>Stufe ' + storageLevel.toLocaleString("de-DE") + '</strong></p>' +
-                    '<div class="metrics">' +
-                    '<div class="metric"><span>Gesamtkosten</span><strong class="pending">–</strong></div>' +
-                    '<div class="metric"><span>Gewinn pro Tag</span><strong class="pending">–</strong></div>' +
-                    '<div class="metric"><span>Gewinn pro Jahr</span><strong class="pending">–</strong></div>' +
-                    '<div class="metric"><span>Amortisierung</span><strong class="pending">–</strong></div>' +
-                    '</div>' +
-                    '</article>';
-            }
+            sellingPrices[priceResource][key] = defaultPrices[priceResource][key];
+            input.value = defaultPrices[priceResource][key];
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+          });
+        });
+      }
 
-            function renderTiers() {
-                document.getElementById("oil-tiers").innerHTML = oilLevels.map(function (level) {
-                    return tierMarkup(level, "oil");
-                }).join("");
+      function clampSkill(input) {
+        var value = Number.parseInt(input.value, 10);
+        if (!Number.isFinite(value)) value = 0;
+        value = Math.max(0, Math.min(90, value));
+        input.value = value;
+        return value;
+      }
 
-                document.getElementById("gas-tiers").innerHTML = gasLevels.map(function (level) {
-                    return tierMarkup(level, "gas");
-                }).join("");
-            }
+      function getStorageLevel(productionPerDay) {
+        var frequency = Number(frequencyInput.value);
+        return Math.ceil(productionPerDay / frequency);
+      }
 
-            function updatePresets() {
-                var bau = clampSkill(bauInput);
-                var lager = clampSkill(lagerInput);
+      function tierMarkup(level, resource) {
+        var productionPerDay = resource === "oil" ? oilProductionPerDay : gasProductionPerDay;
+        var storageLevel = getStorageLevel(productionPerDay);
+        var storageName = resource === "oil" ? "Öl-Lager" : "Sumpfgas-Lager";
 
-                presetButtons.forEach(function (button) {
-                    var level = Number(button.dataset.level);
-                    button.classList.toggle("active", bau === level && lager === level);
-                });
-            }
+        return '<article class="tier">' +
+          '<div class="tier-head"><h4>Stufe ' + level + '</h4><span class="tag">Ausbau</span></div>' +
+          '<p class="storage">' + storageName + ': <strong>Stufe ' + storageLevel.toLocaleString("de-DE") + '</strong></p>' +
+          '<div class="metrics">' +
+            '<div class="metric"><span>Gesamtkosten</span><strong class="pending">–</strong></div>' +
+            '<div class="metric"><span>Gewinn pro Tag</span><strong class="pending">–</strong></div>' +
+            '<div class="metric"><span>Gewinn pro Jahr</span><strong class="pending">–</strong></div>' +
+            '<div class="metric"><span>Amortisierung</span><strong class="pending">–</strong></div>' +
+          '</div>' +
+        '</article>';
+      }
 
-            presetButtons.forEach(function (button) {
-                button.addEventListener("click", function () {
-                    var level = Number(button.dataset.level);
-                    bauInput.value = level;
-                    lagerInput.value = level;
-                    updatePresets();
-                });
-            });
+      function renderTiers() {
+        document.getElementById("oil-tiers").innerHTML = oilLevels.map(function (level) {
+          return tierMarkup(level, "oil");
+        }).join("");
 
-            [bauInput, lagerInput].forEach(function (input) {
-                input.addEventListener("change", updatePresets);
-                input.addEventListener("input", function () {
-                    presetButtons.forEach(function (button) {
-                        button.classList.remove("active");
-                    });
-                });
-            });
+        document.getElementById("gas-tiers").innerHTML = gasLevels.map(function (level) {
+          return tierMarkup(level, "gas");
+        }).join("");
+      }
 
-            frequencyInput.addEventListener("change", renderTiers);
+      function updatePresets() {
+        var bau = clampSkill(bauInput);
+        var lager = clampSkill(lagerInput);
 
-            renderPriceInputs("oil", "oil-prices", oilPriceLabels);
-            renderPriceInputs("gas", "gas-prices", gasPriceLabels);
-            renderTiers();
-            updatePresets();
-        }());
-    </script>
+        presetButtons.forEach(function (button) {
+          var level = Number(button.dataset.level);
+          button.classList.toggle("active", bau === level && lager === level);
+        });
+      }
+
+      presetButtons.forEach(function (button) {
+        button.addEventListener("click", function () {
+          var level = Number(button.dataset.level);
+          bauInput.value = level;
+          lagerInput.value = level;
+          updatePresets();
+        });
+      });
+
+      [bauInput, lagerInput].forEach(function (input) {
+        input.addEventListener("change", updatePresets);
+        input.addEventListener("input", function () {
+          presetButtons.forEach(function (button) {
+            button.classList.remove("active");
+          });
+        });
+      });
+
+      frequencyInput.addEventListener("change", renderTiers);
+
+      renderPriceInputs("oil", "oil-prices", oilPriceLabels);
+      renderPriceInputs("gas", "gas-prices", gasPriceLabels);
+      renderTiers();
+      updatePresets();
+    }());
+  </script>
 </body>
-
 </html>
