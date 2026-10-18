@@ -571,12 +571,12 @@
           <h2>Abholfrequenz</h2>
           <label for="frequenz">Wie oft holst du ab?</label>
           <select id="frequenz">
-            <option value="3" selected>3 pro Tag</option>
-            <option value="2">2 pro Tag</option>
-            <option value="1">1 pro Tag</option>
+            <option value="3" selected>3x am Tag</option>
+            <option value="2">2x am Tag</option>
+            <option value="1">1x am Tag</option>
             <option value="0.5">Alle 2 Tage</option>
             <option value="0.333333">Alle 3 Tage</option>
-            <option value="0.142857">1 pro Woche</option>
+            <option value="0.142857">1x pro Woche</option>
           </select>
         </div>
         <p class="frequency-hint">Die gewählte Frequenz bestimmt die benötigte Lagerstufe.</p>
@@ -950,12 +950,21 @@
 
         var profitPerDay = calculateProfitPerDay(level, resource);
         var profitPerYear = profitPerDay * 365;
+        var amortizationYears = profitPerDay > 0
+          ? totalCost / profitPerDay / 365
+          : null;
+        var amortizationText = amortizationYears !== null
+          ? amortizationYears.toLocaleString("de-DE", {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1
+            }) + " Jahre"
+          : "–";
 
         return '<article class="tier">' +
           '<div class="tier-head"><h4>Stufe ' + level + '</h4><span class="tag">Ausbau</span></div>' +
           '<div class="metrics">' +
             '<div class="metric"><span>Gesamtkosten</span><strong>' + formatNumber(totalCost) + '</strong></div>' +
-            '<div class="metric"><span>Amortisierung</span><strong class="pending">–</strong></div>' +
+            '<div class="metric"><span>Amortisierung</span><strong>' + amortizationText + '</strong></div>' +
             '<div class="metric"><span>Gewinn pro Tag</span><strong>' + formatNumber(Math.round(profitPerDay)) + '</strong></div>' +
             '<div class="metric"><span>Gewinn pro Jahr</span><strong>' + formatNumber(Math.round(profitPerYear)) + '</strong></div>' +
           '</div>' +
