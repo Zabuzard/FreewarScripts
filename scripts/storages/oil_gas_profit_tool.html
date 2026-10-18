@@ -351,18 +351,6 @@
       overflow-wrap: anywhere;
     }
 
-    .metric.wide {
-      display: flex;
-      grid-column: 1 / -1;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .metric.wide span {
-      margin: 0;
-    }
-
     .pending {
       color: #89958b !important;
       font-size: .78rem !important;
@@ -681,6 +669,63 @@
         }
       };
 
+      var oilStorageCosts = [
+        0,
+        1000,
+        1140,
+        1335,
+        1609,
+        1993,
+        2530,
+        3282,
+        4336,
+        5811,
+        7877,
+        10769,
+        14818,
+        20487,
+        28424,
+        39536,
+        55092,
+        76871,
+        107362,
+        150049,
+        209812,
+        293480,
+        410615,
+        574604,
+        804189,
+        1125608
+      ];
+
+      var gasStorageCosts = [
+        0,
+        200,
+        338,
+        528,
+        790,
+        1152,
+        1652,
+        2324,
+        3295,
+        4610,
+        6425,
+        8929,
+        12385,
+        17155,
+        23738,
+        32822,
+        45358,
+        62658,
+        86533,
+        119480,
+        164947,
+        227692,
+        314280,
+        433772,
+        598671
+      ];
+
       var oilProductionPerDay = 48.99;
       var gasProductionPerDay = 304.2;
 
@@ -773,22 +818,49 @@
 
       function clampSkill(input) {
         var value = Number.parseInt(input.value, 10);
+
         if (!Number.isFinite(value)) value = 0;
+
         value = Math.max(0, Math.min(90, value));
         input.value = value;
+
         return value;
       }
 
       function getStorageLevel(productionPerDay) {
         var frequency = Number(frequencyInput.value);
+
         return Math.ceil(productionPerDay / frequency);
+      }
+
+      function getStorageCost(level, resource) {
+        var costs = resource === "oil" ? oilStorageCosts : gasStorageCosts;
+        var threshold = costs.length - 1;
+        var extraCost = resource === "oil" ? 350000 : 200000;
+
+        if (level <= 0) return 0;
+
+        if (level <= threshold) {
+          return costs[level];
+        }
+
+        return costs[threshold] + (level - threshold) * extraCost;
+      }
+
+      function getDiscountedStorageCost(level, resource) {
+        var storageCost = getStorageCost(level, resource);
+        var lagerlogistikLevel = clampSkill(lagerInput);
+
+        return Math.round(storageCost * Math.pow(0.99, lagerlogistikLevel));
       }
 
       function tierMarkup(level, resource) {
         var productionPerDay = resource === "oil" ? oilProductionPerDay : gasProductionPerDay;
         var storageLevel = getStorageLevel(productionPerDay);
         var storageName = resource === "oil" ? "Öl-Lager" : "Sumpfgas-Lager";
-        var totalCost = buildingUpgradeCosts[resource][level];
+        var buildingCost = buildingUpgradeCosts[resource][level];
+        var storageCost = getDiscountedStorageCost(storageLevel, resource);
+        var totalCost = buildingCost + storageCost;
 
         return '<article class="tier">' +
           '<div class="tier-head"><h4>Stufe ' + level + '</h4><span class="tag">Ausbau</span></div>' +
@@ -818,6 +890,7 @@
 
         presetButtons.forEach(function (button) {
           var level = Number(button.dataset.level);
+
           button.classList.toggle("active", bau === level && lager === level);
         });
       }
@@ -825,18 +898,27 @@
       presetButtons.forEach(function (button) {
         button.addEventListener("click", function () {
           var level = Number(button.dataset.level);
+
           bauInput.value = level;
           lagerInput.value = level;
+
           updatePresets();
+          renderTiers();
         });
       });
 
       [bauInput, lagerInput].forEach(function (input) {
-        input.addEventListener("change", updatePresets);
+        input.addEventListener("change", function () {
+          updatePresets();
+          renderTiers();
+        });
+
         input.addEventListener("input", function () {
           presetButtons.forEach(function (button) {
             button.classList.remove("active");
           });
+
+          renderTiers();
         });
       });
 
