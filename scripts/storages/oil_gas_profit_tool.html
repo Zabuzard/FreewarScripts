@@ -394,10 +394,10 @@
     }
 
     .price-row > div {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 10ch;
-        align-items: center;
-        gap: 7px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 10ch;
+      align-items: center;
+      gap: 7px;
     }
 
     .price-row label {
@@ -411,13 +411,13 @@
     }
 
     .price-input-wrap input {
-        display: block;
-        width: 10ch;
-        max-width: 100%;
-        padding: 5px 4px;
-        text-align: right;
-        font-size: .8rem;
-        font-variant-numeric: tabular-nums;
+      display: block;
+      width: 10ch;
+      max-width: 100%;
+      padding: 5px 4px;
+      text-align: right;
+      font-size: .8rem;
+      font-variant-numeric: tabular-nums;
     }
 
     .price-reset {
@@ -666,6 +666,21 @@
       var oilLevels = [40, 41, 44, 47];
       var gasLevels = [50, 51, 56, 61];
 
+      var buildingUpgradeCosts = {
+        oil: {
+          40: 10360526,
+          41: 14297508,
+          44: 37574803,
+          47: 98749216
+        },
+        gas: {
+          50: 5738945,
+          51: 7288425,
+          56: 24079468,
+          61: 79554342
+        }
+      };
+
       var oilProductionPerDay = 48.99;
       var gasProductionPerDay = 304.2;
 
@@ -711,6 +726,10 @@
       var lagerInput = document.getElementById("lagerlogistik");
       var frequencyInput = document.getElementById("frequenz");
       var presetButtons = Array.from(document.querySelectorAll("[data-level]"));
+
+      function formatNumber(value) {
+        return value.toLocaleString("de-DE");
+      }
 
       function renderPriceInputs(resource, containerId, labels) {
         var container = document.getElementById(containerId);
@@ -769,12 +788,13 @@
         var productionPerDay = resource === "oil" ? oilProductionPerDay : gasProductionPerDay;
         var storageLevel = getStorageLevel(productionPerDay);
         var storageName = resource === "oil" ? "Öl-Lager" : "Sumpfgas-Lager";
+        var totalCost = buildingUpgradeCosts[resource][level];
 
         return '<article class="tier">' +
           '<div class="tier-head"><h4>Stufe ' + level + '</h4><span class="tag">Ausbau</span></div>' +
-          '<p class="storage">' + storageName + ': <strong>Stufe ' + storageLevel.toLocaleString("de-DE") + '</strong></p>' +
+          '<p class="storage">' + storageName + ': <strong>Stufe ' + formatNumber(storageLevel) + '</strong></p>' +
           '<div class="metrics">' +
-            '<div class="metric"><span>Gesamtkosten</span><strong class="pending">–</strong></div>' +
+            '<div class="metric"><span>Gesamtkosten</span><strong>' + formatNumber(totalCost) + '</strong></div>' +
             '<div class="metric"><span>Gewinn pro Tag</span><strong class="pending">–</strong></div>' +
             '<div class="metric"><span>Gewinn pro Jahr</span><strong class="pending">–</strong></div>' +
             '<div class="metric"><span>Amortisierung</span><strong class="pending">–</strong></div>' +
