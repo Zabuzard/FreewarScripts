@@ -357,4 +357,4 @@ Amortisationszeiten.
 ![Öl/Gas Rechner](https://i.vgy.me/yHNJH0.jpg)
 
 Online verfügbar auf:
-[zabuzard.github.io/FreewarScripts/scripts/storages/oil_gas_profit_tool.html](https://zabuzard.github.io/FreewarScripts/scripts/storages/oil_gas_profit_tool.html)
+[scripts/storages/oil_gas_profit_tool.html](https://zabuzard.github.io/FreewarScripts/scripts/storages/oil_gas_profit_tool.html)
