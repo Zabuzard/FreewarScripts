@@ -923,12 +923,18 @@
         var profitPerDay = baseProduction * basePrice;
         var specialItems = specialProductionIntervals[resource];
 
+        var bauLevel = Number.parseInt(bauInput.value, 10) || 0;
+        var lagerLevel = Number.parseInt(lagerInput.value, 10) || 0;
+        var totalSkillLevel = bauLevel + lagerLevel;
+        var durationMultiplier = Math.pow(0.999, totalSkillLevel);
+
         Object.keys(specialItems).forEach(function (itemKey) {
-          var interval = specialItems[itemKey][level];
+          var baseInterval = specialItems[itemKey][level];
           var price = Number(sellingPrices[resource][itemKey]) || 0;
 
-          if (interval !== null && interval !== undefined && interval > 0) {
-            profitPerDay += (86400 / interval) * price;
+          if (baseInterval !== null && baseInterval !== undefined && baseInterval > 0) {
+            var adjustedInterval = baseInterval * durationMultiplier;
+            profitPerDay += (86400 / adjustedInterval) * price;
           }
         });
 
