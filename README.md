@@ -347,3 +347,14 @@ Kursdaten angefragt, so dass min(5%)/median/max(95%)-Werte angezeigt werden
 können. Basierend darauf wird dann die Abweichung des aktuellen Kurses vom
 Median-Wert berechnet und eine Kauf- oder Verkaufsempfehlung bei über 50%
 Abweichung zum min/max-Wert ausgesprochen.
+
+### `storages`
+
+Bietet mit `oil_gas_profit_tool.html` ein Webtool zur Berechnung der
+Investitionen in Ölturm und Sumpfgaslager an. Berechnet zum Beispiel
+Amortisationszeiten.
+
+![Öl/Gas Rechner](https://i.vgy.me/yHNJH0.jpg)
+
+Online verfügbar auf:
+[zabuzard.github.io/FreewarScripts/scripts/storages/oil_gas_profit_tool.html](https://zabuzard.github.io/FreewarScripts/scripts/storages/oil_gas_profit_tool.html)
