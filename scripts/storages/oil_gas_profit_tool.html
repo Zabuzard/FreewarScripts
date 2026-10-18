@@ -626,7 +626,7 @@
           <div class="resource-symbol" aria-hidden="true">Ö</div>
           <div>
             <h3 id="oil-title">Ölturm</h3>
-            <p>Ausbau auf Stufe 40–47</p>
+            <p id="oil-storage-description">Lager Stufe 17</p>
           </div>
         </div>
         <div class="tier-list" id="oil-tiers"></div>
@@ -637,7 +637,7 @@
           <div class="resource-symbol" aria-hidden="true">S</div>
           <div>
             <h3 id="gas-title">Sumpfgasanlage</h3>
-            <p>Ausbau auf Stufe 61</p>
+            <p id="gas-storage-description">Lager Stufe 102</p>
           </div>
         </div>
         <div class="tier-list" id="gas-tiers"></div>
@@ -864,12 +864,11 @@
 
         return '<article class="tier">' +
           '<div class="tier-head"><h4>Stufe ' + level + '</h4><span class="tag">Ausbau</span></div>' +
-          '<p class="storage">' + storageName + ': <strong>Stufe ' + formatNumber(storageLevel) + '</strong></p>' +
           '<div class="metrics">' +
             '<div class="metric"><span>Gesamtkosten</span><strong>' + formatNumber(totalCost) + '</strong></div>' +
+            '<div class="metric"><span>Amortisierung</span><strong class="pending">–</strong></div>' +
             '<div class="metric"><span>Gewinn pro Tag</span><strong class="pending">–</strong></div>' +
             '<div class="metric"><span>Gewinn pro Jahr</span><strong class="pending">–</strong></div>' +
-            '<div class="metric"><span>Amortisierung</span><strong class="pending">–</strong></div>' +
           '</div>' +
         '</article>';
       }
@@ -882,6 +881,12 @@
         document.getElementById("gas-tiers").innerHTML = gasLevels.map(function (level) {
           return tierMarkup(level, "gas");
         }).join("");
+
+        document.getElementById("oil-storage-description").textContent =
+            "Lager Stufe " + formatNumber(getStorageLevel(oilProductionPerDay));
+
+        document.getElementById("gas-storage-description").textContent =
+            "Lager Stufe " + formatNumber(getStorageLevel(gasProductionPerDay));
       }
 
       function updatePresets() {
