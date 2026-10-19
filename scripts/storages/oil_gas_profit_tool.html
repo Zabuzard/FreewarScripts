@@ -964,21 +964,21 @@
       var facilities = {
         oil: {
           label: "Ölturm",
-          storageLabel: "Öllager",
+          storageLabel: "Lager",
           productionPerDay: 48.99,
           levels: oilLevels,
           productKey: "oil"
         },
         gas: {
           label: "Sumpfgasanlage",
-          storageLabel: "Sumpfgaslager",
+          storageLabel: "Lager",
           productionPerDay: 304.2,
           levels: gasLevels,
           productKey: "gas"
         },
         grain: {
           label: "Getreidefelder",
-          storageLabel: "Getreidelager",
+          storageLabel: "Lager",
           productionPerDay: 0,
           levels: grainLevels,
           productKey: "baruGrain",
@@ -992,7 +992,7 @@
         },
         fish: {
           label: "Fischzucht",
-          storageLabel: "Fischlager",
+          storageLabel: "Lager",
           productionPerDay: 0,
           levels: fishLevels,
           productKey: "glodoFish",
@@ -1302,7 +1302,7 @@
           '<div class="tier-tooltip-section">' +
             '<span class="tier-tooltip-label">Ausbaukosten</span>' +
             '<div class="tier-tooltip-row">' +
-              '<span>' + facility.label + ' · Stufe ' + formatNumber(level) + '</span>' +
+              '<span>Gebäude · Stufe ' + formatNumber(level) + '</span>' +
               '<strong>' + formatNumber(buildingCost) + ' GM</strong>' +
             '</div>' +
             '<div class="tier-tooltip-row">' +
