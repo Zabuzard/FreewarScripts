@@ -84,6 +84,17 @@
       font-size: .95rem;
     }
 
+    .skills-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      column-gap: 16px;
+    }
+
+    .skills-panel h2 {
+      grid-column: 1 / -1;
+    }
+
     .skills {
       display: grid;
       grid-template-columns: max-content max-content;
@@ -145,9 +156,17 @@
 
     .presets {
       display: flex;
-      flex-wrap: wrap;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: stretch;
       gap: 5px;
-      margin-top: 9px;
+      margin-top: 0;
+    }
+
+    .presets button {
+      white-space: normal;
+      text-align: center;
+      line-height: 1.35;
     }
 
     button {
@@ -173,6 +192,7 @@
     }
 
     .hint {
+      grid-column: 1 / -1;
       margin: 6px 0 0;
       color: var(--muted);
       font-size: .72rem;
@@ -473,6 +493,24 @@
         grid-template-columns: minmax(0, 1.2fr) minmax(220px, .8fr);
       }
 
+      .skills-panel {
+        column-gap: 10px;
+      }
+
+      .skills {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .skills > div {
+        grid-template-columns: 110px 9.5ch;
+        gap: 6px;
+      }
+
+      .presets {
+        flex-direction: column;
+      }
+
       .price-groups {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -487,6 +525,21 @@
       .settings,
       .columns {
         grid-template-columns: 1fr;
+      }
+
+      .skills {
+        grid-template-columns: max-content max-content;
+        gap: 12px;
+      }
+
+      .skills > div {
+        grid-template-columns: auto auto;
+        gap: 6px;
+      }
+
+      .presets {
+        flex-direction: row;
+        flex-wrap: wrap;
       }
 
       .price-groups {
@@ -507,17 +560,29 @@
         padding: 11px;
       }
 
+      .skills-panel {
+        column-gap: 8px;
+      }
+
       .skills {
-        gap: 10px;
+        grid-template-columns: 1fr;
+        gap: 8px;
       }
 
       .skills > div {
-        grid-template-columns: auto auto;
+        grid-template-columns: 110px 9.5ch;
         gap: 6px;
       }
 
       .presets {
+        flex-direction: column;
+        flex-wrap: nowrap;
         gap: 4px;
+      }
+
+      .presets button {
+        padding: 5px 7px;
+        font-size: .7rem;
       }
 
       button {
@@ -573,7 +638,7 @@
     </header>
 
     <section class="settings" aria-label="Einstellungen">
-      <div class="panel">
+      <div class="panel skills-panel">
         <h2>Deine Fähigkeiten</h2>
         <div class="skills">
           <div>
@@ -593,8 +658,8 @@
         </div>
         <div class="presets" aria-label="Fähigkeiten-Voreinstellungen">
           <button type="button" data-level="0">Stufe 0</button>
-          <button type="button" data-level="35" class="active">Stufe 35 · 2 Monate Lernzeit</button>
-          <button type="button" data-level="90">Stufe 90 · 2 Jahre Lernzeit</button>
+          <button type="button" data-level="35" class="active">Stufe 35<br>(2 Monate Lernzeit)</button>
+          <button type="button" data-level="90">Stufe 90<br>(2 Jahre Lernzeit)</button>
         </div>
         <p class="hint">Ein Preset setzt beide Fähigkeiten auf angegebene Stufe.</p>
       </div>
