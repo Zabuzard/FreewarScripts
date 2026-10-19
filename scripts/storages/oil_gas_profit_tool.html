@@ -16,6 +16,8 @@
       --accent: #b8dc9b;
       --oil: #e3bd70;
       --gas: #83d4b5;
+      --grain: #d9c58b;
+      --fish: #8ebbf0;
     }
 
     * {
@@ -261,6 +263,16 @@
       color: var(--gas);
     }
 
+    .grain .resource-symbol {
+      background: #383421;
+      color: var(--grain);
+    }
+
+    .fish .resource-symbol {
+      background: #202e40;
+      color: var(--fish);
+    }
+
     .resource-head h3 {
       margin: 0;
       font-size: 1rem;
@@ -313,15 +325,14 @@
       color: var(--gas);
     }
 
-    .storage {
-      margin: 0 0 8px;
-      color: var(--muted);
-      font-size: .76rem;
+    .grain .tag {
+      border-color: #5a5030;
+      color: var(--grain);
     }
 
-    .storage strong {
-      color: var(--text);
-      font-weight: 600;
+    .fish .tag {
+      border-color: #304d6c;
+      color: var(--fish);
     }
 
     .metrics {
@@ -348,12 +359,6 @@
       display: block;
       font-size: .88rem;
       overflow-wrap: anywhere;
-    }
-
-    .pending {
-      color: #89958b !important;
-      font-size: .78rem !important;
-      font-weight: 500 !important;
     }
 
     .prices {
@@ -535,7 +540,7 @@
     <header>
       <p class="eyebrow">Freewar · Investitionsrechner</p>
       <h1>Lohnt sich das?</h1>
-      <p class="subtitle">Berechne Kosten, Gewinn und Amortisierung für Ölturm und Sumpfgasanlage – passend zu deinen Fähigkeiten und deiner Abholfrequenz.</p>
+      <p class="subtitle">Berechne Kosten, Gewinn und Amortisierung für Ölturm, Sumpfgasanlage, Getreidefelder und Fischzucht – passend zu deinen Fähigkeiten und deiner Abholfrequenz.</p>
     </header>
 
     <section class="settings" aria-label="Einstellungen">
@@ -610,8 +615,30 @@
           </div>
           <div class="price-list" id="gas-prices"></div>
         </section>
+
+        <section class="panel resource grain" aria-labelledby="grain-prices-title">
+          <div class="resource-head">
+            <div class="resource-symbol" aria-hidden="true">B</div>
+            <div>
+              <h3 id="grain-prices-title">Getreidefelder</h3>
+              <p>Verkaufspreise pro Einheit</p>
+            </div>
+          </div>
+          <div class="price-list" id="grain-prices"></div>
+        </section>
+
+        <section class="panel resource fish" aria-labelledby="fish-prices-title">
+          <div class="resource-head">
+            <div class="resource-symbol" aria-hidden="true">F</div>
+            <div>
+              <h3 id="fish-prices-title">Fischzucht</h3>
+              <p>Verkaufspreise pro Einheit</p>
+            </div>
+          </div>
+          <div class="price-list" id="fish-prices"></div>
+        </section>
       </div>
-      <p class="price-note">Die Verkaufspreise werden für Gewinn und Amortisierung verwendet. Die Kosten für die Herrstellung von gelöstem Klebeöl und gelöstem Pappgas werden bereits berücksichtigt.</p>
+      <p class="price-note">Die Verkaufspreise werden für Gewinn und Amortisierung verwendet. Die Produktionsraten von Baru-Getreide und Glodo-Fisch werden nicht durch Fähigkeiten beeinflusst.</p>
     </section>
 
     <div class="results-title">
@@ -625,7 +652,7 @@
           <div class="resource-symbol" aria-hidden="true">Ö</div>
           <div>
             <h3 id="oil-title">Ölturm</h3>
-            <p id="oil-storage-description">Lager Stufe 17</p>
+            <p id="oil-storage-description"></p>
           </div>
         </div>
         <div class="tier-list" id="oil-tiers"></div>
@@ -636,14 +663,38 @@
           <div class="resource-symbol" aria-hidden="true">S</div>
           <div>
             <h3 id="gas-title">Sumpfgasanlage</h3>
-            <p id="gas-storage-description">Lager Stufe 102</p>
+            <p id="gas-storage-description"></p>
           </div>
         </div>
         <div class="tier-list" id="gas-tiers"></div>
       </section>
+
+      <section class="panel resource grain" aria-labelledby="grain-title">
+        <div class="resource-head">
+          <div class="resource-symbol" aria-hidden="true">B</div>
+          <div>
+            <h3 id="grain-title">Getreidefelder</h3>
+            <p id="grain-storage-description"></p>
+          </div>
+        </div>
+        <div class="tier-list" id="grain-tiers"></div>
+      </section>
+
+      <section class="panel resource fish" aria-labelledby="fish-title">
+        <div class="resource-head">
+          <div class="resource-symbol" aria-hidden="true">F</div>
+          <div>
+            <h3 id="fish-title">Fischzucht</h3>
+            <p id="fish-storage-description"></p>
+          </div>
+        </div>
+        <div class="tier-list" id="fish-tiers"></div>
+      </section>
     </section>
 
-    <footer>Die Ergebnisse zeigen dir, welche Ausbaustufe sich bei deinen Fähigkeiten und deiner Abholfrequenz am ehesten lohnt.</br>Die Amortisierung nimmt an, dass du die Abholfrequenz konsequent einhalten kannst. Realistisch gesehen ist das nicht immer möglich und es sollte ein Faktor von mindestens 30% einberechnet werden.</footer>
+    <footer>
+      Die Amortisierung nimmt an, dass du die Abholfrequenz konsequent einhalten kannst. Realistisch gesehen ist das nicht immer möglich; plane daher einen zusätzlichen Puffer von mindestens 30 % ein.
+    </footer>
   </main>
 
   <script>
@@ -652,6 +703,8 @@
 
       var oilLevels = [40, 41, 44, 47, 49];
       var gasLevels = [50, 51, 56, 61, 65];
+      var grainLevels = [100, 160, 175, 200, 222];
+      var fishLevels = [30, 42, 46, 51, 56];
 
       var buildingUpgradeCosts = {
         oil: {
@@ -667,68 +720,199 @@
           56: 24079468,
           61: 79554342,
           65: 683749122
+        },
+        grain: {
+          100: 26242,
+          160: 491179,
+          175: 1021214,
+          200: 3458407,
+          222: 10116941
+        },
+        fish: {
+          30: 32448,
+          42: 470327,
+          46: 1148070,
+          51: 3503370,
+          56: 10691180
         }
       };
 
-      var oilStorageCosts = [
-        0,
-        1000,
-        1140,
-        1335,
-        1609,
-        1993,
-        2530,
-        3282,
-        4336,
-        5811,
-        7877,
-        10769,
-        14818,
-        20487,
-        28424,
-        39536,
-        55092,
-        76871,
-        107362,
-        150049,
-        209812,
-        293480,
-        410615,
-        574604,
-        804189,
-        1125608
-      ];
+      var storageCosts = {
+        oil: [
+          0,
+          1000,
+          1140,
+          1335,
+          1609,
+          1993,
+          2530,
+          3282,
+          4336,
+          5811,
+          7877,
+          10769,
+          14818,
+          20487,
+          28424,
+          39536,
+          55092,
+          76871,
+          107362,
+          150049,
+          209812,
+          293480,
+          410615,
+          574604,
+          804189,
+          1125608
+        ],
+        gas: [
+          0,
+          200,
+          338,
+          528,
+          790,
+          1152,
+          1652,
+          2324,
+          3295,
+          4610,
+          6425,
+          8929,
+          12385,
+          17155,
+          23738,
+          32822,
+          45358,
+          62658,
+          86533,
+          119480,
+          164947,
+          227692,
+          314280,
+          433772,
+          598671
+        ],
+        grain: [
+          0,
+          200,
+          325,
+          481,
+          676,
+          920,
+          1225,
+          1606,
+          2082,
+          2678,
+          3423,
+          4354,
+          5518,
+          6973,
+          8791,
+          11064,
+          13906,
+          17458,
+          21898,
+          27449,
+          34387,
+          43060,
+          53902,
+          67454,
+          84394,
+          105569,
+          132138,
+          165225,
+          206584,
+          258282,
+          322905,
+          403684,
+          504658,
+          630875
+        ],
+        fish: [
+          0,
+          200,
+          338,
+          528,
+          790,
+          1152,
+          1652,
+          2324,
+          3295,
+          4610,
+          6425,
+          8929,
+          12385,
+          17155,
+          23739,
+          32822,
+          45358,
+          62658,
+          86533,
+          119480,
+          164947,
+          227692,
+          314280,
+          433772,
+          598671
+        ]
+      };
 
-      var gasStorageCosts = [
-        0,
-        200,
-        338,
-        528,
-        790,
-        1152,
-        1652,
-        2324,
-        3295,
-        4610,
-        6425,
-        8929,
-        12385,
-        17155,
-        23738,
-        32822,
-        45358,
-        62658,
-        86533,
-        119480,
-        164947,
-        227692,
-        314280,
-        433772,
-        598671
-      ];
+      var storageExtraCost = {
+        oil: 350000,
+        gas: 200000,
+        grain: 150000,
+        fish: 200000
+      };
 
-      var oilProductionPerDay = 48.99;
-      var gasProductionPerDay = 304.2;
+      var facilities = {
+        oil: {
+          label: "Ölturm",
+          storageLabel: "Öllager",
+          productionPerDay: 48.99,
+          levels: oilLevels,
+          productKey: "oil",
+          description: "Öl pro Tag"
+        },
+        gas: {
+          label: "Sumpfgasanlage",
+          storageLabel: "Sumpfgaslager",
+          productionPerDay: 304.2,
+          levels: gasLevels,
+          productKey: "gas",
+          description: "Sumpfgas pro Tag"
+        },
+        grain: {
+          label: "Getreidefelder",
+          storageLabel: "Getreidelager",
+          productionPerDay: 0,
+          levels: grainLevels,
+          productKey: "baruGrain",
+          description: "Baru-Getreide pro Tag",
+          productionByLevel: {
+            100: 3.4,
+            160: 35.4,
+            175: 63.8,
+            200: 170.1,
+            222: 403.7
+          }
+        },
+        fish: {
+          label: "Fischzucht",
+          storageLabel: "Fischlager",
+          productionPerDay: 0,
+          levels: fishLevels,
+          productKey: "glodoFish",
+          description: "Glodo-Fisch pro Tag",
+          productionByLevel: {
+            30: 6.2,
+            42: 49.7,
+            46: 99.7,
+            51: 238,
+            56: 568.4
+          }
+        }
+      };
 
       var defaultPrices = {
         oil: {
@@ -744,28 +928,43 @@
           deepGas: 5000,
           stoneGas: 55000,
           strangeGas: 220000
+        },
+        grain: {
+          baruGrain: 35
+        },
+        fish: {
+          glodoFish: 15
         }
       };
 
       var sellingPrices = {
         oil: Object.assign({}, defaultPrices.oil),
-        gas: Object.assign({}, defaultPrices.gas)
+        gas: Object.assign({}, defaultPrices.gas),
+        grain: Object.assign({}, defaultPrices.grain),
+        fish: Object.assign({}, defaultPrices.fish)
       };
 
-      var oilPriceLabels = {
-        oil: "Öl",
-        dissolvedGlueOil: "gelöstes Klebeöl",
-        whiteOil: "weißes Öl",
-        silkOil: "Seidenöl",
-        cubeOil: "Würfelöl"
-      };
-
-      var gasPriceLabels = {
-        gas: "Sumpfgas",
-        dissolvedCardboardGas: "gelöstes Pappgas",
-        deepGas: "Tiefengas",
-        stoneGas: "Steingas",
-        strangeGas: "seltsames Gas"
+      var priceLabels = {
+        oil: {
+          oil: "Öl",
+          dissolvedGlueOil: "gelöstes Klebeöl",
+          whiteOil: "weißes Öl",
+          silkOil: "Seidenöl",
+          cubeOil: "Würfelöl"
+        },
+        gas: {
+          gas: "Sumpfgas",
+          dissolvedCardboardGas: "gelöstes Pappgas",
+          deepGas: "Tiefengas",
+          stoneGas: "Steingas",
+          strangeGas: "seltsames Gas"
+        },
+        grain: {
+          baruGrain: "Baru-Getreide"
+        },
+        fish: {
+          glodoFish: "Glodo-Fisch"
+        }
       };
 
       function durationSeconds(days, hours, minutes, seconds) {
@@ -841,10 +1040,91 @@
       var presetButtons = Array.from(document.querySelectorAll("[data-level]"));
 
       function formatNumber(value) {
-        return value.toLocaleString("de-DE");
+        return value.toLocaleString("de-DE", {
+          maximumFractionDigits: 2
+        });
       }
 
-      function renderPriceInputs(resource, containerId, labels) {
+      function clampSkill(input) {
+        var value = Number.parseInt(input.value, 10);
+
+        if (!Number.isFinite(value)) value = 0;
+
+        value = Math.max(0, Math.min(90, value));
+        input.value = value;
+
+        return value;
+      }
+
+      function getStorageLevel(productionPerDay) {
+        var frequency = Number(frequencyInput.value);
+
+        if (frequency <= 0) return 0;
+
+        return Math.ceil(productionPerDay / frequency);
+      }
+
+      function getProductionPerDay(level, resource) {
+        var facility = facilities[resource];
+
+        if (facility.productionByLevel) {
+          return facility.productionByLevel[level] || 0;
+        }
+
+        return facility.productionPerDay;
+      }
+
+      function getStorageCost(level, resource) {
+        var costs = storageCosts[resource];
+        var threshold = costs.length - 1;
+        var extraCost = storageExtraCost[resource];
+
+        if (level <= 0) return 0;
+
+        if (level <= threshold) {
+          return costs[level];
+        }
+
+        return costs[threshold] + (level - threshold) * extraCost;
+      }
+
+      function getDiscountedStorageCost(level, resource) {
+        var storageCost = getStorageCost(level, resource);
+        var lagerlogistikLevel = clampSkill(lagerInput);
+
+        return Math.round(storageCost * Math.pow(0.99, lagerlogistikLevel));
+      }
+
+      function calculateProfitPerDay(level, resource) {
+        var facility = facilities[resource];
+        var productionPerDay = getProductionPerDay(level, resource);
+        var basePrice = Number(sellingPrices[resource][facility.productKey]) || 0;
+        var profitPerDay = productionPerDay * basePrice;
+
+        if (resource !== "oil" && resource !== "gas") {
+          return profitPerDay;
+        }
+
+        var specialItems = specialProductionIntervals[resource];
+        var bauLevel = Number.parseInt(bauInput.value, 10) || 0;
+        var lagerLevel = Number.parseInt(lagerInput.value, 10) || 0;
+        var totalSkillLevel = bauLevel + lagerLevel;
+        var durationMultiplier = Math.pow(0.999, totalSkillLevel);
+
+        Object.keys(specialItems).forEach(function (itemKey) {
+          var baseInterval = specialItems[itemKey][level];
+          var price = Number(sellingPrices[resource][itemKey]) || 0;
+
+          if (baseInterval !== null && baseInterval !== undefined && baseInterval > 0) {
+            var adjustedInterval = baseInterval * durationMultiplier;
+            profitPerDay += (86400 / adjustedInterval) * price;
+          }
+        });
+
+        return profitPerDay;
+      }
+
+      function renderPriceInputs(resource, containerId) {
         var container = document.getElementById(containerId);
 
         container.innerHTML = Object.keys(defaultPrices[resource]).map(function (key) {
@@ -852,12 +1132,12 @@
 
           return '<div class="price-row">' +
             '<div>' +
-              '<label for="' + id + '">' + labels[key] + '</label>' +
+              '<label for="' + id + '">' + priceLabels[resource][key] + '</label>' +
               '<div class="price-input-wrap">' +
                 '<input id="' + id + '" type="number" min="0" step="1" value="' + defaultPrices[resource][key] + '" data-resource="' + resource + '" data-price-key="' + key + '">' +
               '</div>' +
             '</div>' +
-            '<button class="price-reset" type="button" data-reset-resource="' + resource + '" data-reset-key="' + key + '" aria-label="' + labels[key] + ' auf Standardwert zurücksetzen" title="Auf Standardwert zurücksetzen">×</button>' +
+            '<button class="price-reset" type="button" data-reset-resource="' + resource + '" data-reset-key="' + key + '" aria-label="' + priceLabels[resource][key] + ' auf Standardwert zurücksetzen" title="Auf Standardwert zurücksetzen">×</button>' +
           '</div>';
         }).join("");
 
@@ -885,73 +1165,9 @@
         });
       }
 
-      function clampSkill(input) {
-        var value = Number.parseInt(input.value, 10);
-
-        if (!Number.isFinite(value)) value = 0;
-
-        value = Math.max(0, Math.min(90, value));
-        input.value = value;
-
-        return value;
-      }
-
-      function getStorageLevel(productionPerDay) {
-        var frequency = Number(frequencyInput.value);
-
-        return Math.ceil(productionPerDay / frequency);
-      }
-
-      function getStorageCost(level, resource) {
-        var costs = resource === "oil" ? oilStorageCosts : gasStorageCosts;
-        var threshold = costs.length - 1;
-        var extraCost = resource === "oil" ? 350000 : 200000;
-
-        if (level <= 0) return 0;
-
-        if (level <= threshold) {
-          return costs[level];
-        }
-
-        return costs[threshold] + (level - threshold) * extraCost;
-      }
-
-      function getDiscountedStorageCost(level, resource) {
-        var storageCost = getStorageCost(level, resource);
-        var lagerlogistikLevel = clampSkill(lagerInput);
-
-        return Math.round(storageCost * Math.pow(0.99, lagerlogistikLevel));
-      }
-
-      function calculateProfitPerDay(level, resource) {
-        var baseProduction = resource === "oil"
-          ? oilProductionPerDay
-          : gasProductionPerDay;
-
-        var basePrice = Number(sellingPrices[resource][resource]) || 0;
-        var profitPerDay = baseProduction * basePrice;
-        var specialItems = specialProductionIntervals[resource];
-
-        var bauLevel = Number.parseInt(bauInput.value, 10) || 0;
-        var lagerLevel = Number.parseInt(lagerInput.value, 10) || 0;
-        var totalSkillLevel = bauLevel + lagerLevel;
-        var durationMultiplier = Math.pow(0.999, totalSkillLevel);
-
-        Object.keys(specialItems).forEach(function (itemKey) {
-          var baseInterval = specialItems[itemKey][level];
-          var price = Number(sellingPrices[resource][itemKey]) || 0;
-
-          if (baseInterval !== null && baseInterval !== undefined && baseInterval > 0) {
-            var adjustedInterval = baseInterval * durationMultiplier;
-            profitPerDay += (86400 / adjustedInterval) * price;
-          }
-        });
-
-        return profitPerDay;
-      }
-
       function tierMarkup(level, resource) {
-        var productionPerDay = resource === "oil" ? oilProductionPerDay : gasProductionPerDay;
+        var facility = facilities[resource];
+        var productionPerDay = getProductionPerDay(level, resource);
         var storageLevel = getStorageLevel(productionPerDay);
         var buildingCost = buildingUpgradeCosts[resource][level];
         var storageCost = getDiscountedStorageCost(storageLevel, resource);
@@ -980,20 +1196,27 @@
         '</article>';
       }
 
+      function renderFacility(resource) {
+        var facility = facilities[resource];
+        var tiersContainer = document.getElementById(resource + "-tiers");
+        var storageDescription = document.getElementById(resource + "-storage-description");
+
+        tiersContainer.innerHTML = facility.levels.map(function (level) {
+          return tierMarkup(level, resource);
+        }).join("");
+
+        var maxProductionPerDay = Math.max.apply(null, facility.levels.map(function (level) {
+          return getProductionPerDay(level, resource);
+        }));
+
+        var storageLevel = getStorageLevel(maxProductionPerDay);
+
+        storageDescription.textContent =
+          facility.storageLabel + " · Stufe " + formatNumber(storageLevel);
+      }
+
       function renderTiers() {
-        document.getElementById("oil-tiers").innerHTML = oilLevels.map(function (level) {
-          return tierMarkup(level, "oil");
-        }).join("");
-
-        document.getElementById("gas-tiers").innerHTML = gasLevels.map(function (level) {
-          return tierMarkup(level, "gas");
-        }).join("");
-
-        document.getElementById("oil-storage-description").textContent =
-          "Lager Stufe " + formatNumber(getStorageLevel(oilProductionPerDay));
-
-        document.getElementById("gas-storage-description").textContent =
-          "Lager Stufe " + formatNumber(getStorageLevel(gasProductionPerDay));
+        ["oil", "gas", "grain", "fish"].forEach(renderFacility);
       }
 
       function updatePresets() {
@@ -1036,8 +1259,10 @@
 
       frequencyInput.addEventListener("change", renderTiers);
 
-      renderPriceInputs("oil", "oil-prices", oilPriceLabels);
-      renderPriceInputs("gas", "gas-prices", gasPriceLabels);
+      renderPriceInputs("oil", "oil-prices");
+      renderPriceInputs("gas", "gas-prices");
+      renderPriceInputs("grain", "grain-prices");
+      renderPriceInputs("fish", "fish-prices");
       renderTiers();
       updatePresets();
     }());
