@@ -351,10 +351,10 @@ Abweichung zum min/max-Wert ausgesprochen.
 ### `storages`
 
 Bietet mit `oil_gas_profit_tool.html` ein Webtool zur Berechnung der
-Investitionen in Ölturm und Sumpfgaslager an. Berechnet zum Beispiel
-Amortisationszeiten.
+Investitionen in Ölturm, Sumpfgaslager, Getreiddefarm und Fischzucht an.
+Berechnet zum Beispiel Amortisationszeiten.
 
-![Öl/Gas Rechner](https://i.vgy.me/yHNJH0.jpg)
+![Investitionsrechner](https://i.vgy.me/yHNJH0.jpg)
 
 Online verfügbar auf:
 [scripts/storages/oil_gas_profit_tool.html](https://zabuzard.github.io/FreewarScripts/scripts/storages/oil_gas_profit_tool.html)

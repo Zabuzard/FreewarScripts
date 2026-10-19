@@ -313,7 +313,7 @@
 
     .tag {
       padding: 2px 7px;
-      border: 1px solid #5b4c2c;
+      border: 1px solid #654044;
       border-radius: 99px;
       color: var(--oil);
       font-size: .68rem;
@@ -365,36 +365,66 @@
       margin-bottom: 16px;
     }
 
-    .price-columns {
+    .price-panel {
+      padding: 12px;
+    }
+
+    .price-groups {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .price-group {
+      min-width: 0;
+    }
+
+    .price-group h3 {
+      margin: 0 0 8px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--border);
+      font-size: .85rem;
+    }
+
+    .price-group.oil h3 {
+      color: var(--oil);
+    }
+
+    .price-group.gas h3 {
+      color: var(--gas);
+    }
+
+    .price-group.grain h3 {
+      color: var(--grain);
+    }
+
+    .price-group.fish h3 {
+      color: var(--fish);
     }
 
     .price-list {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: 16px;
-      row-gap: 7px;
+      grid-template-columns: 1fr;
+      row-gap: 6px;
     }
 
     .price-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 30px;
+      grid-template-columns: minmax(0, 1fr) 28px;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
 
     .price-row > div {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 10ch;
       align-items: center;
-      gap: 7px;
+      gap: 6px;
     }
 
     .price-row label {
       min-width: 0;
-      font-size: .76rem;
+      font-size: .74rem;
       line-height: 1.2;
     }
 
@@ -406,18 +436,18 @@
       display: block;
       width: 10ch;
       max-width: 100%;
-      padding: 5px 4px;
+      padding: 4px 3px;
       text-align: right;
-      font-size: .8rem;
+      font-size: .78rem;
       font-variant-numeric: tabular-nums;
     }
 
     .price-reset {
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       padding: 0;
-      border-radius: 8px;
-      font-size: 1.05rem;
+      border-radius: 7px;
+      font-size: 1rem;
       line-height: 1;
     }
 
@@ -443,8 +473,8 @@
         grid-template-columns: minmax(0, 1.2fr) minmax(220px, .8fr);
       }
 
-      .price-list {
-        grid-template-columns: 1fr;
+      .price-groups {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
@@ -455,12 +485,11 @@
       }
 
       .settings,
-      .columns,
-      .price-columns {
+      .columns {
         grid-template-columns: 1fr;
       }
 
-      .price-list {
+      .price-groups {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -502,7 +531,7 @@
         gap: 3px;
       }
 
-      .price-list {
+      .price-groups {
         grid-template-columns: 1fr;
       }
 
@@ -593,51 +622,30 @@
         <p>Preise bearbeiten oder einzeln zurücksetzen.</p>
       </div>
 
-      <div class="price-columns">
-        <section class="panel resource oil" aria-labelledby="oil-prices-title">
-          <div class="resource-head">
-            <div class="resource-symbol" aria-hidden="true">Ö</div>
-            <div>
-              <h3 id="oil-prices-title">Öle</h3>
-              <p>Verkaufspreise pro Einheit</p>
-            </div>
-          </div>
-          <div class="price-list" id="oil-prices"></div>
-        </section>
+      <div class="panel price-panel">
+        <div class="price-groups">
+          <section class="price-group oil" aria-labelledby="oil-prices-title">
+            <h3 id="oil-prices-title">Öle</h3>
+            <div class="price-list" id="oil-prices"></div>
+          </section>
 
-        <section class="panel resource gas" aria-labelledby="gas-prices-title">
-          <div class="resource-head">
-            <div class="resource-symbol" aria-hidden="true">S</div>
-            <div>
-              <h3 id="gas-prices-title">Gase</h3>
-              <p>Verkaufspreise pro Einheit</p>
-            </div>
-          </div>
-          <div class="price-list" id="gas-prices"></div>
-        </section>
+          <section class="price-group gas" aria-labelledby="gas-prices-title">
+            <h3 id="gas-prices-title">Gase</h3>
+            <div class="price-list" id="gas-prices"></div>
+          </section>
 
-        <section class="panel resource grain" aria-labelledby="grain-prices-title">
-          <div class="resource-head">
-            <div class="resource-symbol" aria-hidden="true">B</div>
-            <div>
-              <h3 id="grain-prices-title">Getreidefelder</h3>
-              <p>Verkaufspreise pro Einheit</p>
-            </div>
-          </div>
-          <div class="price-list" id="grain-prices"></div>
-        </section>
+          <section class="price-group grain" aria-labelledby="grain-prices-title">
+            <h3 id="grain-prices-title">Getreide</h3>
+            <div class="price-list" id="grain-prices"></div>
+          </section>
 
-        <section class="panel resource fish" aria-labelledby="fish-prices-title">
-          <div class="resource-head">
-            <div class="resource-symbol" aria-hidden="true">F</div>
-            <div>
-              <h3 id="fish-prices-title">Fischzucht</h3>
-              <p>Verkaufspreise pro Einheit</p>
-            </div>
-          </div>
-          <div class="price-list" id="fish-prices"></div>
-        </section>
+          <section class="price-group fish" aria-labelledby="fish-prices-title">
+            <h3 id="fish-prices-title">Fisch</h3>
+            <div class="price-list" id="fish-prices"></div>
+          </section>
+        </div>
       </div>
+
       <p class="price-note">Die Verkaufspreise werden für Gewinn und Amortisierung verwendet. Die Produktionsraten von Baru-Getreide und Glodo-Fisch werden nicht durch Fähigkeiten beeinflusst.</p>
     </section>
 
