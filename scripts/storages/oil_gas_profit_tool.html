@@ -419,11 +419,19 @@
     }
 
     .tier {
+      position: relative;
       min-width: 0;
       padding: 10px;
       border: 1px solid var(--border);
       border-radius: 10px;
       background: #171d19;
+      cursor: help;
+    }
+
+    .tier:hover,
+    .tier:focus-visible {
+      border-color: var(--accent);
+      outline: none;
     }
 
     .tier-head {
@@ -487,6 +495,111 @@
       display: block;
       font-size: .88rem;
       overflow-wrap: anywhere;
+    }
+
+    /* Hover details */
+    .tier-tooltip {
+      position: absolute;
+      z-index: 20;
+      top: calc(100% + 6px);
+      left: 0;
+      width: max-content;
+      min-width: 230px;
+      max-width: min(320px, calc(100vw - 32px));
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #202821;
+      box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+      color: var(--text);
+      font-size: .78rem;
+      font-weight: 400;
+      line-height: 1.5;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(-3px);
+      transition: opacity .14s ease, transform .14s ease, visibility .14s ease;
+    }
+
+    .tier:hover .tier-tooltip,
+    .tier:focus-visible .tier-tooltip,
+    .tier:focus-within .tier-tooltip {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .tier-tooltip-title {
+      margin: 0 0 7px;
+      color: var(--accent);
+      font-size: .82rem;
+      font-weight: 700;
+    }
+
+    .tier-tooltip-section + .tier-tooltip-section {
+      margin-top: 9px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .tier-tooltip-label {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--muted);
+      font-size: .7rem;
+      font-weight: 600;
+    }
+
+    .tier-tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+    }
+
+    .tier-tooltip-row span:first-child {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .tier-tooltip-row strong {
+      flex-shrink: 0;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .tier-tooltip .production-note {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: .68rem;
+    }
+
+    .oil .tier-tooltip-title {
+      color: var(--oil);
+    }
+
+    .gas .tier-tooltip-title {
+      color: var(--gas);
+    }
+
+    .grain .tier-tooltip-title {
+      color: var(--grain);
+    }
+
+    .fish .tier-tooltip-title {
+      color: var(--fish);
+    }
+
+    /* Prevent tooltips from being clipped by neighboring tiers */
+    .tier-list {
+      overflow: visible;
+    }
+
+    .tier:hover,
+    .tier:focus-visible {
+      z-index: 10;
     }
 
     footer {
@@ -554,6 +667,10 @@
       .frequency-panel > div {
         grid-template-columns: auto auto;
       }
+
+      .tier-tooltip {
+        min-width: 210px;
+      }
     }
 
     @media (max-width: 520px) {
@@ -612,6 +729,11 @@
 
       .frequency-panel select {
         width: 100%;
+      }
+
+      .tier-tooltip {
+        width: max-content;
+        max-width: calc(100vw - 44px);
       }
     }
 
@@ -1065,6 +1187,36 @@
         return Math.round(storageCost * Math.pow(0.99, lagerlogistikLevel));
       }
 
+      function getItemProductionPerDay(level, resource) {
+        var facility = facilities[resource];
+        var production = {};
+        var mainProduction = getProductionPerDay(level, resource);
+
+        if (mainProduction > 0) {
+          production[facility.productKey] = mainProduction;
+        }
+
+        if (resource !== "oil" && resource !== "gas") {
+          return production;
+        }
+
+        var specialItems = specialProductionIntervals[resource];
+        var bauLevel = Number.parseInt(bauInput.value, 10) || 0;
+        var lagerLevel = Number.parseInt(lagerInput.value, 10) || 0;
+        var durationMultiplier = Math.pow(0.999, bauLevel + lagerLevel);
+
+        Object.keys(specialItems).forEach(function (itemKey) {
+          var baseInterval = specialItems[itemKey][level];
+
+          if (baseInterval !== null && baseInterval !== undefined && baseInterval > 0) {
+            var adjustedInterval = baseInterval * durationMultiplier;
+            production[itemKey] = 86400 / adjustedInterval;
+          }
+        });
+
+        return production;
+      }
+
       function calculateProfitPerDay(level, resource) {
         var facility = facilities[resource];
         var productionPerDay = getProductionPerDay(level, resource);
@@ -1135,6 +1287,36 @@
         });
       }
 
+      function tierTooltipMarkup(level, resource, buildingCost, storageLevel, storageCost) {
+        var facility = facilities[resource];
+        var production = getItemProductionPerDay(level, resource);
+        var productionRows = Object.keys(production).map(function (itemKey) {
+          return '<div class="tier-tooltip-row">' +
+            '<span>' + priceLabels[resource][itemKey] + '</span>' +
+            '<strong>' + formatNumber(production[itemKey]) + ' / Tag</strong>' +
+          '</div>';
+        }).join("");
+
+        return '<div class="tier-tooltip" aria-hidden="true">' +
+          '<p class="tier-tooltip-title">Stufe ' + level + ' · Details</p>' +
+          '<div class="tier-tooltip-section">' +
+            '<span class="tier-tooltip-label">Ausbaukosten</span>' +
+            '<div class="tier-tooltip-row">' +
+              '<span>' + facility.label + ' · Stufe ' + formatNumber(level) + '</span>' +
+              '<strong>' + formatNumber(buildingCost) + ' GM</strong>' +
+            '</div>' +
+            '<div class="tier-tooltip-row">' +
+              '<span>' + facility.storageLabel + ' · Stufe ' + formatNumber(storageLevel) + '</span>' +
+              '<strong>' + formatNumber(storageCost) + ' GM</strong>' +
+            '</div>' +
+          '</div>' +
+          '<div class="tier-tooltip-section">' +
+            '<span class="tier-tooltip-label">Produktion pro Tag</span>' +
+            productionRows +
+          '</div>' +
+        '</div>';
+      }
+
       function tierMarkup(level, resource) {
         var productionPerDay = getProductionPerDay(level, resource);
         var storageLevel = getStorageLevel(productionPerDay);
@@ -1155,7 +1337,7 @@
             }) + " Jahre"
           : "–";
 
-        return '<article class="tier">' +
+        return '<article class="tier" tabindex="0" aria-label="Stufe ' + level + '. Details zu Ausbaukosten und Produktion per Tastaturfokus verfügbar.">' +
           '<div class="tier-head"><span class="tag">Stufe ' + level + '</span></div>' +
           '<div class="metrics">' +
             '<div class="metric"><span>Gesamtkosten</span>' + formatNumber(totalCost) + '</div>' +
@@ -1163,6 +1345,7 @@
             '<div class="metric"><span>Gewinn pro Tag</span>' + formatNumber(Math.round(profitPerDay)) + '</div>' +
             '<div class="metric"><span>Gewinn pro Jahr</span>' + formatNumber(Math.round(profitPerYear)) + '</div>' +
           '</div>' +
+          tierTooltipMarkup(level, resource, buildingCost, storageLevel, storageCost) +
         '</article>';
       }
 
