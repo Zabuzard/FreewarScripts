@@ -32,7 +32,7 @@
     }
 
     main {
-      width: min(1500px, calc(100% - 32px));
+      width: min(1700px, calc(100% - 32px));
       margin: 0 auto;
       padding: 24px 0 32px;
     }
@@ -116,11 +116,6 @@
       font-size: .8rem;
     }
 
-    .number-wrap {
-      position: relative;
-      width: 9.5ch;
-    }
-
     input,
     select {
       min-width: 0;
@@ -136,6 +131,11 @@
     input:focus,
     select:focus {
       border-color: var(--accent);
+    }
+
+    .number-wrap {
+      position: relative;
+      width: 9.5ch;
     }
 
     .number-wrap input {
@@ -157,8 +157,9 @@
     .presets {
       display: flex;
       flex-direction: row;
-      flex-wrap: nowrap;
-      align-items: stretch;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: flex-end;
       gap: 5px;
       margin-top: 0;
     }
@@ -249,136 +250,6 @@
       margin: 0;
       color: var(--muted);
       font-size: .75rem;
-    }
-
-    .columns {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      align-items: start;
-    }
-
-    .resource-head {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      margin-bottom: 10px;
-    }
-
-    .resource-symbol {
-      display: grid;
-      place-items: center;
-      width: 32px;
-      height: 32px;
-      flex-shrink: 0;
-      border-radius: 9px;
-      background: #382426;
-      color: var(--oil);
-      font-size: 1.1rem;
-      font-weight: 750;
-    }
-
-    .gas .resource-symbol {
-      background: #20362e;
-      color: var(--gas);
-    }
-
-    .grain .resource-symbol {
-      background: #383421;
-      color: var(--grain);
-    }
-
-    .fish .resource-symbol {
-      background: #202e40;
-      color: var(--fish);
-    }
-
-    .resource-head h3 {
-      margin: 0;
-      font-size: 1rem;
-    }
-
-    .resource-head p {
-      margin: 1px 0 0;
-      color: var(--muted);
-      font-size: .74rem;
-    }
-
-    .tier-list {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .tier {
-      min-width: 0;
-      padding: 10px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: #171d19;
-    }
-
-    .tier-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 5px;
-    }
-
-    .tier-head h4 {
-      margin: 0;
-      font-size: .9rem;
-    }
-
-    .tag {
-      padding: 2px 7px;
-      border: 1px solid #654044;
-      border-radius: 99px;
-      color: var(--oil);
-      font-size: .68rem;
-      white-space: nowrap;
-    }
-
-    .gas .tag {
-      border-color: #315847;
-      color: var(--gas);
-    }
-
-    .grain .tag {
-      border-color: #5a5030;
-      color: var(--grain);
-    }
-
-    .fish .tag {
-      border-color: #304d6c;
-      color: var(--fish);
-    }
-
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
-    }
-
-    .metric {
-      min-width: 0;
-      padding: 7px;
-      border-radius: 7px;
-      background: var(--surface-2);
-    }
-
-    .metric span {
-      display: block;
-      margin-bottom: 2px;
-      color: var(--muted);
-      font-size: .68rem;
-    }
-
-    .metric strong {
-      display: block;
-      font-size: .88rem;
-      overflow-wrap: anywhere;
     }
 
     .prices {
@@ -482,13 +353,149 @@
       font-size: .72rem;
     }
 
+    /* Four original building cards in one row */
+    .columns {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      align-items: start;
+    }
+
+    .resource {
+      min-width: 0;
+    }
+
+    .resource-head {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 10px;
+    }
+
+    .resource-symbol {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      border-radius: 9px;
+      background: #382426;
+      color: var(--oil);
+      font-size: 1.1rem;
+      font-weight: 750;
+    }
+
+    .gas .resource-symbol {
+      background: #20362e;
+      color: var(--gas);
+    }
+
+    .grain .resource-symbol {
+      background: #383421;
+      color: var(--grain);
+    }
+
+    .fish .resource-symbol {
+      background: #202e40;
+      color: var(--fish);
+    }
+
+    .resource-head h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .resource-head p {
+      margin: 1px 0 0;
+      color: var(--muted);
+      font-size: .74rem;
+    }
+
+    /* One column of tiers inside each building */
+    .tier-list {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 8px;
+    }
+
+    .tier {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #171d19;
+    }
+
+    .tier-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    .tier-head h4 {
+      margin: 0;
+      font-size: .9rem;
+    }
+
+    .tag {
+      padding: 2px 7px;
+      border: 1px solid #654044;
+      border-radius: 99px;
+      color: var(--oil);
+      font-size: .68rem;
+      white-space: nowrap;
+    }
+
+    .gas .tag {
+      border-color: #315847;
+      color: var(--gas);
+    }
+
+    .grain .tag {
+      border-color: #5a5030;
+      color: var(--grain);
+    }
+
+    .fish .tag {
+      border-color: #304d6c;
+      color: var(--fish);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 7px;
+      border-radius: 7px;
+      background: var(--surface-2);
+    }
+
+    .metric span {
+      display: block;
+      margin-bottom: 2px;
+      color: var(--muted);
+      font-size: .68rem;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: .88rem;
+      overflow-wrap: anywhere;
+    }
+
     footer {
       margin-top: 14px;
       color: var(--muted);
       font-size: .72rem;
     }
 
-    @media (max-width: 1000px) {
+    @media (max-width: 1100px) {
       .settings {
         grid-template-columns: minmax(0, 1.2fr) minmax(220px, .8fr);
       }
@@ -507,11 +514,11 @@
         gap: 6px;
       }
 
-      .presets {
-        flex-direction: column;
+      .price-groups {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .price-groups {
+      .columns {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
@@ -522,8 +529,7 @@
         padding-top: 20px;
       }
 
-      .settings,
-      .columns {
+      .settings {
         grid-template-columns: 1fr;
       }
 
@@ -538,20 +544,15 @@
       }
 
       .presets {
-        flex-direction: row;
-        flex-wrap: wrap;
+        justify-content: flex-start;
       }
 
-      .price-groups {
+      .columns {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .frequency-panel > div {
         grid-template-columns: auto auto;
-      }
-
-      .tier-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
@@ -600,21 +601,7 @@
         grid-template-columns: 1fr;
       }
 
-      .tier {
-        padding: 9px;
-      }
-    }
-
-    @media (max-width: 380px) {
-      .skills {
-        grid-template-columns: 1fr;
-      }
-
-      .skills > div {
-        grid-template-columns: 110px 9.5ch;
-      }
-
-      .tier-list {
+      .columns {
         grid-template-columns: 1fr;
       }
 
@@ -625,6 +612,16 @@
 
       .frequency-panel select {
         width: 100%;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .skills {
+        grid-template-columns: 1fr;
+      }
+
+      .skills > div {
+        grid-template-columns: 110px 9.5ch;
       }
     }
   </style>
@@ -658,8 +655,8 @@
         </div>
         <div class="presets" aria-label="Fähigkeiten-Voreinstellungen">
           <button type="button" data-level="0">Stufe 0</button>
-          <button type="button" data-level="35" class="active">Stufe 35<br>(2 Monate Lernzeit)</button>
-          <button type="button" data-level="90">Stufe 90<br>(2 Jahre Lernzeit)</button>
+          <button type="button" data-level="35" class="active">Stufe 35<br>2 Monate Lernzeit</button>
+          <button type="button" data-level="90">Stufe 90<br>2 Jahre Lernzeit</button>
         </div>
         <p class="hint">Ein Preset setzt beide Fähigkeiten auf die angegebene Stufe.</p>
       </div>
@@ -693,19 +690,16 @@
             <h3 id="oil-prices-title">Öle</h3>
             <div class="price-list" id="oil-prices"></div>
           </section>
-
           <section class="price-group gas" aria-labelledby="gas-prices-title">
             <h3 id="gas-prices-title">Gase</h3>
             <div class="price-list" id="gas-prices"></div>
           </section>
-
           <section class="price-group grain" aria-labelledby="grain-prices-title">
             <h3 id="grain-prices-title">Getreide</h3>
             <div class="price-list" id="grain-prices"></div>
           </section>
-
           <section class="price-group fish" aria-labelledby="fish-prices-title">
-            <h3 id="fish-prices-title">Fisch</h3>
+            <h3 id="fish-prices-title">Fische</h3>
             <div class="price-list" id="fish-prices"></div>
           </section>
         </div>
@@ -812,122 +806,29 @@
 
       var storageCosts = {
         oil: [
-          0,
-          1000,
-          1140,
-          1335,
-          1609,
-          1993,
-          2530,
-          3282,
-          4336,
-          5811,
-          7877,
-          10769,
-          14818,
-          20487,
-          28424,
-          39536,
-          55092,
-          76871,
-          107362,
-          150049,
-          209812,
-          293480,
-          410615,
-          574604,
-          804189,
-          1125608
+          0, 1000, 1140, 1335, 1609, 1993, 2530, 3282, 4336,
+          5811, 7877, 10769, 14818, 20487, 28424, 39536,
+          55092, 76871, 107362, 150049, 209812, 293480,
+          410615, 574604, 804189, 1125608
         ],
         gas: [
-          0,
-          200,
-          338,
-          528,
-          790,
-          1152,
-          1652,
-          2324,
-          3295,
-          4610,
-          6425,
-          8929,
-          12385,
-          17155,
-          23738,
-          32822,
-          45358,
-          62658,
-          86533,
-          119480,
-          164947,
-          227692,
-          314280,
-          433772,
-          598671
+          0, 200, 338, 528, 790, 1152, 1652, 2324, 3295,
+          4610, 6425, 8929, 12385, 17155, 23738, 32822,
+          45358, 62658, 86533, 119480, 164947, 227692,
+          314280, 433772, 598671
         ],
         grain: [
-          0,
-          200,
-          325,
-          481,
-          676,
-          920,
-          1225,
-          1606,
-          2082,
-          2678,
-          3423,
-          4354,
-          5518,
-          6973,
-          8791,
-          11064,
-          13906,
-          17458,
-          21898,
-          27449,
-          34387,
-          43060,
-          53902,
-          67454,
-          84394,
-          105569,
-          132138,
-          165225,
-          206584,
-          258282,
-          322905,
-          403684,
-          504658,
-          630875
+          0, 200, 325, 481, 676, 920, 1225, 1606, 2082,
+          2678, 3423, 4354, 5518, 6973, 8791, 11064,
+          13906, 17458, 21898, 27449, 34387, 43060,
+          53902, 67454, 84394, 105569, 132138, 165225,
+          206584, 258282, 322905, 403684, 504658, 630875
         ],
         fish: [
-          0,
-          200,
-          338,
-          528,
-          790,
-          1152,
-          1652,
-          2324,
-          3295,
-          4610,
-          6425,
-          8929,
-          12385,
-          17155,
-          23739,
-          32822,
-          45358,
-          62658,
-          86533,
-          119480,
-          164947,
-          227692,
-          314280,
-          433772,
-          598671
+          0, 200, 338, 528, 790, 1152, 1652, 2324, 3295,
+          4610, 6425, 8929, 12385, 17155, 23739, 32822,
+          45358, 62658, 86533, 119480, 164947, 227692,
+          314280, 433772, 598671
         ]
       };
 
@@ -944,16 +845,14 @@
           storageLabel: "Öllager",
           productionPerDay: 48.99,
           levels: oilLevels,
-          productKey: "oil",
-          description: "Öl pro Tag"
+          productKey: "oil"
         },
         gas: {
           label: "Sumpfgasanlage",
           storageLabel: "Sumpfgaslager",
           productionPerDay: 304.2,
           levels: gasLevels,
-          productKey: "gas",
-          description: "Sumpfgas pro Tag"
+          productKey: "gas"
         },
         grain: {
           label: "Getreidefelder",
@@ -961,7 +860,6 @@
           productionPerDay: 0,
           levels: grainLevels,
           productKey: "baruGrain",
-          description: "Baru-Getreide pro Tag",
           productionByLevel: {
             100: 3.4,
             160: 35.4,
@@ -976,7 +874,6 @@
           productionPerDay: 0,
           levels: fishLevels,
           productKey: "glodoFish",
-          description: "Glodo-Fisch pro Tag",
           productionByLevel: {
             30: 6.2,
             42: 49.7,
@@ -1239,18 +1136,18 @@
       }
 
       function tierMarkup(level, resource) {
-        var facility = facilities[resource];
         var productionPerDay = getProductionPerDay(level, resource);
         var storageLevel = getStorageLevel(productionPerDay);
         var buildingCost = buildingUpgradeCosts[resource][level];
         var storageCost = getDiscountedStorageCost(storageLevel, resource);
         var totalCost = buildingCost + storageCost;
-
         var profitPerDay = calculateProfitPerDay(level, resource);
         var profitPerYear = profitPerDay * 365;
+
         var amortizationYears = profitPerDay > 0
           ? totalCost / profitPerDay / 365
           : null;
+
         var amortizationText = amortizationYears !== null
           ? amortizationYears.toLocaleString("de-DE", {
               minimumFractionDigits: 1,
@@ -1259,12 +1156,12 @@
           : "–";
 
         return '<article class="tier">' +
-          '<div class="tier-head"><h4>Stufe ' + level + '</h4><span class="tag">Ausbau</span></div>' +
+          '<div class="tier-head"><span class="tag">Stufe ' + level + '</span></div>' +
           '<div class="metrics">' +
-            '<div class="metric"><span>Gesamtkosten</span><strong>' + formatNumber(totalCost) + '</strong></div>' +
+            '<div class="metric"><span>Gesamtkosten</span>' + formatNumber(totalCost) + '</div>' +
             '<div class="metric"><span>Amortisierung</span><strong>' + amortizationText + '</strong></div>' +
-            '<div class="metric"><span>Gewinn pro Tag</span><strong>' + formatNumber(Math.round(profitPerDay)) + '</strong></div>' +
-            '<div class="metric"><span>Gewinn pro Jahr</span><strong>' + formatNumber(Math.round(profitPerYear)) + '</strong></div>' +
+            '<div class="metric"><span>Gewinn pro Tag</span>' + formatNumber(Math.round(profitPerDay)) + '</div>' +
+            '<div class="metric"><span>Gewinn pro Jahr</span>' + formatNumber(Math.round(profitPerYear)) + '</div>' +
           '</div>' +
         '</article>';
       }
