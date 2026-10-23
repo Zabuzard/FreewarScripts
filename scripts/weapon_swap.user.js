@@ -8,7 +8,7 @@
 
 (function () {
   // Configure your weapons here
-  var attackWeapon = { name: "königliche Nebelklinge", id: 817190669 };
+  var attackWeapon = { name: "lebendige Doppelklinge", id: 823575165 };
   var defenseWeapon = { name: "Goldplattenschild", id: 302894989 };
   var divingSuit = { name: "Taucheranzug", id: 247183416 };
 
