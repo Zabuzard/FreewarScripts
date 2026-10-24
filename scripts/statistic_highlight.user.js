@@ -66,7 +66,8 @@
     [
       /^Turm der inneren Macht auf Stufe \d+\s*$/,
       /Du kannst jetzt deine Förderung bei der Stiftung abholen\./,
-      /Du kannst jetzt wieder einen Wissenszauber abholen\./
+      /Du kannst jetzt wieder einen Wissenszauber abholen\./,
+      /Die Mine befindet sich noch .+ in der Kontrolle .+Onlo.+/
     ].forEach(function (pattern) {
       findRowsMatching(pattern).forEach(highlightRow);
     });
