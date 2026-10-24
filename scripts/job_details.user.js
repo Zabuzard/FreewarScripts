@@ -36,6 +36,7 @@ const ignoredHighlights = new Set([
   "Portalmaschine",
   "Grotte des Todes",
   "Seelenkapsel",
+  "leere Energiesphäre",
   "0"
 ]);
 var positionOverrides = {
