@@ -129,6 +129,55 @@ def get_latest_stocks():
     return [dict(row) for row in rows]
 
 
+def format_relative_update(timestamp):
+    """Format the age of the latest collected stock data in German."""
+    if not timestamp:
+        return "noch keine Daten"
+
+    try:
+        updated_at = datetime.fromisoformat(timestamp)
+
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=timezone.utc)
+
+        seconds = max(
+            0,
+            int(
+                (
+                    datetime.now(timezone.utc) - updated_at
+                ).total_seconds()
+            ),
+        )
+    except (TypeError, ValueError, OverflowError):
+        return "Zeitpunkt unbekannt"
+
+    if seconds < 60:
+        return "gerade eben"
+
+    if seconds < 3600:
+        minutes = seconds // 60
+        return (
+            f"vor {minutes} Minute"
+            if minutes == 1
+            else f"vor {minutes} Minuten"
+        )
+
+    if seconds < 86400:
+        hours = seconds // 3600
+        return (
+            f"vor {hours} Stunde"
+            if hours == 1
+            else f"vor {hours} Stunden"
+        )
+
+    days = seconds // 86400
+    return (
+        f"vor {days} Tag"
+        if days == 1
+        else f"vor {days} Tagen"
+    )
+
+
 def get_chart_data(company_id, start, end, bucket_seconds):
     """Return chronological minimum and maximum readings for each time bucket."""
     with sqlite3.connect(DB_PATH, timeout=30) as db:
@@ -146,14 +195,20 @@ def get_chart_data(company_id, start, end, bucket_seconds):
         )).fetchall()
 
     buckets = {}
+    latest_point = None
 
     for timestamp, value, row_id in rows:
         try:
             dt = datetime.fromisoformat(timestamp)
+
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+
             bucket_index = int(
                 (dt - start).total_seconds() // bucket_seconds
             )
             point = (int(dt.timestamp() * 1000), value, row_id)
+            latest_point = point
         except (TypeError, ValueError, OverflowError):
             continue
 
@@ -181,6 +236,13 @@ def get_chart_data(company_id, start, end, bucket_seconds):
 
         if maximum[2] != minimum[2]:
             selected_points.append(maximum)
+
+    # Ensure the latest reading remains visible even if it is neither
+    # the minimum nor the maximum of its bucket.
+    if latest_point is not None and not any(
+        point[2] == latest_point[2] for point in selected_points
+    ):
+        selected_points.append(latest_point)
 
     selected_points.sort(key=lambda point: (point[0], point[2]))
 
@@ -403,8 +465,8 @@ def render_overview_png():
     """Render a transparent stock overview PNG without external packages."""
     width = 700
     height = 150
-    #pixels = bytearray(width * height * 4)
     pixels = bytearray(width * height * 4)
+
     for i in range(3, len(pixels), 4):
         pixels[i] = 255
 
@@ -419,7 +481,6 @@ def render_overview_png():
         "negative_muted": (138, 65, 65, 255),
     }
 
-    # Five-by-seven bitmap font with lowercase and German characters.
     glyphs = {
         " ": (0, 0, 0, 0, 0, 0, 0),
         "-": (0, 0, 0, 31, 0, 0, 0),
@@ -432,7 +493,6 @@ def render_overview_png():
         "…": (0, 0, 0, 0, 0, 21, 0),
         "(": (4, 8, 16, 16, 16, 8, 4),
         ")": (4, 2, 1, 1, 1, 2, 4),
-
         "0": (14, 17, 19, 21, 25, 17, 14),
         "1": (4, 12, 4, 4, 4, 4, 14),
         "2": (14, 17, 1, 2, 4, 8, 31),
@@ -443,7 +503,6 @@ def render_overview_png():
         "7": (31, 1, 2, 4, 8, 8, 8),
         "8": (14, 17, 17, 14, 17, 17, 14),
         "9": (14, 17, 17, 15, 1, 2, 12),
-
         "A": (14, 17, 17, 31, 17, 17, 17),
         "B": (30, 17, 17, 30, 17, 17, 30),
         "C": (14, 17, 16, 16, 16, 17, 14),
@@ -470,7 +529,6 @@ def render_overview_png():
         "X": (17, 17, 10, 4, 10, 17, 17),
         "Y": (17, 17, 10, 4, 4, 4, 4),
         "Z": (31, 1, 2, 4, 8, 16, 31),
-
         "a": (0, 0, 14, 1, 15, 17, 15),
         "b": (16, 16, 22, 25, 17, 17, 30),
         "c": (0, 0, 14, 17, 16, 17, 14),
@@ -497,7 +555,6 @@ def render_overview_png():
         "x": (0, 0, 17, 10, 4, 10, 17),
         "y": (0, 17, 17, 17, 15, 1, 14),
         "z": (0, 0, 31, 2, 4, 8, 31),
-
         "Ä": (10, 0, 14, 17, 31, 17, 17),
         "Ö": (10, 0, 14, 17, 17, 17, 14),
         "Ü": (10, 0, 17, 17, 17, 17, 14),
@@ -514,7 +571,6 @@ def render_overview_png():
 
     FONT_SCALE = 2
     GLYPH_WIDTH = 5
-    GLYPH_HEIGHT = 7
     CHAR_SPACING = 1
     CHAR_ADVANCE = (GLYPH_WIDTH + CHAR_SPACING) * FONT_SCALE
 
@@ -523,7 +579,10 @@ def render_overview_png():
         cursor = x
 
         for char in value:
-            glyph = glyphs.get(char, glyphs.get(char.upper(), glyphs[" "]))
+            glyph = glyphs.get(
+                char,
+                glyphs.get(char.upper(), glyphs[" "]),
+            )
 
             if max_width is not None:
                 if cursor + GLYPH_WIDTH * FONT_SCALE - x > max_width:
@@ -546,7 +605,12 @@ def render_overview_png():
 
     def draw_right(x, y, value, color):
         value = str(value)
-        draw_text(x - len(value) * CHAR_ADVANCE + FONT_SCALE, y, value, color)
+        draw_text(
+            x - len(value) * CHAR_ADVANCE + FONT_SCALE,
+            y,
+            value,
+            color,
+        )
 
     def png_chunk(chunk_type, data):
         chunk = chunk_type + data
@@ -565,6 +629,7 @@ def render_overview_png():
 
     if earliest:
         start = datetime.fromisoformat(earliest)
+
         if start.tzinfo is None:
             start = start.replace(tzinfo=timezone.utc)
     else:
@@ -672,6 +737,7 @@ def render_overview_png():
 
     return bytes(png)
 
+
 def get_cached_overview_png():
     with _overview_cache_lock:
         if _overview_cache["payload"] is None:
@@ -688,6 +754,7 @@ def invalidate_overview_cache():
     with _overview_cache_lock:
         _overview_cache["payload"] = None
         _overview_cache["etag"] = None
+
 
 # == REST API ==
 
@@ -721,9 +788,6 @@ def get_api_data():
         stats = get_chart_stats(company_id, start, now)
 
         median = stats["median"] if stats else None
-        difference = None
-        difference_gold = None
-        difference_percent = None
 
         if current_value is not None and median is not None:
             difference = current_value - median
@@ -742,6 +806,7 @@ def get_api_data():
         }
 
     return result
+
 
 def get_axis_date_format(range_key, start, end):
     if range_key == "24h":
@@ -771,6 +836,16 @@ def get_axis_date_format(range_key, start, end):
 
 def render_dashboard(query):
     stocks = get_latest_stocks()
+
+    latest_timestamp = max(
+        (
+            stock["timestamp"]
+            for stock in stocks
+            if stock["timestamp"]
+        ),
+        default=None,
+    )
+    last_update_text = format_relative_update(latest_timestamp)
 
     (
         start,
@@ -807,10 +882,19 @@ def render_dashboard(query):
         name = html.escape(stock["name"])
         value = stock["value"]
         value_text = format_value(value)
-        value_display = f"{value_text}g" if value is not None else value_text
+        value_display = (
+            f"{value_text}g"
+            if value is not None
+            else value_text
+        )
         timestamp = stock["timestamp"] or ""
 
-        points = get_chart_data(company_id, start, end, bucket_seconds)
+        points = get_chart_data(
+            company_id,
+            start,
+            end,
+            bucket_seconds,
+        )
         stats = get_chart_stats(company_id, start, end)
 
         points_json = json.dumps(points, separators=(",", ":"))
@@ -1331,6 +1415,24 @@ def render_dashboard(query):
         stroke-width: 1.5;
     }}
 
+    .chart .current-value-line {{
+        stroke: var(--accent);
+        stroke-width: 1.5;
+        stroke-dasharray: 2 5;
+        stroke-linecap: round;
+        stroke-opacity: .9;
+        pointer-events: none;
+    }}
+
+    .chart .latest-point {{
+        fill: var(--accent);
+        fill-opacity: 1;
+        stroke: #ffffff;
+        stroke-width: 2;
+        filter: drop-shadow(0 0 3px #65a9ff);
+        pointer-events: none;
+    }}
+
     .chart .min-line {{
         stroke: var(--minimum);
         stroke-width: 2;
@@ -1499,6 +1601,7 @@ def render_dashboard(query):
             <div class="status">
                 <span class="dot"></span>
                 Automatische Aktualisierung alle 5 Minuten
+                ({html.escape(last_update_text)})
             </div>
         </header>
 
@@ -1963,6 +2066,25 @@ def render_dashboard(query):
             }}));
         }});
 
+        // Highlight the latest stock value with a dotted horizontal line
+        // and a larger marker.
+        const latestPoint = coordinates[coordinates.length - 1];
+
+        svg.appendChild(createSvgElement("line", {{
+            x1: left,
+            y1: yFor(latestPoint.value),
+            x2: width - right,
+            y2: yFor(latestPoint.value),
+            class: "current-value-line"
+        }}));
+
+        svg.appendChild(createSvgElement("circle", {{
+            cx: latestPoint.x,
+            cy: latestPoint.y,
+            r: 6,
+            class: "latest-point"
+        }}));
+
         const medianCoordinates = coordinates.map(function (point, index) {{
             const halfWindow = Math.floor(MEDIAN_WINDOW / 2);
             const windowStart = Math.max(
@@ -2117,7 +2239,6 @@ def render_dashboard(query):
 </html>"""
 
 
-
 # == HTTP server ==
 
 class StockHandler(BaseHTTPRequestHandler):
@@ -2196,6 +2317,7 @@ class StockHandler(BaseHTTPRequestHandler):
             self.address_string(),
             format_string % args,
         )
+
 
 # == Startup ==
 
