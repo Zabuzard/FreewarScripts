@@ -8,10 +8,10 @@
 
 (function () {
   var necklaces = [ // Configure this to your needs
+    { name: "Kette des Unermüdlichen", id: 823547526, icon: "☽", color: "#A855F7" },
     { name: "Landmaster", id: 247183403, icon: "⌛︎", color: "#C49A6C" },
     { name: "Amulett der Frostkälte", id: 247183421, icon: "❄", color: "#66CCFF" },
-    { name: "Amulett der Erfahrung", id: 247183479, icon: "★", color: "#FFD700" },
-    { name: "Talisman der Wunder (M)", id: 825045231, icon: "☽", color: "#A855F7" }
+    { name: "Amulett der Erfahrung", id: 247183479, icon: "★", color: "#FFD700" }
   ];
 
   var neckRow = document.getElementById("listrow_neck");
