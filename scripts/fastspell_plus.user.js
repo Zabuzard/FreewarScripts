@@ -290,7 +290,8 @@ fastspellData['1'] = new Object();
 //fastspellData['1']['8'] = [809856478, '_____(Pyramide der Seelen)'];
 //fastspellData['1']['9'] = [247183479, '_____Amulett der Erfahrung'];
 //fastspellData['1']['10'] = [247183437, 'Fels der Phasenselbstheilung'];
-fastspellData['1']['10'] = [247183431, 'Schriftrolle der Lebenden'];
+//fastspellData['1']['10'] = [247183431, 'Schriftrolle der Lebenden'];
+fastspellData['1']['10'] = [827600602, 'große Schriftrolle der Lebenden'];
 fastspellData['1']['11'] = [247183399, 'Sniper Rifle'];
 
 // Set 2
