@@ -36,6 +36,7 @@
     /Der Boden bebt, als würde sich etwas sehr großes aus dem Boden an die Oberfläche graben/i,
     /Äonenjäger heilt sich zwischen den Angriffen komplett/i,
     /Äonenjäger federt den Schlag teilweise ab, und heilt sich durch die abgefederte Schlagenergie/i,
+    /Die Gewebeforscher geben bekannt, dass sie jetzt eine neue Probe suchen/i,
     /wahnsinniger Waldschlurch rennt wie wild Richtung/i
   ];
 
