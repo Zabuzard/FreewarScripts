@@ -56,7 +56,7 @@
 
     //highlightStorage("Glodo-Fische im Lager", 0.6);
     highlightStorage("Baru-Getreide im Lager", 0.5);
-    highlightStorage("Ölfässer im Lager", 0.4);
+    highlightStorage("Ölfässer im Lager", 0.7);
     highlightStorage("Sumpfgasflaschen im Lager", 0.4);
 
     findRowsMatching(/Turm der inneren Macht auf Stufe \d+.*\(Ausbau von Stufe/).forEach(highlightSlightly);
