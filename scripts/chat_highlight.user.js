@@ -37,6 +37,7 @@
     /Äonenjäger heilt sich zwischen den Angriffen komplett/i,
     /Äonenjäger federt den Schlag teilweise ab, und heilt sich durch die abgefederte Schlagenergie/i,
     /Die Gewebeforscher geben bekannt, dass sie jetzt eine neue Probe suchen/i,
+    /Die Sumpfbewohner hängen eine Nachricht auf, dass sie etwas Neues suchen/i,
     /wahnsinniger Waldschlurch rennt wie wild Richtung/i
   ];
 
