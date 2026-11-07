@@ -182,6 +182,7 @@
         }
 
         var selectedTarget = getTissueTarget();
+        var selectedTargetFound = false;
 
         if (selectedTarget) {
             ensureBlinkStyle(frameDocument);
@@ -238,6 +239,10 @@
                 continue;
             }
 
+            if (targetName === selectedTarget) {
+                selectedTargetFound = true;
+            }
+
             if (
                 !targetElement.classList.contains(
                     "tissue-target-navigation"
@@ -252,6 +257,10 @@
             } else {
                 targetElement.style.animation = "";
             }
+        }
+
+        if (selectedTarget && !selectedTargetFound) {
+            clearTissueTarget();
         }
     }
 
