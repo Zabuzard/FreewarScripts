@@ -11,8 +11,10 @@
 (function () {
     var STORAGE_KEY = "target-navigation-coordinate";
     var STORAGE_TIMESTAMP_KEY = "target-navigation-coordinate-timestamp";
+    var STORAGE_TYPE_KEY = "target-navigation-coordinate-type";
     var COOKIE_MAX_AGE = 2 * 60 * 60;
     var TARGET_MAX_AGE = 2 * 60 * 60 * 1000;
+    var TISSUE_MAX_AGE = 15 * 60 * 1000;
     var lastTargetValue = null;
 
     function parseCoordinates(value) {
@@ -48,17 +50,21 @@
         document.cookie = name + "=; path=/; max-age=0";
     }
 
-    function saveTarget(x, y) {
+    function saveTarget(x, y, type) {
         var value = x + "/" + y;
         var timestamp = Date.now();
+
+        type = type || "regular";
 
         try {
             localStorage.setItem(STORAGE_KEY, value);
             localStorage.setItem(STORAGE_TIMESTAMP_KEY, String(timestamp));
+            localStorage.setItem(STORAGE_TYPE_KEY, type);
             return;
         } catch (e) {
             setCookie(STORAGE_KEY, value);
             setCookie(STORAGE_TIMESTAMP_KEY, String(timestamp));
+            setCookie(STORAGE_TYPE_KEY, type);
         }
     }
 
@@ -66,9 +72,11 @@
         try {
             localStorage.removeItem(STORAGE_KEY);
             localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
+            localStorage.removeItem(STORAGE_TYPE_KEY);
         } catch (e) {
             deleteCookie(STORAGE_KEY);
             deleteCookie(STORAGE_TIMESTAMP_KEY);
+            deleteCookie(STORAGE_TYPE_KEY);
         }
 
         lastTargetValue = null;
@@ -77,11 +85,13 @@
     function readStoredTarget() {
         var value = null;
         var timestamp = null;
+        var type = null;
         var localStorageAvailable = true;
 
         try {
             value = localStorage.getItem(STORAGE_KEY);
             timestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
+            type = localStorage.getItem(STORAGE_TYPE_KEY);
         } catch (e) {
             localStorageAvailable = false;
         }
@@ -89,12 +99,15 @@
         if (!localStorageAvailable) {
             value = getCookie(STORAGE_KEY);
             timestamp = getCookie(STORAGE_TIMESTAMP_KEY);
+            type = getCookie(STORAGE_TYPE_KEY);
         }
 
         if (!value) { return null; }
 
         var coordinates = parseCoordinates(value);
         if (!coordinates) { return null; }
+
+        type = type === "tissue" ? "tissue" : "regular";
 
         timestamp = parseInt(timestamp, 10);
 
@@ -112,18 +125,23 @@
             }
         }
 
-        if (Date.now() - timestamp > TARGET_MAX_AGE) {
+        var maxAge = type === "tissue" ? TISSUE_MAX_AGE : TARGET_MAX_AGE;
+
+        if (Date.now() - timestamp > maxAge) {
             if (localStorageAvailable) {
                 try {
                     localStorage.removeItem(STORAGE_KEY);
                     localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
+                    localStorage.removeItem(STORAGE_TYPE_KEY);
                 } catch (e) {
                     deleteCookie(STORAGE_KEY);
                     deleteCookie(STORAGE_TIMESTAMP_KEY);
+                    deleteCookie(STORAGE_TYPE_KEY);
                 }
             } else {
                 deleteCookie(STORAGE_KEY);
                 deleteCookie(STORAGE_TIMESTAMP_KEY);
+                deleteCookie(STORAGE_TYPE_KEY);
             }
 
             lastTargetValue = null;
@@ -134,7 +152,8 @@
             x: coordinates.x,
             y: coordinates.y,
             value: value,
-            timestamp: timestamp
+            timestamp: timestamp,
+            type: type
         };
     }
 
@@ -212,13 +231,14 @@
             var normalizedValue = coordinates.x + "/" + coordinates.y;
             input.value = normalizedValue;
 
-            saveTarget(coordinates.x, coordinates.y);
+            saveTarget(coordinates.x, coordinates.y, "regular");
             var storedTarget = readStoredTarget();
-            lastTargetValue = storedTarget.value + "|" + storedTarget.timestamp;
+            lastTargetValue = storedTarget.value + "|" + storedTarget.timestamp + "|" + storedTarget.type;
             clearButton.style.display = "";
             updateAreaDisplay(coordinates.x, coordinates.y);
-            highlightTarget(coordinates.x, coordinates.y);
+            highlightTarget(coordinates.x, coordinates.y, storedTarget.type);
         });
+
         input.addEventListener("keydown", function (event) {
             if (event.key === "Escape") {
                 event.preventDefault();
@@ -243,14 +263,14 @@
             var x = parseInt(positionMatch[1], 10);
             var y = parseInt(positionMatch[2], 10);
 
-            saveTarget(x, y);
+            saveTarget(x, y, "regular");
             var storedTarget = readStoredTarget();
-            lastTargetValue = storedTarget.value + "|" + storedTarget.timestamp;
+            lastTargetValue = storedTarget.value + "|" + storedTarget.timestamp + "|" + storedTarget.type;
 
             input.value = x + "/" + y;
             clearButton.style.display = "";
             updateAreaDisplay(x, y);
-            highlightTarget(x, y);
+            highlightTarget(x, y, storedTarget.type);
         });
 
         clearButton.type = "button";
@@ -310,25 +330,35 @@
             .target-navigation-highlight {
                 position: relative;
                 filter: sepia(0.15) saturate(1.1) hue-rotate(0deg) brightness(1.02);
+                --target-navigation-color: rgba(255, 0, 0, 0.25);
             }
 
             .target-navigation-highlight::after {
                 content: "";
                 position: absolute;
                 inset: 0;
-                background: rgba(255, 0, 0, 0.25);
+                background: var(--target-navigation-color);
                 pointer-events: none;
             }
 
             .target-navigation-direction {
                 position: relative;
+                --target-navigation-color: rgba(255, 0, 0, 0.35);
             }
 
             .target-navigation-direction::after {
                 content: "";
                 position: absolute;
                 pointer-events: none;
-                background: rgba(255, 0, 0, 0.35);
+                background: var(--target-navigation-color);
+            }
+
+            .target-navigation-tissue {
+                --target-navigation-color: rgba(0, 255, 0, 0.25);
+            }
+
+            .target-navigation-direction.target-navigation-tissue {
+                --target-navigation-color: rgba(0, 255, 0, 0.35);
             }
 
             .target-navigation-north::after {
@@ -363,32 +393,32 @@
                 inset: 0;
                 background: transparent;
                 box-shadow:
-                    inset 0 15px 0 rgba(255, 0, 0, 0.35),
-                    inset 15px 0 0 rgba(255, 0, 0, 0.35);
+                    inset 0 15px 0 var(--target-navigation-color),
+                    inset 15px 0 0 var(--target-navigation-color);
             }
 
             .target-navigation-northeast::after {
                 inset: 0;
                 background: transparent;
                 box-shadow:
-                    inset 0 15px 0 rgba(255, 0, 0, 0.35),
-                    inset -15px 0 0 rgba(255, 0, 0, 0.35);
+                    inset 0 15px 0 var(--target-navigation-color),
+                    inset -15px 0 0 var(--target-navigation-color);
             }
 
             .target-navigation-southwest::after {
                 inset: 0;
                 background: transparent;
                 box-shadow:
-                    inset 0 -15px 0 rgba(255, 0, 0, 0.35),
-                    inset 15px 0 0 rgba(255, 0, 0, 0.35);
+                    inset 0 -15px 0 var(--target-navigation-color),
+                    inset 15px 0 0 var(--target-navigation-color);
             }
 
             .target-navigation-southeast::after {
                 inset: 0;
                 background: transparent;
                 box-shadow:
-                    inset 0 -15px 0 rgba(255, 0, 0, 0.35),
-                    inset -15px 0 0 rgba(255, 0, 0, 0.35);
+                    inset 0 -15px 0 var(--target-navigation-color),
+                    inset -15px 0 0 var(--target-navigation-color);
             }
         `;
 
@@ -399,7 +429,10 @@
         var highlightedTiles = document.querySelectorAll(".target-navigation-highlight");
 
         for (var i = 0; i < highlightedTiles.length; i++) {
-            highlightedTiles[i].classList.remove("target-navigation-highlight");
+            highlightedTiles[i].classList.remove(
+                "target-navigation-highlight",
+                "target-navigation-tissue"
+            );
         }
 
         var directionTiles = document.querySelectorAll(".target-navigation-direction");
@@ -407,6 +440,7 @@
         for (var i = 0; i < directionTiles.length; i++) {
             directionTiles[i].classList.remove(
                 "target-navigation-direction",
+                "target-navigation-tissue",
                 "target-navigation-north",
                 "target-navigation-south",
                 "target-navigation-west",
@@ -419,13 +453,20 @@
         }
     }
 
-    function highlightTarget(targetX, targetY) {
+    function highlightTarget(targetX, targetY, type) {
         addHighlightStyle();
         clearTargetHighlight();
+
+        type = type || "regular";
 
         var tile = document.getElementById("mapx" + targetX + "y" + targetY);
         if (tile) {
             tile.classList.add("target-navigation-highlight");
+
+            if (type === "tissue") {
+                tile.classList.add("target-navigation-tissue");
+            }
+
             return;
         }
 
@@ -540,6 +581,10 @@
                 "target-navigation-direction",
                 "target-navigation-" + highlight.direction
             );
+
+            if (type === "tissue") {
+                directionTile.classList.add("target-navigation-tissue");
+            }
         }
     }
 
@@ -575,7 +620,7 @@
             clearButton.style.display = "";
         }
 
-        var targetSignature = storedTarget.value + "|" + storedTarget.timestamp;
+        var targetSignature = storedTarget.value + "|" + storedTarget.timestamp + "|" + storedTarget.type;
 
         if (targetSignature === lastTargetValue) {
             return;
@@ -583,7 +628,7 @@
 
         lastTargetValue = targetSignature;
         updateAreaDisplay(storedTarget.x, storedTarget.y);
-        highlightTarget(storedTarget.x, storedTarget.y);
+        highlightTarget(storedTarget.x, storedTarget.y, storedTarget.type);
     }
 
     var observer = new MutationObserver(function () {

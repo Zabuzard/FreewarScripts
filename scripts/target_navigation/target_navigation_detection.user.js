@@ -11,6 +11,7 @@
 (function () {
     var STORAGE_KEY = "target-navigation-coordinate";
     var STORAGE_TIMESTAMP_KEY = "target-navigation-coordinate-timestamp";
+    var STORAGE_TYPE_KEY = "target-navigation-coordinate-type";
     var COOKIE_MAX_AGE = 2 * 60 * 60;
 
     var COORDINATE_PATTERN = /X:\s*(-?\d+)\s*(?:\/\s*|\s+)Y:\s*(-?\d+)/g;
@@ -28,6 +29,7 @@
         try {
             localStorage.setItem(STORAGE_KEY, value);
             localStorage.setItem(STORAGE_TIMESTAMP_KEY, String(timestamp));
+            localStorage.setItem(STORAGE_TYPE_KEY, "regular");
             return;
         } catch (e) {
             document.cookie =
@@ -36,6 +38,10 @@
 
             document.cookie =
                 STORAGE_TIMESTAMP_KEY + "=" + encodeURIComponent(timestamp) +
+                "; path=/; max-age=" + COOKIE_MAX_AGE;
+
+            document.cookie =
+                STORAGE_TYPE_KEY + "=regular" +
                 "; path=/; max-age=" + COOKIE_MAX_AGE;
         }
     }
