@@ -350,11 +350,20 @@ Abweichung zum min/max-Wert ausgesprochen.
 
 ### `storages`
 
-Bietet mit `storage_profit.html` ein Webtool zur Berechnung der
-Investitionen in Ölturm, Sumpfgaslager, Getreiddefarm und Fischzucht an.
-Berechnet zum Beispiel Amortisationszeiten.
+Bietet mit `storage_profit.html` ein Webtool zur Berechnung der Investitionen in
+Ölturm, Sumpfgaslager, Getreiddefarm und Fischzucht an. Berechnet zum Beispiel
+Amortisationszeiten.
 
 ![Investitionsrechner](https://i.vgy.me/ZWTPVu.jpg)
 
 Online verfügbar auf:
 [scripts/storages/storage_profit.html](https://zabuzard.github.io/FreewarScripts/scripts/storages/storage_profit.html)
+
+## `exit_tool`
+
+Fügt weitere Zurück-Links ganz oben und einen klickbaren Streifen an der Seite
+zu verschiedenen Tools, wie zum Beispiel der Schriftrolle der Lebenenden hinzu.
+
+![Zurück Links](https://i.vgy.me/1UQ7fW.jpg)
+
+Dadurch wird das schnelle Verlassen des Tools vereinfacht.
