@@ -18,6 +18,11 @@
         "itemFrame"
     ];
 
+    var COORDINATE_TOOL_MARKERS = [
+        "Lebende Wesen an der Oberfläche dieser Welt",
+        "Lebende Wesen in deinem Umkreis von"
+    ];
+
     var TISSUE_TARGET_PATTERN =
         /Derzeit suchen die Forscher dringend eine Gewebeprobe von\s*/;
 
@@ -142,6 +147,8 @@
         element.style.cursor = "pointer";
         element.style.textDecoration = "underline";
         element.style.textDecorationStyle = "dotted";
+        element.style.fontSize = "2em";
+        element.style.color = "rgb(136, 206, 127)";
         element.title = "Gewebejagd-Ziel speichern: " + name;
 
         element.addEventListener("click", function () {
@@ -149,11 +156,35 @@
         });
     }
 
+    function ensureBlinkStyle(frameDocument) {
+        var styleId = "tissue-target-navigation-animation";
+
+        if (frameDocument.getElementById(styleId)) {
+            return;
+        }
+
+        var style = frameDocument.createElement("style");
+        style.id = styleId;
+        style.textContent =
+            "@keyframes tissue-target-navigation-blink {" +
+            "  0%, 100% { opacity: 1; }" +
+            "  50% { opacity: 0.2; }" +
+            "}";
+
+        frameDocument.head.appendChild(style);
+    }
+
     function scanMainFrame(frameDocument) {
         var bodyText = frameDocument.body.innerText;
 
         if (!bodyText || bodyText.indexOf("Gewebeforschung") === -1) {
             return;
+        }
+
+        var selectedTarget = getTissueTarget();
+
+        if (selectedTarget) {
+            ensureBlinkStyle(frameDocument);
         }
 
         var walker = frameDocument.createTreeWalker(
@@ -178,13 +209,24 @@
                 continue;
             }
 
-            var parent = textNode.parentNode;
+            // Find the bold element immediately following this text.
+            var targetElement = textNode.nextSibling;
 
-            if (!parent) {
-                continue;
+            while (
+                targetElement &&
+                !(targetElement.nodeType === 1 &&
+                    targetElement.tagName === "B")
+            ) {
+                if (
+                    targetElement.nodeType === 1 &&
+                    targetElement.tagName === "BR"
+                ) {
+                    targetElement = null;
+                    break;
+                }
+
+                targetElement = targetElement.nextSibling;
             }
-
-            var targetElement = parent.querySelector("b");
 
             if (!targetElement) {
                 continue;
@@ -197,18 +239,31 @@
             }
 
             if (
-                targetElement.classList.contains(
+                !targetElement.classList.contains(
                     "tissue-target-navigation"
                 )
             ) {
-                continue;
+                makeTissueTargetClickable(targetElement, targetName);
             }
 
-            makeTissueTargetClickable(targetElement, targetName);
+            if (targetName === selectedTarget) {
+                targetElement.style.animation =
+                    "tissue-target-navigation-blink 0.5s ease-in-out infinite";
+            } else {
+                targetElement.style.animation = "";
+            }
         }
     }
 
     function scanItemFrame(frameDocument) {
+        var bodyText = frameDocument.body.innerText;
+
+        if (!bodyText || !COORDINATE_TOOL_MARKERS.some(function (marker) {
+            return bodyText.includes(marker);
+        })) {
+            return;
+        }
+
         var targetName = getTissueTarget();
 
         if (!targetName) {

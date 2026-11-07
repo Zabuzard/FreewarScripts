@@ -367,3 +367,13 @@ zu verschiedenen Tools, wie zum Beispiel der Schriftrolle der Lebenenden hinzu.
 ![Zurück Links](https://i.vgy.me/1UQ7fW.jpg)
 
 Dadurch wird das schnelle Verlassen des Tools vereinfacht.
+
+## `tissue_target_navigation`
+
+Macht Ziele zur Gewebeforschung klickbar. Wenn geklickt, sucht das Skript aktiv
+in Tools wie zum Beispiel der Schriftrolle der Lebenden nach dem Nutzer. Die
+Koordinaten des Nutzers werden dann automatisch dem Skript `target_navigation`
+zur Verfügung gestellt, indem der Nutzer als Ziel markiert wird. Jede weitere
+Sicht auf die Koordinaten des Nutzers aktualisiert die Zielfindung.
+
+![Gewebe Demo](https://i.vgy.me/lL1Guv.gif)
