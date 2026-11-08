@@ -295,24 +295,27 @@
 
         for (var i = 0; i < textNodes.length; i++) {
             var textNode = textNodes[i];
-            var parent = textNode.parentNode;
 
-            if (!parent) {
-                continue;
+            // Find the top-level node containing the target name.
+            var lineStart = textNode;
+
+            while (
+                lineStart.parentNode &&
+                lineStart.parentNode !== frameDocument.body
+            ) {
+                lineStart = lineStart.parentNode;
             }
 
-            // The player name and coordinates must belong
-            // to the same line.
-            var line = parent.parentNode;
+            // Collect text from this row until the next line break.
+            var lineText = "";
+            var linePart = lineStart;
 
-            if (!line) {
-                continue;
-            }
-
-            var lineText = line.textContent;
-
-            if (lineText.indexOf(targetName) === -1) {
-                continue;
+            while (
+                linePart &&
+                !(linePart.nodeType === 1 && linePart.tagName === "BR")
+            ) {
+                lineText += linePart.textContent || "";
+                linePart = linePart.nextSibling;
             }
 
             var coordinateMatch =
