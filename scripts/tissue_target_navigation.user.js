@@ -10,12 +10,23 @@
 (function () {
     var STORAGE_KEY = "current-tissue-target";
     var STORAGE_TIMESTAMP_KEY = "current-tissue-target-timestamp";
+    var LAST_TISSUE_SOLD_KEY = "last-tissue-sold-ts";
+    var LAST_CHAT_SCANNED_KEY = "last-tissue-chat-scanned-ts";
     var COOKIE_MAX_AGE = 15 * 60;
     var TARGET_EXPIRATION_TIME = 15 * 60 * 1000;
 
+    var TISSUE_COUNTDOWN_DURATION = 10 * 60 * 1000;
+    var TISSUE_COUNTDOWN_ID = "tissue-target-navigation-countdown";
+    var TISSUE_COUNTDOWN_TEXT =
+        "Dies ist ein Ort des Friedens, Angriffe sind hier unmöglich.";
+
+    var tissueCountdownTimeout = null;
+    var tissueCountdownTimestamp = null;
+
     var FRAME_NAMES = [
         "mainFrame",
-        "itemFrame"
+        "itemFrame",
+        "chattextFrame"
     ];
 
     var COORDINATE_TOOL_MARKERS = [
@@ -28,6 +39,9 @@
 
     var COORDINATE_PATTERN =
         /X:\s*(-?\d+)\s*(?:\/\s*|\s+)Y:\s*(-?\d+)/;
+
+    var TISSUE_SOLD_PATTERN =
+        /verkauft eine Gewebeprobe von/;
 
     function saveTissueTarget(name) {
         var timestamp = Date.now();
@@ -73,6 +87,211 @@
         } catch (e) {}
 
         return getCookie(key);
+    }
+
+    function saveStoredValue(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            document.cookie =
+                key + "=" + encodeURIComponent(value) +
+                "; path=/; max-age=7200";
+        }
+    }
+
+    function getTissueSoldTimestamp() {
+        var timestamp = getStoredValue(LAST_TISSUE_SOLD_KEY);
+
+        if (!timestamp) {
+            return null;
+        }
+
+        var match =
+            /^(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/.exec(timestamp);
+
+        if (!match) {
+            return null;
+        }
+
+        var now = new Date();
+        var soldDate = new Date(now);
+
+        soldDate.setHours(
+            parseInt(match[1], 10),
+            parseInt(match[2], 10),
+            parseInt(match[3], 10),
+            parseInt((match[4] || "0").substring(0, 3).padEnd(3, "0"), 10)
+        );
+
+        // Handle a sale timestamp from the previous day.
+        if (soldDate.getTime() > now.getTime() + 10 * 60 * 1000) {
+            soldDate.setDate(soldDate.getDate() - 1);
+        }
+
+        return soldDate.getTime();
+    }
+
+    function removeTissueCountdown(frameDocument) {
+        if (tissueCountdownTimeout !== null) {
+            clearTimeout(tissueCountdownTimeout);
+            tissueCountdownTimeout = null;
+        }
+
+        var countdown = frameDocument.getElementById(
+            TISSUE_COUNTDOWN_ID
+        );
+
+        if (countdown) {
+            countdown.remove();
+        }
+    }
+
+    function formatCountdown(milliseconds) {
+        var totalSeconds = Math.ceil(milliseconds / 1000);
+        var minutes = Math.floor(totalSeconds / 60);
+        var seconds = totalSeconds % 60;
+
+        return (
+            String(minutes) + ":" +
+            String(seconds).padStart(2, "0")
+        );
+    }
+
+    function updateTissueCountdown(frameDocument, soldTimestamp) {
+        var remaining = TISSUE_COUNTDOWN_DURATION -
+            (Date.now() - soldTimestamp);
+
+        if (remaining <= 0) {
+            removeTissueCountdown(frameDocument);
+            tissueCountdownTimestamp = null;
+            return;
+        }
+
+        var countdown = frameDocument.getElementById(
+            TISSUE_COUNTDOWN_ID
+        );
+
+        if (!countdown) {
+            var areaDescription =
+                frameDocument.querySelector(
+                    "table.areadescription tbody td.areadescription"
+                );
+
+            if (!areaDescription) {
+                return;
+            }
+
+            var walker = frameDocument.createTreeWalker(
+                areaDescription,
+                NodeFilter.SHOW_TEXT
+            );
+
+            var node;
+            var inserted = false;
+
+            while ((node = walker.nextNode())) {
+                var textIndex = node.nodeValue.indexOf(
+                    TISSUE_COUNTDOWN_TEXT
+                );
+
+                if (textIndex === -1) {
+                    continue;
+                }
+
+                var afterText = node.splitText(
+                    textIndex + TISSUE_COUNTDOWN_TEXT.length
+                );
+
+                countdown = frameDocument.createElement("span");
+                countdown.id = TISSUE_COUNTDOWN_ID;
+                countdown.style.fontSize = "1.3em";
+                countdown.style.color = "rgb(123, 145, 120)";
+                countdown.style.marginLeft = "0.5em";
+
+                afterText.parentNode.insertBefore(
+                    countdown,
+                    afterText
+                );
+
+                inserted = true;
+                break;
+            }
+
+            if (!inserted) {
+                return;
+            }
+        }
+
+        countdown.textContent = "Nächste Gewebeprobe in " + formatCountdown(remaining) + " min.";
+        if (remaining < 30 * 1000) {
+            countdown.style.animation =
+                "tissue-target-navigation-blink 0.5s ease-in-out infinite";
+        } else {
+            countdown.style.animation = "";
+        }
+
+        var updateInterval;
+
+        if (remaining > 5 * 60 * 1000) {
+            updateInterval = 30 * 1000;
+        } else if (remaining > 30 * 1000) {
+            updateInterval = 5 * 1000;
+        } else {
+            updateInterval = 1000;
+        }
+
+        tissueCountdownTimeout = setTimeout(function () {
+            tissueCountdownTimeout = null;
+            updateTissueCountdown(frameDocument, soldTimestamp);
+        }, updateInterval);
+    }
+
+    function scanTissueCountdown(frameDocument) {
+        var areaDescription =
+            frameDocument.querySelector(
+                "table.areadescription tbody td.areadescription"
+            );
+
+        if (!areaDescription ||
+            areaDescription.innerText.indexOf(
+                TISSUE_COUNTDOWN_TEXT
+            ) === -1) {
+            removeTissueCountdown(frameDocument);
+            tissueCountdownTimestamp = null;
+            return;
+        }
+
+        var soldTimestamp = getTissueSoldTimestamp();
+
+        if (soldTimestamp === null) {
+            removeTissueCountdown(frameDocument);
+            tissueCountdownTimestamp = null;
+            return;
+        }
+
+        var remaining = TISSUE_COUNTDOWN_DURATION -
+            (Date.now() - soldTimestamp);
+
+        if (remaining <= 0) {
+            removeTissueCountdown(frameDocument);
+            tissueCountdownTimestamp = null;
+            return;
+        }
+
+        if (soldTimestamp !== tissueCountdownTimestamp) {
+            removeTissueCountdown(frameDocument);
+            tissueCountdownTimestamp = soldTimestamp;
+        }
+
+        // Recreate the element if a main-frame refresh removed it.
+        if (!frameDocument.getElementById(TISSUE_COUNTDOWN_ID)) {
+            if (tissueCountdownTimeout !== null) {
+                clearTimeout(tissueCountdownTimeout);
+                tissueCountdownTimeout = null;
+            }
+
+            updateTissueCountdown(frameDocument, soldTimestamp);
+        }
     }
 
     function getTissueTarget() {
@@ -178,8 +397,12 @@
         var bodyText = frameDocument.body.innerText;
 
         if (!bodyText || bodyText.indexOf("Gewebeforschung") === -1) {
+            removeTissueCountdown(frameDocument);
+            tissueCountdownTimestamp = null;
             return;
         }
+
+        scanTissueCountdown(frameDocument);
 
         var selectedTarget = getTissueTarget();
         var selectedTargetFound = false;
@@ -334,6 +557,51 @@
         }
     }
 
+    function scanChatFrame(frameDocument) {
+        var messages = frameDocument.querySelectorAll("p");
+        var lastScannedTimestamp =
+            getStoredValue(LAST_CHAT_SCANNED_KEY);
+        var newestTimestamp = lastScannedTimestamp;
+
+        for (var i = 0; i < messages.length; i++) {
+            var message = messages[i];
+            var timestampElement =
+                message.querySelector(".chattime");
+
+            if (!timestampElement) {
+                continue;
+            }
+
+            var timestamp = timestampElement.getAttribute("title");
+
+            if (!timestamp) {
+                continue;
+            }
+
+            if (
+                lastScannedTimestamp &&
+                timestamp <= lastScannedTimestamp
+            ) {
+                continue;
+            }
+
+            if (TISSUE_SOLD_PATTERN.test(message.textContent)) {
+                saveStoredValue(LAST_TISSUE_SOLD_KEY, timestamp);
+            }
+
+            if (!newestTimestamp || timestamp > newestTimestamp) {
+                newestTimestamp = timestamp;
+            }
+        }
+
+        if (
+            newestTimestamp &&
+            newestTimestamp !== lastScannedTimestamp
+        ) {
+            saveStoredValue(LAST_CHAT_SCANNED_KEY, newestTimestamp);
+        }
+    }
+
     function scanFrame(frameName) {
         var frameElement = document.querySelector(
             "frame[name=\"" + frameName + "\"]"
@@ -359,6 +627,8 @@
             scanMainFrame(frameDocument);
         } else if (frameName === "itemFrame") {
             scanItemFrame(frameDocument);
+        } else if (frameName === "chattextFrame") {
+            scanChatFrame(frameDocument);
         }
     }
 
