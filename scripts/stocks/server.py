@@ -347,13 +347,35 @@ def collect_stocks():
 
 
 def stock_collector():
+    log.info(
+        "Stock collector thread started (interval: %d seconds)",
+        POLL_INTERVAL,
+    )
+
+    retry_delay = 30
+
     while True:
+        started_at = time.monotonic()
+
         try:
             collect_stocks()
+            retry_delay = 30
+
+            elapsed = time.monotonic() - started_at
+            sleep_time = max(0, POLL_INTERVAL - elapsed)
+
         except Exception:
             log.exception("Stock collection failed")
 
-        time.sleep(POLL_INTERVAL)
+            sleep_time = retry_delay
+            retry_delay = min(retry_delay * 2, POLL_INTERVAL)
+
+            log.warning(
+                "Stock collector: retrying in %d seconds",
+                sleep_time,
+            )
+
+        time.sleep(sleep_time)
 
 
 # == Dashboard helpers ==
