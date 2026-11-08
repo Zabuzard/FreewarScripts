@@ -18,7 +18,7 @@
     var COOKIE_MAX_AGE = 15 * 60;
     var TARGET_EXPIRATION_TIME = 15 * 60 * 1000;
 
-    var TISSUE_COUNTDOWN_DURATION = 10 * 60 * 1000;
+    var TISSUE_COUNTDOWN_INTERVAL_MINUTES = 10;
     var TISSUE_COUNTDOWN_ID = "tissue-target-navigation-countdown";
     var TISSUE_COUNTDOWN_TEXT =
         "Dies ist ein Ort des Friedens, Angriffe sind hier unmöglich.";
@@ -134,6 +134,21 @@
         return soldDate.getTime();
     }
 
+    function getNextTissueCountdownTimestamp(soldTimestamp) {
+        var date = new Date(soldTimestamp);
+        var minutes = date.getMinutes();
+
+        date.setMinutes(
+            Math.floor(minutes / TISSUE_COUNTDOWN_INTERVAL_MINUTES) *
+                TISSUE_COUNTDOWN_INTERVAL_MINUTES +
+                TISSUE_COUNTDOWN_INTERVAL_MINUTES,
+            0,
+            0
+        );
+
+        return date.getTime();
+    }
+
     function removeTissueCountdown(frameDocument) {
         if (tissueCountdownTimeout !== null) {
             clearTimeout(tissueCountdownTimeout);
@@ -161,8 +176,8 @@
     }
 
     function updateTissueCountdown(frameDocument, soldTimestamp) {
-        var remaining = TISSUE_COUNTDOWN_DURATION -
-            (Date.now() - soldTimestamp);
+        var remaining =
+            getNextTissueCountdownTimestamp(soldTimestamp) - Date.now();
 
         if (remaining <= 0) {
             removeTissueCountdown(frameDocument);
@@ -274,8 +289,8 @@
             return;
         }
 
-        var remaining = TISSUE_COUNTDOWN_DURATION -
-            (Date.now() - soldTimestamp);
+        var remaining =
+            getNextTissueCountdownTimestamp(soldTimestamp) - Date.now();
 
         if (remaining <= 0) {
             removeTissueCountdown(frameDocument);
@@ -466,7 +481,7 @@
         if (!display) {
             display = frameDocument.createElement("div");
             display.id = TISSUE_PROFIT_DISPLAY_ID;
-            display.style.marginBottom = "0.5em";
+            display.style.marginTop = "0.5em";
 
             areaDescription.appendChild(display);
         }
@@ -481,9 +496,18 @@
     function scanMainFrame(frameDocument) {
         var bodyText = frameDocument.body.innerText;
 
-        if (!bodyText || bodyText.indexOf("Gewebeforschung") === -1) {
+        if (!bodyText || bodyText.indexOf("Gobos - Die Gewebeforschung") === -1) {
             removeTissueCountdown(frameDocument);
             tissueCountdownTimestamp = null;
+
+            var profitDisplay = frameDocument.getElementById(
+                TISSUE_PROFIT_DISPLAY_ID
+            );
+
+            if (profitDisplay) {
+                profitDisplay.remove();
+            }
+
             return;
         }
 

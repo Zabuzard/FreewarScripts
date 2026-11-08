@@ -377,3 +377,5 @@ zur Verfügung gestellt, indem der Nutzer als Ziel markiert wird. Jede weitere
 Sicht auf die Koordinaten des Nutzers aktualisiert die Zielfindung.
 
 ![Gewebe Demo](https://i.vgy.me/lL1Guv.gif)
+
+Auserdem werden Profit, sowie die Zeit bis zur nächsten Gewebeprobe angezeigt.
