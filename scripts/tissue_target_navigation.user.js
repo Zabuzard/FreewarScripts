@@ -18,7 +18,8 @@
     var COOKIE_MAX_AGE = 15 * 60;
     var TARGET_EXPIRATION_TIME = 15 * 60 * 1000;
 
-    var TISSUE_COUNTDOWN_INTERVAL_MINUTES = 10;
+    var TISSUE_COUNTDOWN_INTERVAL_MINUTES = 5;
+    var TISSUE_COUNTDOWN_MIN_WAIT_MINUTES = 5;
     var TISSUE_COUNTDOWN_ID = "tissue-target-navigation-countdown";
     var TISSUE_COUNTDOWN_TEXT =
         "Dies ist ein Ort des Friedens, Angriffe sind hier unmöglich.";
@@ -135,18 +136,15 @@
     }
 
     function getNextTissueCountdownTimestamp(soldTimestamp) {
-        var date = new Date(soldTimestamp);
-        var minutes = date.getMinutes();
+        var interval =
+            TISSUE_COUNTDOWN_INTERVAL_MINUTES * 60 * 1000;
 
-        date.setMinutes(
-            Math.floor(minutes / TISSUE_COUNTDOWN_INTERVAL_MINUTES) *
-                TISSUE_COUNTDOWN_INTERVAL_MINUTES +
-                TISSUE_COUNTDOWN_INTERVAL_MINUTES,
-            0,
-            0
-        );
+        var minimumWait =
+            TISSUE_COUNTDOWN_MIN_WAIT_MINUTES * 60 * 1000;
 
-        return date.getTime();
+        var earliestAvailable = soldTimestamp + minimumWait;
+
+        return Math.ceil(earliestAvailable / interval) * interval;
     }
 
     function removeTissueCountdown(frameDocument) {
