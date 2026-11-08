@@ -12,6 +12,9 @@
     var STORAGE_TIMESTAMP_KEY = "current-tissue-target-timestamp";
     var LAST_TISSUE_SOLD_KEY = "last-tissue-sold-ts";
     var LAST_CHAT_SCANNED_KEY = "last-tissue-chat-scanned-ts";
+    var TOTAL_TISSUE_PROFIT_KEY = "total-tissue-profit";
+    var TISSUE_PROFIT_DISPLAY_ID = "tissue-target-navigation-profit";
+    var TISSUE_PROFIT_USERNAME = "Zabuzard";
     var COOKIE_MAX_AGE = 15 * 60;
     var TARGET_EXPIRATION_TIME = 15 * 60 * 1000;
 
@@ -222,7 +225,9 @@
             }
         }
 
-        countdown.textContent = "Nächste Gewebeprobe in " + formatCountdown(remaining) + " min.";
+        countdown.textContent =
+            "Nächste Gewebeprobe in " + formatCountdown(remaining) + " min.";
+
         if (remaining < 30 * 1000) {
             countdown.style.animation =
                 "tissue-target-navigation-blink 0.5s ease-in-out infinite";
@@ -361,6 +366,38 @@
         }
     }
 
+    function addTissueProfit(gold, experiencePoints, orderPoints) {
+        var total = {
+            gold: 0,
+            experiencePoints: 0,
+            orderPoints: 0
+        };
+
+        try {
+            var stored = localStorage.getItem(TOTAL_TISSUE_PROFIT_KEY);
+
+            if (stored) {
+                var parsed = JSON.parse(stored);
+
+                total.gold = Number(parsed.gold) || 0;
+                total.experiencePoints =
+                    Number(parsed.experiencePoints) || 0;
+                total.orderPoints = Number(parsed.orderPoints) || 0;
+            }
+        } catch (e) {}
+
+        total.gold += gold;
+        total.experiencePoints += experiencePoints;
+        total.orderPoints += orderPoints;
+
+        try {
+            localStorage.setItem(
+                TOTAL_TISSUE_PROFIT_KEY,
+                JSON.stringify(total)
+            );
+        } catch (e) {}
+    }
+
     function makeTissueTargetClickable(element, name) {
         element.classList.add("tissue-target-navigation");
         element.style.cursor = "pointer";
@@ -393,6 +430,54 @@
         frameDocument.head.appendChild(style);
     }
 
+    function updateTissueProfitDisplay(frameDocument) {
+        var areaDescription =
+            frameDocument.querySelector(
+                "table.areadescription tbody td.areadescription"
+            );
+
+        if (!areaDescription) {
+            return;
+        }
+
+        var total = {
+            gold: 0,
+            experiencePoints: 0,
+            orderPoints: 0
+        };
+
+        try {
+            var stored = localStorage.getItem(TOTAL_TISSUE_PROFIT_KEY);
+
+            if (stored) {
+                var parsed = JSON.parse(stored);
+
+                total.gold = Number(parsed.gold) || 0;
+                total.experiencePoints =
+                    Number(parsed.experiencePoints) || 0;
+                total.orderPoints = Number(parsed.orderPoints) || 0;
+            }
+        } catch (e) {}
+
+        var display = frameDocument.getElementById(
+            TISSUE_PROFIT_DISPLAY_ID
+        );
+
+        if (!display) {
+            display = frameDocument.createElement("div");
+            display.id = TISSUE_PROFIT_DISPLAY_ID;
+            display.style.marginBottom = "0.5em";
+
+            areaDescription.appendChild(display);
+        }
+
+        display.textContent =
+            "Profit: " +
+            total.gold.toLocaleString("de-DE") + " G | " +
+            total.experiencePoints.toLocaleString("de-DE") + " XP | " +
+            total.orderPoints.toLocaleString("de-DE") + " AP";
+    }
+
     function scanMainFrame(frameDocument) {
         var bodyText = frameDocument.body.innerText;
 
@@ -402,6 +487,7 @@
             return;
         }
 
+        updateTissueProfitDisplay(frameDocument);
         scanTissueCountdown(frameDocument);
 
         var selectedTarget = getTissueTarget();
@@ -587,6 +673,23 @@
 
             if (TISSUE_SOLD_PATTERN.test(message.textContent)) {
                 saveStoredValue(LAST_TISSUE_SOLD_KEY, timestamp);
+
+                var sellerElement = message.querySelector("i b");
+                var saleMatch =
+                    /verkauft eine Gewebeprobe von .+? für ([\d.]+) Goldmünzen und erhält ([\d.]+) Erfahrungspunkte sowie ([\d.]+) Auftragspunkte/
+                        .exec(message.textContent);
+
+                if (
+                    sellerElement &&
+                    sellerElement.textContent.trim() === TISSUE_PROFIT_USERNAME &&
+                    saleMatch
+                ) {
+                    addTissueProfit(
+                        parseInt(saleMatch[1].replace(/\./g, ""), 10),
+                        parseInt(saleMatch[2].replace(/\./g, ""), 10),
+                        parseInt(saleMatch[3].replace(/\./g, ""), 10)
+                    );
+                }
             }
 
             if (!newestTimestamp || timestamp > newestTimestamp) {
