@@ -145,10 +145,10 @@
     }
 
     function getNextTissueCountdownTimestamp(startedTimestamp) {
-        var cooldown =
-            TISSUE_COUNTDOWN_COOLDOWN_MINUTES * 60 * 1000;
-
-        return startedTimestamp + cooldown;
+        // +10min and rounded up towards next full minute
+        return Math.ceil(
+            (startedTimestamp + TISSUE_COUNTDOWN_COOLDOWN_MINUTES * 60 * 1000) / 60000
+        ) * 60000;
     }
 
     function removeTissueCountdown(frameDocument) {
