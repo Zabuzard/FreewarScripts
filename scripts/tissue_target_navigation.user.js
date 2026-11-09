@@ -748,7 +748,34 @@
         }
     }
 
-    function scanFrame(frameName) {
+    function isAtTissueResearch() {
+        var frameElement = document.querySelector(
+            "frame[name=\"mainFrame\"]"
+        );
+
+        if (!frameElement) {
+            return false;
+        }
+
+        var frameDocument;
+
+        try {
+            frameDocument = frameElement.contentDocument;
+        } catch (e) {
+            return false;
+        }
+
+        if (!frameDocument || !frameDocument.body) {
+            return false;
+        }
+
+        var bodyText = frameDocument.body.innerText;
+
+        return !!bodyText &&
+            bodyText.indexOf("Gobos - Die Gewebeforschung") !== -1;
+    }
+
+    function scanFrame(frameName, atTissueResearch) {
         var frameElement = document.querySelector(
             "frame[name=\"" + frameName + "\"]"
         );
@@ -773,14 +800,19 @@
             scanMainFrame(frameDocument);
         } else if (frameName === "itemFrame") {
             scanItemFrame(frameDocument);
-        } else if (frameName === "chattextFrame") {
+        } else if (
+            frameName === "chattextFrame" &&
+            atTissueResearch
+        ) {
             scanChatFrame(frameDocument);
         }
     }
 
     function scanFrames() {
+        var atTissueResearch = isAtTissueResearch();
+
         for (var i = 0; i < FRAME_NAMES.length; i++) {
-            scanFrame(FRAME_NAMES[i]);
+            scanFrame(FRAME_NAMES[i], atTissueResearch);
         }
     }
 
