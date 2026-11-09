@@ -10,7 +10,7 @@
 (function () {
     var STORAGE_KEY = "current-tissue-target";
     var STORAGE_TIMESTAMP_KEY = "current-tissue-target-timestamp";
-    var LAST_TISSUE_SOLD_KEY = "last-tissue-sold-ts";
+    var LAST_TISSUE_SEARCH_STARTED_KEY = "last-tissue-search-started-ts";
     var LAST_CHAT_SCANNED_KEY = "last-tissue-chat-scanned-ts";
     var TOTAL_TISSUE_PROFIT_KEY = "total-tissue-profit";
     var TISSUE_PROFIT_DISPLAY_ID = "tissue-target-navigation-profit";
@@ -22,6 +22,8 @@
     var TISSUE_COUNTDOWN_ID = "tissue-target-navigation-countdown";
     var TISSUE_COUNTDOWN_TEXT =
         "Dies ist ein Ort des Friedens, Angriffe sind hier unmöglich.";
+    var TISSUE_NOT_NEEDED_TEXT =
+        "Derzeit benötigen die Forscher keine Gewebeprobe für die Forschung.";
 
     var tissueCountdownTimeout = null;
     var tissueCountdownTimestamp = null;
@@ -42,6 +44,9 @@
 
     var COORDINATE_PATTERN =
         /X:\s*(-?\d+)\s*(?:\/\s*|\s+)Y:\s*(-?\d+)/;
+
+    var TISSUE_SEARCH_STARTED_PATTERN =
+        /Die Gewebeforscher geben bekannt, dass sie jetzt eine neue Probe suchen\./;
 
     var TISSUE_SOLD_PATTERN =
         /verkauft eine Gewebeprobe von/;
@@ -102,8 +107,10 @@
         }
     }
 
-    function getTissueSoldTimestamp() {
-        var timestamp = getStoredValue(LAST_TISSUE_SOLD_KEY);
+    function getTissueSearchStartedTimestamp() {
+        var timestamp = getStoredValue(
+            LAST_TISSUE_SEARCH_STARTED_KEY
+        );
 
         if (!timestamp) {
             return null;
@@ -117,31 +124,31 @@
         }
 
         var now = new Date();
-        var soldDate = new Date(now);
+        var startedDate = new Date(now);
 
-        soldDate.setHours(
+        startedDate.setHours(
             parseInt(match[1], 10),
             parseInt(match[2], 10),
             parseInt(match[3], 10),
-            parseInt((match[4] || "0").substring(0, 3).padEnd(3, "0"), 10)
+            parseInt(
+                (match[4] || "0").substring(0, 3).padEnd(3, "0"),
+                10
+            )
         );
 
-        // Handle a sale timestamp from the previous day.
-        if (soldDate.getTime() > now.getTime() + 10 * 60 * 1000) {
-            soldDate.setDate(soldDate.getDate() - 1);
+        // Handle a timestamp from the previous day.
+        if (startedDate.getTime() > now.getTime() + 10 * 60 * 1000) {
+            startedDate.setDate(startedDate.getDate() - 1);
         }
 
-        return soldDate.getTime();
+        return startedDate.getTime();
     }
 
-    function getNextTissueCountdownTimestamp(soldTimestamp) {
+    function getNextTissueCountdownTimestamp(startedTimestamp) {
         var cooldown =
             TISSUE_COUNTDOWN_COOLDOWN_MINUTES * 60 * 1000;
 
-        var earliestAvailable = soldTimestamp + cooldown;
-
-        // Round down to the beginning of the minute.
-        return Math.floor(earliestAvailable / 60000) * 60000;
+        return startedTimestamp + cooldown;
     }
 
     function removeTissueCountdown(frameDocument) {
@@ -170,9 +177,9 @@
         );
     }
 
-    function updateTissueCountdown(frameDocument, soldTimestamp) {
+    function updateTissueCountdown(frameDocument, startedTimestamp) {
         var remaining =
-            getNextTissueCountdownTimestamp(soldTimestamp) - Date.now();
+            getNextTissueCountdownTimestamp(startedTimestamp) - Date.now();
 
         if (remaining <= 0) {
             removeTissueCountdown(frameDocument);
@@ -257,7 +264,7 @@
 
         tissueCountdownTimeout = setTimeout(function () {
             tissueCountdownTimeout = null;
-            updateTissueCountdown(frameDocument, soldTimestamp);
+            updateTissueCountdown(frameDocument, startedTimestamp);
         }, updateInterval);
     }
 
@@ -270,22 +277,25 @@
         if (!areaDescription ||
             areaDescription.innerText.indexOf(
                 TISSUE_COUNTDOWN_TEXT
+            ) === -1 ||
+            areaDescription.innerText.indexOf(
+                TISSUE_NOT_NEEDED_TEXT
             ) === -1) {
             removeTissueCountdown(frameDocument);
             tissueCountdownTimestamp = null;
             return;
         }
 
-        var soldTimestamp = getTissueSoldTimestamp();
+        var startedTimestamp = getTissueSearchStartedTimestamp();
 
-        if (soldTimestamp === null) {
+        if (startedTimestamp === null) {
             removeTissueCountdown(frameDocument);
             tissueCountdownTimestamp = null;
             return;
         }
 
         var remaining =
-            getNextTissueCountdownTimestamp(soldTimestamp) - Date.now();
+            getNextTissueCountdownTimestamp(startedTimestamp) - Date.now();
 
         if (remaining <= 0) {
             removeTissueCountdown(frameDocument);
@@ -293,9 +303,9 @@
             return;
         }
 
-        if (soldTimestamp !== tissueCountdownTimestamp) {
+        if (startedTimestamp !== tissueCountdownTimestamp) {
             removeTissueCountdown(frameDocument);
-            tissueCountdownTimestamp = soldTimestamp;
+            tissueCountdownTimestamp = startedTimestamp;
         }
 
         // Recreate the element if a main-frame refresh removed it.
@@ -305,7 +315,7 @@
                 tissueCountdownTimeout = null;
             }
 
-            updateTissueCountdown(frameDocument, soldTimestamp);
+            updateTissueCountdown(frameDocument, startedTimestamp);
         }
     }
 
@@ -350,14 +360,17 @@
                 "target-navigation-coordinate",
                 value
             );
+
             localStorage.setItem(
                 "target-navigation-coordinate-timestamp",
                 String(timestamp)
             );
+
             localStorage.setItem(
                 "target-navigation-coordinate-type",
                 "tissue"
             );
+
             return;
         } catch (e) {
             document.cookie =
@@ -690,13 +703,24 @@
                 continue;
             }
 
-            if (TISSUE_SOLD_PATTERN.test(message.textContent)) {
-                saveStoredValue(LAST_TISSUE_SOLD_KEY, timestamp);
+            var messageText = message.textContent;
 
+            // Start the tissue countdown when the researchers
+            // announce that they are looking for a new sample.
+            if (TISSUE_SEARCH_STARTED_PATTERN.test(messageText)) {
+                saveStoredValue(
+                    LAST_TISSUE_SEARCH_STARTED_KEY,
+                    timestamp
+                );
+            }
+
+            // Sale messages are still used exclusively for profit tracking.
+            if (TISSUE_SOLD_PATTERN.test(messageText)) {
                 var sellerElement = message.querySelector("i b");
+
                 var saleMatch =
                     /verkauft eine Gewebeprobe von .+? für ([\d.]+) Goldmünzen und erhält ([\d.]+) Erfahrungspunkte sowie ([\d.]+) Auftragspunkte/
-                        .exec(message.textContent);
+                        .exec(messageText);
 
                 if (
                     sellerElement &&
@@ -761,6 +785,7 @@
     }
 
     scanFrames();
+
     setInterval(function () {
         scanFrames();
     }, 500);
