@@ -675,10 +675,82 @@
         }
     }
 
+    // Convert a chat time into a full timestamp relative to the current date.
+    function parseChatTimestamp(timestamp, referenceTime) {
+        var match =
+            /^(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/.exec(timestamp);
+
+        if (!match) {
+            return null;
+        }
+
+        var date = new Date(referenceTime);
+
+        date.setHours(
+            parseInt(match[1], 10),
+            parseInt(match[2], 10),
+            parseInt(match[3], 10),
+            parseInt(
+                (match[4] || "0").substring(0, 3).padEnd(3, "0"),
+                10
+            )
+        );
+
+        var result = date.getTime();
+        var difference = result - referenceTime;
+
+        // A timestamp more than 12 hours in the future belongs
+        // to the previous day.
+        if (difference > 12 * 60 * 60 * 1000) {
+            date.setDate(date.getDate() - 1);
+            result = date.getTime();
+        }
+
+        // A timestamp more than 12 hours in the past belongs
+        // to the next day.
+        else if (difference < -12 * 60 * 60 * 1000) {
+            date.setDate(date.getDate() + 1);
+            result = date.getTime();
+        }
+
+        return result;
+    }
+
+    function getLastChatScannedTimestamp() {
+        var stored = getStoredValue(LAST_CHAT_SCANNED_KEY);
+
+        if (!stored) {
+            return null;
+        }
+
+        // New format: full Unix timestamp in milliseconds.
+        var numericTimestamp = Number(stored);
+
+        if (Number.isFinite(numericTimestamp) &&
+            numericTimestamp > 0) {
+            return numericTimestamp;
+        }
+
+        // Legacy format: time-only string.
+        // Convert it into a full timestamp and migrate storage.
+        var migratedTimestamp = parseChatTimestamp(
+            stored,
+            Date.now()
+        );
+
+        if (migratedTimestamp !== null) {
+            saveStoredValue(
+                LAST_CHAT_SCANNED_KEY,
+                String(migratedTimestamp)
+            );
+        }
+
+        return migratedTimestamp;
+    }
+
     function scanChatFrame(frameDocument) {
         var messages = frameDocument.querySelectorAll("p");
-        var lastScannedTimestamp =
-            getStoredValue(LAST_CHAT_SCANNED_KEY);
+        var lastScannedTimestamp = getLastChatScannedTimestamp();
         var newestTimestamp = lastScannedTimestamp;
 
         for (var i = 0; i < messages.length; i++) {
@@ -696,9 +768,18 @@
                 continue;
             }
 
+            var messageTimestamp = parseChatTimestamp(
+                timestamp,
+                Date.now()
+            );
+
+            if (messageTimestamp === null) {
+                continue;
+            }
+
             if (
-                lastScannedTimestamp &&
-                timestamp <= lastScannedTimestamp
+                lastScannedTimestamp !== null &&
+                messageTimestamp <= lastScannedTimestamp
             ) {
                 continue;
             }
@@ -735,16 +816,22 @@
                 }
             }
 
-            if (!newestTimestamp || timestamp > newestTimestamp) {
-                newestTimestamp = timestamp;
+            if (
+                newestTimestamp === null ||
+                messageTimestamp > newestTimestamp
+            ) {
+                newestTimestamp = messageTimestamp;
             }
         }
 
         if (
-            newestTimestamp &&
+            newestTimestamp !== null &&
             newestTimestamp !== lastScannedTimestamp
         ) {
-            saveStoredValue(LAST_CHAT_SCANNED_KEY, newestTimestamp);
+            saveStoredValue(
+                LAST_CHAT_SCANNED_KEY,
+                String(newestTimestamp)
+            );
         }
     }
 
