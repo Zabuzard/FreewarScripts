@@ -403,6 +403,7 @@
     function highlightDeathMessage(message) {
         message.style.backgroundColor =
             "rgba(255, 120, 120, 0.3)";
+        message.style.fontSize = "1.7em";
 
         if (message.classList.contains("gravedigger-message")) {
             return;
