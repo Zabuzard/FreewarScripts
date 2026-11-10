@@ -386,3 +386,8 @@ Auserdem werden Profit, sowie die Zeit bis zur nächsten Gewebeprobe angezeigt.
 
 Aktualisiert alle 14 Minuten das Spiel (nicht sichtbar für andere Spieler), so
 dass man nicht automatisch ausgeloggt wird.
+
+## `gravedigger`
+
+Hebt hervor wenn Spieler an NPC sterben und vereinfacht die Navigation zum
+Todesort.
