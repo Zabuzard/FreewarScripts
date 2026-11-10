@@ -15,6 +15,7 @@
     var COOKIE_MAX_AGE = 2 * 60 * 60;
     var TARGET_MAX_AGE = 2 * 60 * 60 * 1000;
     var TISSUE_MAX_AGE = 15 * 60 * 1000;
+    var GRAVEDIGGER_MAX_AGE = 10 * 60 * 1000;
     var lastTargetValue = null;
 
     function parseCoordinates(value) {
@@ -107,7 +108,10 @@
         var coordinates = parseCoordinates(value);
         if (!coordinates) { return null; }
 
-        type = type === "tissue" ? "tissue" : "regular";
+        type = (
+            type === "tissue" ||
+            type === "gravedigger"
+        ) ? type : "regular";
 
         timestamp = parseInt(timestamp, 10);
 
@@ -125,7 +129,13 @@
             }
         }
 
-        var maxAge = type === "tissue" ? TISSUE_MAX_AGE : TARGET_MAX_AGE;
+        var maxAge = TARGET_MAX_AGE;
+
+        if (type === "tissue") {
+            maxAge = TISSUE_MAX_AGE;
+        } else if (type === "gravedigger") {
+            maxAge = GRAVEDIGGER_MAX_AGE;
+        }
 
         if (Date.now() - timestamp > maxAge) {
             if (localStorageAvailable) {
@@ -361,6 +371,14 @@
                 --target-navigation-color: rgba(0, 255, 0, 0.35);
             }
 
+            .target-navigation-gravedigger {
+                --target-navigation-color: rgba(72, 176, 255, 0.25);
+            }
+
+            .target-navigation-direction.target-navigation-gravedigger {
+                --target-navigation-color: rgba(72, 176, 255, 0.35);
+            }
+
             .target-navigation-north::after {
                 top: 0;
                 left: 0;
@@ -431,7 +449,8 @@
         for (var i = 0; i < highlightedTiles.length; i++) {
             highlightedTiles[i].classList.remove(
                 "target-navigation-highlight",
-                "target-navigation-tissue"
+                "target-navigation-tissue",
+                "target-navigation-gravedigger"
             );
         }
 
@@ -441,6 +460,7 @@
             directionTiles[i].classList.remove(
                 "target-navigation-direction",
                 "target-navigation-tissue",
+                "target-navigation-gravedigger",
                 "target-navigation-north",
                 "target-navigation-south",
                 "target-navigation-west",
@@ -463,8 +483,8 @@
         if (tile) {
             tile.classList.add("target-navigation-highlight");
 
-            if (type === "tissue") {
-                tile.classList.add("target-navigation-tissue");
+            if (type === "tissue" || type === "gravedigger") {
+                tile.classList.add("target-navigation-" + type);
             }
 
             return;
@@ -582,8 +602,8 @@
                 "target-navigation-" + highlight.direction
             );
 
-            if (type === "tissue") {
-                directionTile.classList.add("target-navigation-tissue");
+            if (type === "tissue" || type === "gravedigger") {
+                directionTile.classList.add("target-navigation-" + type);
             }
         }
     }
