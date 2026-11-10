@@ -12,6 +12,21 @@
     var GRAVEDIGGER_TARGET_EXPIRATION_TIME = 10 * 60 * 1000;
     var GRAVEDIGGER_TARGET_COOKIE_MAX_AGE = 10 * 60;
 
+    var GRAVEDIGGER_COORDINATE_TOOL_MARKERS = [
+        "Lebende Wesen an der Oberfläche dieser Welt",
+        "Lebende Wesen in deinem Umkreis von"
+    ];
+
+    var GRAVEDIGGER_COORDINATE_PATTERN =
+        /X:\s*(-?\d+)\s*(?:\/\s*|\s+)Y:\s*(-?\d+)/;
+
+    var GRAVEDIGGER_TARGET_NAVIGATION_KEY =
+        "target-navigation-coordinate";
+    var GRAVEDIGGER_TARGET_NAVIGATION_TIMESTAMP_KEY =
+        "target-navigation-coordinate-timestamp";
+    var GRAVEDIGGER_TARGET_NAVIGATION_TYPE_KEY =
+        "target-navigation-coordinate-type";
+
     var GRAVEDIGGER_PATTERN =
         /wird an diesem Ort wiedergeboren, nachdem .+? durch das NPC .+ gestorben ist\./;
 
@@ -181,6 +196,137 @@
         saveGravediggerTarget(target);
 
         return true;
+    }
+
+    function saveNavigationTarget(x, y) {
+        var value = x + "/" + y;
+        var timestamp = Date.now();
+
+        try {
+            localStorage.setItem(
+                GRAVEDIGGER_TARGET_NAVIGATION_KEY,
+                value
+            );
+
+            localStorage.setItem(
+                GRAVEDIGGER_TARGET_NAVIGATION_TIMESTAMP_KEY,
+                String(timestamp)
+            );
+
+            localStorage.setItem(
+                GRAVEDIGGER_TARGET_NAVIGATION_TYPE_KEY,
+                "gravedigger"
+            );
+
+            return;
+        } catch (e) {
+            document.cookie =
+                GRAVEDIGGER_TARGET_NAVIGATION_KEY + "=" +
+                encodeURIComponent(value) +
+                "; path=/; max-age=7200";
+
+            document.cookie =
+                GRAVEDIGGER_TARGET_NAVIGATION_TIMESTAMP_KEY + "=" +
+                encodeURIComponent(timestamp) +
+                "; path=/; max-age=7200";
+
+            document.cookie =
+                GRAVEDIGGER_TARGET_NAVIGATION_TYPE_KEY +
+                "=gravedigger; path=/; max-age=7200";
+        }
+    }
+
+    function scanItemFrame() {
+        var target = getGravediggerTarget();
+
+        if (!target || !target.username) {
+            return;
+        }
+
+        var frameElement = document.querySelector(
+            "frame[name=\"itemFrame\"]"
+        );
+
+        if (!frameElement) {
+            return;
+        }
+
+        var frameDocument;
+
+        try {
+            frameDocument = frameElement.contentDocument;
+        } catch (e) {
+            return;
+        }
+
+        if (!frameDocument || !frameDocument.body) {
+            return;
+        }
+
+        var bodyText = frameDocument.body.innerText;
+
+        if (
+            !bodyText ||
+            !GRAVEDIGGER_COORDINATE_TOOL_MARKERS.some(function (marker) {
+                return bodyText.includes(marker);
+            })
+        ) {
+            return;
+        }
+
+        var walker = frameDocument.createTreeWalker(
+            frameDocument.body,
+            NodeFilter.SHOW_TEXT
+        );
+
+        var textNodes = [];
+        var node;
+
+        while ((node = walker.nextNode())) {
+            if (node.nodeValue.indexOf(target.username) !== -1) {
+                textNodes.push(node);
+            }
+        }
+
+        for (var i = 0; i < textNodes.length; i++) {
+            var textNode = textNodes[i];
+
+            // Find the top-level node containing the target username.
+            var lineStart = textNode;
+
+            while (
+                lineStart.parentNode &&
+                lineStart.parentNode !== frameDocument.body
+            ) {
+                lineStart = lineStart.parentNode;
+            }
+
+            // Collect text from this row until the next line break.
+            var lineText = "";
+            var linePart = lineStart;
+
+            while (
+                linePart &&
+                !(linePart.nodeType === 1 && linePart.tagName === "BR")
+            ) {
+                lineText += linePart.textContent || "";
+                linePart = linePart.nextSibling;
+            }
+
+            var coordinateMatch =
+                GRAVEDIGGER_COORDINATE_PATTERN.exec(lineText);
+
+            if (!coordinateMatch) {
+                continue;
+            }
+
+            var x = parseInt(coordinateMatch[1], 10);
+            var y = parseInt(coordinateMatch[2], 10);
+
+            saveNavigationTarget(x, y);
+
+            return;
+        }
     }
 
     function highlightDeathMessage(message) {
@@ -398,10 +544,12 @@
     getGravediggerTarget();
 
     observeChatFrame();
+    scanItemFrame();
     highlightMapTarget();
 
     setInterval(function () {
         observeChatFrame();
+        scanItemFrame();
         highlightMapTarget();
     }, 500);
 })();
