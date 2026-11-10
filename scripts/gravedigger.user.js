@@ -329,6 +329,77 @@
         }
     }
 
+    var gravediggerAudioContext = null;
+
+    function playGravediggerNotification() {
+        try {
+            var AudioContext =
+                window.AudioContext || window.webkitAudioContext;
+
+            if (!AudioContext) {
+                return;
+            }
+
+            if (!gravediggerAudioContext) {
+                gravediggerAudioContext = new AudioContext();
+            }
+
+            var audioContext = gravediggerAudioContext;
+
+            function playNotification() {
+                var now = audioContext.currentTime;
+
+                function playTone(frequency, startTime, duration) {
+                    var oscillator = audioContext.createOscillator();
+                    var gain = audioContext.createGain();
+
+                    oscillator.type = "sine";
+                    oscillator.frequency.value = frequency;
+
+                    gain.gain.setValueAtTime(0.0001, startTime);
+                    gain.gain.exponentialRampToValueAtTime(
+                        0.3,
+                        startTime + 0.04
+                    );
+                    gain.gain.setValueAtTime(
+                        0.3,
+                        startTime + duration - 0.08
+                    );
+                    gain.gain.exponentialRampToValueAtTime(
+                        0.0001,
+                        startTime + duration
+                    );
+
+                    oscillator.connect(gain);
+                    gain.connect(audioContext.destination);
+
+                    oscillator.start(startTime);
+                    oscillator.stop(startTime + duration);
+                }
+
+                playTone(880, now, 0.35);
+                playTone(1175, now + 0.45, 0.45);
+            }
+
+            if (audioContext.state === "suspended") {
+                audioContext.resume().then(function () {
+                    playNotification();
+                }).catch(function (error) {
+                    console.error("Gravedigger audio resume failed:", error);
+                });
+
+                return;
+            }
+
+            playNotification();
+        } catch (error) {
+            console.error("Gravedigger audio failed:", error);
+        }
+    }
+  	document.addEventListener("gravedigger-test-sound", function () {
+        playGravediggerNotification();
+    });
+
     function highlightDeathMessage(message) {
         message.style.backgroundColor =
             "rgba(255, 120, 120, 0.3)";
@@ -357,6 +428,8 @@
             npc: npc,
             timestamp: Date.now()
         });
+
+        playGravediggerNotification();
     }
 
     function highlightMovementMessage(message) {
