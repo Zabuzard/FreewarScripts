@@ -381,3 +381,8 @@ Sicht auf die Koordinaten des Nutzers aktualisiert die Zielfindung.
 Auserdem werden Profit, sowie die Zeit bis zur nächsten Gewebeprobe angezeigt.
 
 ![Gewebe Anzeige](https://i.vgy.me/YWuJYd.jpg)
+
+## `stay_online`
+
+Aktualisiert alle 14 Minuten das Spiel (nicht sichtbar für andere Spieler), so
+dass man nicht automatisch ausgeloggt wird.
