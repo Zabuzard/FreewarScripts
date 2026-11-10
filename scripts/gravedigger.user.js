@@ -295,7 +295,7 @@
                 content: "";
                 position: absolute;
                 inset: 0;
-                background: rgba(0, 100, 255, 0.4);
+                background: rgba(72, 176, 255, 0.4);
                 pointer-events: none;
             }
         `;
