@@ -396,7 +396,8 @@
             console.error("Gravedigger audio failed:", error);
         }
     }
-  	document.addEventListener("gravedigger-test-sound", function () {
+
+    document.addEventListener("gravedigger-test-sound", function () {
         playGravediggerNotification();
     });
 
@@ -422,6 +423,11 @@
             return;
         }
 
+        var currentTarget = getGravediggerTarget();
+        var isNewTarget =
+            !currentTarget ||
+            currentTarget.username !== username;
+
         message.classList.add("gravedigger-message");
 
         saveGravediggerTarget({
@@ -430,7 +436,9 @@
             timestamp: Date.now()
         });
 
-        playGravediggerNotification();
+        if (isNewTarget) {
+            playGravediggerNotification();
+        }
     }
 
     function highlightMovementMessage(message) {
