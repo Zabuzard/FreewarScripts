@@ -16,7 +16,7 @@
         /wird an diesem Ort wiedergeboren, nachdem .+? durch das NPC .+ gestorben ist\./;
 
     var GRAVEDIGGER_MOVEMENT_PATTERN =
-        /verlässt den Ort Richtung (Nordwesten|Norden|Nordosten|Westen|Osten|Südwesten|Süden|Südosten)/;
+        /(verlässt den Ort|eilt) Richtung (Nordwesten|Norden|Nordosten|Westen|Osten|Südwesten|Süden|Südosten)/;
 
     var GRAVEDIGGER_DIRECTION_OFFSETS = {
         "Nordwesten": [-1, -1],
@@ -205,17 +205,11 @@
         }
 
         message.classList.add("gravedigger-message");
-        message.style.cursor = "pointer";
-        message.title =
-            "Totengräber-Ziel speichern: " +
-            username + " (NPC: " + npc + ")";
 
-        message.addEventListener("click", function () {
-            saveGravediggerTarget({
-                username: username,
-                npc: npc,
-                timestamp: Date.now()
-            });
+        saveGravediggerTarget({
+            username: username,
+            npc: npc,
+            timestamp: Date.now()
         });
     }
 
@@ -232,7 +226,7 @@
             return;
         }
 
-        var direction = movementMatch[1];
+        var direction = movementMatch[2];
         var updated = updateGravediggerTargetPosition(direction);
 
         message.classList.add("gravedigger-movement");
