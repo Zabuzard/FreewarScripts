@@ -20,7 +20,7 @@
   ];
 
   var POSITION_PATTERN = /X:\s*(-?\d+)\s+Y:\s*(-?\d+)/;
-  var XP_USERNAME_PATTERN = /^(.+?)\s+\(XP:\s*[\d.]+\)/;
+  var XP_USERNAME_PATTERN = /^(.+?)\s+\(XP:\s*([\d.]+)\)/;
   var BARE_USERNAME_PATTERN = /^(.+?)\s+-\s+\(/;
 
   function loadPlayerData() {
@@ -77,7 +77,7 @@
     return (r * 299 + g * 587 + b * 114) / 1000 >= 128;
   }
 
-  function rememberPosition(username, x, y) {
+  function rememberPosition(username, x, y, xp) {
     var data = loadPlayerData();
     var player = data[username];
     var now = Date.now();
@@ -92,14 +92,16 @@
       };
 
       data[username] = player;
-      savePlayerData(data);
-      return;
     }
 
     if (player.x !== x || player.y !== y || !player.positionTimestamp) {
       player.x = x;
       player.y = y;
       player.positionTimestamp = now;
+    }
+
+    if (xp !== null) {
+      player.xp = xp;
     }
 
     player.timestamp = now;
@@ -200,6 +202,16 @@
     }
 
     return null;
+  }
+
+  function getXP(lineText) {
+    var match = XP_USERNAME_PATTERN.exec(lineText);
+
+    if (!match) {
+      return null;
+    }
+
+    return parseInt(match[2].replace(/\./g, ""), 10);
   }
 
   function getPosition(text) {
@@ -345,9 +357,10 @@
       return;
     }
 
+    var xp = getXP(lineText);
     var isSpecialSecure = isSpecialSecurePosition(lineText);
 
-    rememberPosition(username, position.x, position.y);
+    rememberPosition(username, position.x, position.y, xp);
 
     var parent = textNode.parentElement;
 
