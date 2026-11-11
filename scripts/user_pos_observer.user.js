@@ -13,6 +13,8 @@
 (function () {
   var STORAGE_KEY = "user-pos-observer";
   var POSITION_STALE_TIME = 5 * 60 * 1000;
+  var PURPLE_XP_MIN = 10000;
+  var PURPLE_XP_MAX = 105000;
 
   var FRAME_NAMES = [
     "mainFrame",
@@ -298,13 +300,21 @@
       player.positionTimestamp &&
       Date.now() - player.positionTimestamp >= POSITION_STALE_TIME;
     var isUnsecure = !isSpecialSecure && !isSecureLocation(x, y);
+    var isPurpleXP = player &&
+      player.xp !== undefined &&
+      player.xp >= PURPLE_XP_MIN &&
+      player.xp <= PURPLE_XP_MAX;
 
     removeOldDecoration(element);
 
     element.classList.add("user-pos-observer-highlight");
 
     if (isUnsecure) {
-      if (player && player.pvp) {
+      if (player && player.pvp && isPurpleXP) {
+        element.style.backgroundColor = darkTheme
+          ? (isStale ? "#810585" : "#5d3d66")
+          : (isStale ? "#b86bd1" : "#e8cafa");
+      } else if (player && player.pvp) {
         element.style.backgroundColor = darkTheme
           ? (isStale ? "#810505" : "#5d3636")
           : (isStale ? "#ffb3b3" : "#e8caca");
