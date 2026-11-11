@@ -31,7 +31,7 @@ Y_AXIS_STEP = 100
 # Maximum number of historical readings kept in memory per company.
 # At one reading every 5 minutes, 100,000 readings represent about 347 days.
 # The database continues storing all readings, regardless of this limit.
-MAX_CACHED_POINTS_PER_COMPANY = 100_000
+MAX_CACHED_POINTS_PER_COMPANY = 300_000
 
 DASHBOARD_PATH = "/freewar/stocks"
 API_PATH = "/freewar/stocks/api"
