@@ -5,6 +5,7 @@ import re
 import sqlite3
 import threading
 import time
+from bisect import bisect_right
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -27,6 +28,11 @@ MIN_PERCENTILE = 5
 MAX_PERCENTILE = 95
 Y_AXIS_STEP = 100
 
+# Maximum number of historical readings kept in memory per company.
+# At one reading every 5 minutes, 100,000 readings represent about 347 days.
+# The database continues storing all readings, regardless of this limit.
+MAX_CACHED_POINTS_PER_COMPANY = 100_000
+
 DASHBOARD_PATH = "/freewar/stocks"
 API_PATH = "/freewar/stocks/api"
 OVERVIEW_PATH = "/freewar/stocks/overview.png"
@@ -36,6 +42,19 @@ _overview_cache = {
     "etag": None,
     "payload": None,
 }
+
+# In-memory historical stock cache.
+#
+# Each cached point is:
+# (timestamp_ms, value, database_row_id, original_timestamp)
+#
+# Points are kept in chronological order. The database row ID is used
+# to preserve ordering when multiple readings have the same timestamp.
+_stock_cache_lock = threading.RLock()
+_stock_cache = {}
+_stock_cache_has_older = {}
+_stock_cache_last_id = 0
+_stock_cache_initialized = False
 
 TIME_RANGES = {
     "24h": ("24 Stunden", timedelta(hours=24)),
@@ -62,12 +81,14 @@ log = logging.getLogger("stocks")
 def init_db():
     with sqlite3.connect(DB_PATH, timeout=30) as db:
         db.execute("PRAGMA journal_mode=WAL")
+
         db.execute("""
             CREATE TABLE IF NOT EXISTS companies (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL
             )
         """)
+
         db.execute("""
             CREATE TABLE IF NOT EXISTS stock_values (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,10 +98,346 @@ def init_db():
                 FOREIGN KEY (company_id) REFERENCES companies(id)
             )
         """)
+
         db.execute("""
             CREATE INDEX IF NOT EXISTS idx_stock_company_time
             ON stock_values(company_id, timestamp DESC, id DESC)
         """)
+
+        # Supports efficient retrieval of historical rows older than
+        # the in-memory cache boundary.
+        db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_stock_values_company_timestamp_id
+            ON stock_values(company_id, timestamp, id)
+        """)
+
+
+def timestamp_to_ms(timestamp):
+    """Convert an ISO timestamp into Unix milliseconds."""
+    try:
+        dt = datetime.fromisoformat(timestamp)
+
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        return int(dt.timestamp() * 1000)
+
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def get_cached_stock_points(company_id):
+    """Return an immutable snapshot of one company's cached readings."""
+    with _stock_cache_lock:
+        return tuple(_stock_cache.get(company_id, ()))
+
+
+def get_cached_history_bounds():
+    """Return the earliest and latest timestamps currently held in memory."""
+    with _stock_cache_lock:
+        earliest = None
+        latest = None
+
+        for points in _stock_cache.values():
+            if not points:
+                continue
+
+            first = points[0][0]
+            last = points[-1][0]
+
+            if earliest is None or first < earliest:
+                earliest = first
+
+            if latest is None or last > latest:
+                latest = last
+
+        return earliest, latest
+
+
+def get_history_bounds():
+    """
+    Return the actual earliest and latest timestamps in the database.
+
+    Unlike get_cached_history_bounds(), this includes readings older
+    than the in-memory cache limit.
+    """
+    with sqlite3.connect(DB_PATH, timeout=30) as db:
+        row = db.execute("""
+            SELECT MIN(timestamp), MAX(timestamp)
+            FROM stock_values
+        """).fetchone()
+
+    if not row:
+        return None, None
+
+    earliest_ms = timestamp_to_ms(row[0])
+    latest_ms = timestamp_to_ms(row[1])
+
+    return earliest_ms, latest_ms
+
+
+def get_history_points(company_id, start, end):
+    """
+    Return all readings for a company in the requested time interval.
+
+    Recent readings are taken from memory. If the requested interval
+    extends beyond the oldest cached reading, the missing older portion
+    is loaded from SQLite.
+
+    The returned points have this structure:
+    (timestamp_ms, value, database_row_id, original_timestamp)
+    """
+    start_ms = int(start.timestamp() * 1000)
+    end_ms = int(end.timestamp() * 1000)
+
+    with _stock_cache_lock:
+        cached_points = tuple(_stock_cache.get(company_id, ()))
+        has_older = _stock_cache_has_older.get(company_id, False)
+
+    if not cached_points:
+        with sqlite3.connect(DB_PATH, timeout=30) as db:
+            rows = db.execute("""
+                SELECT timestamp, value, id
+                FROM stock_values
+                WHERE company_id = ?
+                  AND timestamp >= ?
+                  AND timestamp <= ?
+                ORDER BY timestamp ASC, id ASC
+            """, (
+                company_id,
+                start.strftime("%Y-%m-%dT%H:%M:%S"),
+                end.strftime("%Y-%m-%dT%H:%M:%S"),
+            )).fetchall()
+
+        result = []
+
+        for timestamp, value, row_id in rows:
+            timestamp_ms = timestamp_to_ms(timestamp)
+
+            if timestamp_ms is None:
+                continue
+
+            result.append((
+                timestamp_ms,
+                value,
+                row_id,
+                timestamp,
+            ))
+
+        return result
+
+    oldest_cached = cached_points[0]
+
+    result = [
+        point
+        for point in cached_points
+        if start_ms <= point[0] <= end_ms
+    ]
+
+    # No older readings exist, or the requested interval starts at or
+    # after the oldest cached reading. The cache is sufficient.
+    if not has_older or start_ms >= oldest_cached[0]:
+        return result
+
+    # Load only the part of the requested interval that is older than
+    # the cache boundary. The boundary condition also handles multiple
+    # readings with identical timestamps.
+    with sqlite3.connect(DB_PATH, timeout=30) as db:
+        rows = db.execute("""
+            SELECT timestamp, value, id
+            FROM stock_values
+            WHERE company_id = ?
+              AND timestamp >= ?
+              AND timestamp <= ?
+              AND (
+                    timestamp < ?
+                    OR (timestamp = ? AND id < ?)
+              )
+            ORDER BY timestamp ASC, id ASC
+        """, (
+            company_id,
+            start.strftime("%Y-%m-%dT%H:%M:%S"),
+            end.strftime("%Y-%m-%dT%H:%M:%S"),
+            oldest_cached[3],
+            oldest_cached[3],
+            oldest_cached[2],
+        )).fetchall()
+
+    for timestamp, value, row_id in rows:
+        timestamp_ms = timestamp_to_ms(timestamp)
+
+        if timestamp_ms is None:
+            continue
+
+        result.append((
+            timestamp_ms,
+            value,
+            row_id,
+            timestamp,
+        ))
+
+    result.sort(key=lambda point: (point[0], point[2]))
+
+    return result
+
+
+def refresh_stock_cache():
+    """
+    Initialize the in-memory cache or incrementally load new database rows.
+
+    On initialization, only the newest MAX_CACHED_POINTS_PER_COMPANY
+    readings per company are loaded. One additional row is queried to
+    determine whether older history exists in the database.
+
+    After initialization, only rows with an ID greater than the last
+    processed database ID are queried.
+    """
+    global _stock_cache_last_id
+    global _stock_cache_initialized
+
+    limit = max(1, int(MAX_CACHED_POINTS_PER_COMPANY))
+
+    with _stock_cache_lock:
+        with sqlite3.connect(DB_PATH, timeout=30) as db:
+            if not _stock_cache_initialized:
+                # Keep the initial maximum ID and all company readings
+                # inside the same read transaction.
+                db.execute("BEGIN")
+
+                latest_id = db.execute("""
+                    SELECT COALESCE(MAX(id), 0)
+                    FROM stock_values
+                """).fetchone()[0]
+
+                companies = db.execute("""
+                    SELECT DISTINCT company_id
+                    FROM stock_values
+                """).fetchall()
+
+                new_cache = {}
+                new_has_older = {}
+
+                for (company_id,) in companies:
+                    rows = db.execute("""
+                        SELECT timestamp, value, id
+                        FROM stock_values
+                        WHERE company_id = ?
+                        ORDER BY timestamp DESC, id DESC
+                        LIMIT ?
+                    """, (company_id, limit + 1)).fetchall()
+
+                    has_older = len(rows) > limit
+                    newest_rows = rows[:limit]
+
+                    points = []
+
+                    for timestamp, value, row_id in reversed(newest_rows):
+                        timestamp_ms = timestamp_to_ms(timestamp)
+
+                        if timestamp_ms is None:
+                            continue
+
+                        points.append((
+                            timestamp_ms,
+                            value,
+                            row_id,
+                            timestamp,
+                        ))
+
+                    new_cache[company_id] = points
+                    new_has_older[company_id] = has_older
+
+                db.commit()
+
+                _stock_cache.clear()
+                _stock_cache.update(new_cache)
+
+                _stock_cache_has_older.clear()
+                _stock_cache_has_older.update(new_has_older)
+
+                _stock_cache_last_id = latest_id
+                _stock_cache_initialized = True
+
+                log.info(
+                    "Stock cache initialized: %d companies, %d cached readings",
+                    len(_stock_cache),
+                    sum(
+                        len(points)
+                        for points in _stock_cache.values()
+                    ),
+                )
+
+                return
+
+            rows = db.execute("""
+                SELECT id, company_id, timestamp, value
+                FROM stock_values
+                WHERE id > ?
+                ORDER BY id ASC
+            """, (_stock_cache_last_id,)).fetchall()
+
+        if not rows:
+            return
+
+        added = 0
+
+        for row_id, company_id, timestamp, value in rows:
+            _stock_cache_last_id = row_id
+
+            timestamp_ms = timestamp_to_ms(timestamp)
+
+            if timestamp_ms is None:
+                continue
+
+            points = _stock_cache.setdefault(company_id, [])
+
+            point = (
+                timestamp_ms,
+                value,
+                row_id,
+                timestamp,
+            )
+
+            point_key = (timestamp_ms, row_id)
+
+            # Most new readings are newer than the last cached reading.
+            # Append directly in that common case to avoid sorting.
+            if (
+                not points
+                or point_key >= (points[-1][0], points[-1][2])
+            ):
+                points.append(point)
+
+            else:
+                # Handle out-of-order timestamps while keeping the cache
+                # sorted chronologically.
+                position = bisect_right(
+                    [
+                        (cached[0], cached[2])
+                        for cached in points
+                    ],
+                    point_key,
+                )
+
+                points.insert(position, point)
+
+            # Keep only the newest configured number of readings.
+            if len(points) > limit:
+                del points[:len(points) - limit]
+                _stock_cache_has_older[company_id] = True
+
+            added += 1
+
+        if added:
+            log.info(
+                "Stock cache updated: %d new readings, %d companies, %d cached readings",
+                added,
+                len(_stock_cache),
+                sum(
+                    len(points)
+                    for points in _stock_cache.values()
+                ),
+            )
 
 
 def save_stocks(stocks):
@@ -106,13 +463,18 @@ def save_stocks(stocks):
             for company_id, _, value in stocks
         ])
 
+    # Load the just-committed readings into memory.
+    refresh_stock_cache()
+
     invalidate_overview_cache()
+
     log.info("Saved %d stock values", len(stocks))
 
 
 def get_latest_stocks():
     with sqlite3.connect(DB_PATH, timeout=30) as db:
         db.row_factory = sqlite3.Row
+
         rows = db.execute("""
             SELECT c.id, c.name, s.value, s.timestamp
             FROM companies c
@@ -148,6 +510,7 @@ def format_relative_update(timestamp):
                 ).total_seconds()
             ),
         )
+
     except (TypeError, ValueError, OverflowError):
         return "Zeitpunkt unbekannt"
 
@@ -156,6 +519,7 @@ def format_relative_update(timestamp):
 
     if seconds < 3600:
         minutes = seconds // 60
+
         return (
             f"vor {minutes} Minute"
             if minutes == 1
@@ -164,6 +528,7 @@ def format_relative_update(timestamp):
 
     if seconds < 86400:
         hours = seconds // 3600
+
         return (
             f"vor {hours} Stunde"
             if hours == 1
@@ -171,6 +536,7 @@ def format_relative_update(timestamp):
         )
 
     days = seconds // 86400
+
     return (
         f"vor {days} Tag"
         if days == 1
@@ -180,37 +546,29 @@ def format_relative_update(timestamp):
 
 def get_chart_data(company_id, start, end, bucket_seconds):
     """Return chronological minimum and maximum readings for each time bucket."""
-    with sqlite3.connect(DB_PATH, timeout=30) as db:
-        rows = db.execute("""
-            SELECT timestamp, value, id
-            FROM stock_values
-            WHERE company_id = ?
-              AND timestamp >= ?
-              AND timestamp <= ?
-            ORDER BY timestamp ASC, id ASC
-        """, (
-            company_id,
-            start.isoformat(timespec="seconds"),
-            end.isoformat(timespec="seconds"),
-        )).fetchall()
+    points = get_history_points(company_id, start, end)
+
+    start_ms = int(start.timestamp() * 1000)
+    end_ms = int(end.timestamp() * 1000)
 
     buckets = {}
     latest_point = None
 
-    for timestamp, value, row_id in rows:
-        try:
-            dt = datetime.fromisoformat(timestamp)
-
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-
-            bucket_index = int(
-                (dt - start).total_seconds() // bucket_seconds
-            )
-            point = (int(dt.timestamp() * 1000), value, row_id)
-            latest_point = point
-        except (TypeError, ValueError, OverflowError):
+    for timestamp_ms, value, row_id, _ in points:
+        if timestamp_ms < start_ms or timestamp_ms > end_ms:
             continue
+
+        bucket_index = int(
+            (timestamp_ms - start_ms) / 1000 // bucket_seconds
+        )
+
+        point = (
+            timestamp_ms,
+            value,
+            row_id,
+        )
+
+        latest_point = point
 
         if bucket_index not in buckets:
             buckets[bucket_index] = {
@@ -232,6 +590,7 @@ def get_chart_data(company_id, start, end, bucket_seconds):
     for bucket in buckets.values():
         minimum = bucket["min"]
         maximum = bucket["max"]
+
         selected_points.append(minimum)
 
         if maximum[2] != minimum[2]:
@@ -240,11 +599,14 @@ def get_chart_data(company_id, start, end, bucket_seconds):
     # Ensure the latest reading remains visible even if it is neither
     # the minimum nor the maximum of its bucket.
     if latest_point is not None and not any(
-        point[2] == latest_point[2] for point in selected_points
+        point[2] == latest_point[2]
+        for point in selected_points
     ):
         selected_points.append(latest_point)
 
-    selected_points.sort(key=lambda point: (point[0], point[2]))
+    selected_points.sort(
+        key=lambda point: (point[0], point[2])
+    )
 
     return [
         [timestamp_ms, value]
@@ -254,24 +616,16 @@ def get_chart_data(company_id, start, end, bucket_seconds):
 
 def get_chart_stats(company_id, start, end):
     """Return the 5th percentile, median and 95th percentile."""
-    with sqlite3.connect(DB_PATH, timeout=30) as db:
-        rows = db.execute("""
-            SELECT value, timestamp
-            FROM stock_values
-            WHERE company_id = ?
-              AND timestamp >= ?
-              AND timestamp <= ?
-            ORDER BY timestamp, id
-        """, (
-            company_id,
-            start.isoformat(timespec="seconds"),
-            end.isoformat(timespec="seconds"),
-        )).fetchall()
+    points = get_history_points(company_id, start, end)
 
-    if not rows:
+    values = sorted(
+        value
+        for _, value, _, _ in points
+    )
+
+    if not values:
         return None
 
-    values = sorted(row[0] for row in rows)
     count = len(values)
 
     def percentile(percent):
@@ -384,6 +738,7 @@ def parse_date(value, fallback):
     try:
         parsed = datetime.strptime(value, "%Y-%m-%d")
         return parsed.replace(tzinfo=timezone.utc)
+
     except (TypeError, ValueError):
         return fallback
 
@@ -395,11 +750,16 @@ def resolve_range(query):
         range_key = DEFAULT_RANGE
 
     now = datetime.now(timezone.utc)
+
     custom_start = query.get("start", [""])[0]
     custom_end = query.get("end", [""])[0]
 
     if custom_start or custom_end:
-        start = parse_date(custom_start, now - timedelta(days=7))
+        start = parse_date(
+            custom_start,
+            now - timedelta(days=7),
+        )
+
         end_date = parse_date(custom_end, now)
         end = end_date + timedelta(days=1) - timedelta(seconds=1)
 
@@ -422,13 +782,14 @@ def resolve_range(query):
     start = now - duration if duration else None
 
     if start is None:
-        with sqlite3.connect(DB_PATH, timeout=30) as db:
-            row = db.execute(
-                "SELECT MIN(timestamp) FROM stock_values"
-            ).fetchone()
+        # Use the database bounds, not the oldest cached reading.
+        earliest_ms, _ = get_history_bounds()
 
-        if row and row[0]:
-            start = datetime.fromisoformat(row[0])
+        if earliest_ms is not None:
+            start = datetime.fromtimestamp(
+                earliest_ms / 1000,
+                tz=timezone.utc,
+            )
         else:
             start = now
 
@@ -470,6 +831,7 @@ def get_median_comparison(value, stats):
             return None
 
         percentage = ((value - median) / typical_range) * 100
+
     elif value < median:
         typical_range = median - stats["min"]
 
@@ -477,6 +839,7 @@ def get_median_comparison(value, stats):
             return None
 
         percentage = -((median - value) / typical_range) * 100
+
     else:
         percentage = 0
 
@@ -485,6 +848,8 @@ def get_median_comparison(value, stats):
 
 def render_overview_png():
     """Render a transparent stock overview PNG without external packages."""
+    refresh_stock_cache()
+
     width = 700
     height = 150
     pixels = bytearray(width * height * 4)
@@ -627,6 +992,7 @@ def render_overview_png():
 
     def draw_right(x, y, value, color):
         value = str(value)
+
         draw_text(
             x - len(value) * CHAR_ADVANCE + FONT_SCALE,
             y,
@@ -636,6 +1002,7 @@ def render_overview_png():
 
     def png_chunk(chunk_type, data):
         chunk = chunk_type + data
+
         return (
             struct.pack(">I", len(data))
             + chunk
@@ -644,20 +1011,21 @@ def render_overview_png():
 
     now = datetime.now(timezone.utc)
 
-    with sqlite3.connect(DB_PATH, timeout=30) as db:
-        earliest = db.execute(
-            "SELECT MIN(timestamp) FROM stock_values"
-        ).fetchone()[0]
+    # Use the complete database history, not only the in-memory cache.
+    earliest_ms, _ = get_history_bounds()
 
-    if earliest:
-        start = datetime.fromisoformat(earliest)
-
-        if start.tzinfo is None:
-            start = start.replace(tzinfo=timezone.utc)
+    if earliest_ms is not None:
+        start = datetime.fromtimestamp(
+            earliest_ms / 1000,
+            tz=timezone.utc,
+        )
     else:
         start = now
 
-    stocks = sorted(get_latest_stocks(), key=lambda stock: stock["id"])
+    stocks = sorted(
+        get_latest_stocks(),
+        key=lambda stock: stock["id"],
+    )
 
     first_row_y = 2
     row_height = 24
@@ -672,10 +1040,16 @@ def render_overview_png():
     for i, stock in enumerate(stocks[:max_rows]):
         y = first_row_y + i * row_height
         current = stock["value"]
-        stats = get_chart_stats(stock["id"], start, now)
+
+        stats = get_chart_stats(
+            stock["id"],
+            start,
+            now,
+        )
 
         median = stats["median"] if stats else None
         percentage = get_median_comparison(current, stats)
+
         gold = (
             abs(current - median)
             if current is not None and median is not None
@@ -694,6 +1068,7 @@ def render_overview_png():
             f"{format_value(current)}g"
             if current is not None else "-"
         )
+
         current_color = colors["text"]
 
         if percentage is not None:
@@ -702,18 +1077,30 @@ def render_overview_png():
             elif percentage < -50:
                 current_color = colors["negative"]
 
-        draw_right(current_x, y, current_text, current_color)
+        draw_right(
+            current_x,
+            y,
+            current_text,
+            current_color,
+        )
 
         median_text = (
             f"({format_value(median)})"
             if median is not None else "(-)"
         )
-        draw_text(median_x, y, median_text, colors["median"])
+
+        draw_text(
+            median_x,
+            y,
+            median_text,
+            colors["median"],
+        )
 
         percentage_text = (
             format_signed_percent(percentage)
             if percentage is not None else "-"
         )
+
         percentage_color = colors["muted"]
 
         if percentage is not None:
@@ -726,12 +1113,18 @@ def render_overview_png():
             elif percentage < 0:
                 percentage_color = colors["negative_muted"]
 
-        draw_right(percent_x, y, percentage_text, percentage_color)
+        draw_right(
+            percent_x,
+            y,
+            percentage_text,
+            percentage_color,
+        )
 
         gold_text = (
             f"({format_value(gold)}g)"
             if gold is not None else "(-)"
         )
+
         gold_color = colors["accent"]
 
         if percentage is not None:
@@ -740,21 +1133,36 @@ def render_overview_png():
             elif percentage < -50:
                 gold_color = colors["negative"]
 
-        draw_right(gold_x, y, gold_text, gold_color)
+        draw_right(
+            gold_x,
+            y,
+            gold_text,
+            gold_color,
+        )
 
     raw = bytearray()
     stride = width * 4
 
     for y in range(height):
         raw.append(0)
-        raw.extend(pixels[y * stride:(y + 1) * stride])
+        raw.extend(
+            pixels[y * stride:(y + 1) * stride]
+        )
 
     png = bytearray(b"\x89PNG\r\n\x1a\n")
+
     png.extend(png_chunk(
         b"IHDR",
         struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0),
     ))
-    png.extend(png_chunk(b"IDAT", zlib.compress(bytes(raw), 9)))
+
+    png.extend(
+        png_chunk(
+            b"IDAT",
+            zlib.compress(bytes(raw), 9),
+        )
+    )
+
     png.extend(png_chunk(b"IEND", b""))
 
     return bytes(png)
@@ -769,7 +1177,10 @@ def get_cached_overview_png():
             _overview_cache["payload"] = payload
             _overview_cache["etag"] = etag
 
-        return _overview_cache["payload"], _overview_cache["etag"]
+        return (
+            _overview_cache["payload"],
+            _overview_cache["etag"],
+        )
 
 
 def invalidate_overview_cache():
@@ -782,18 +1193,18 @@ def invalidate_overview_cache():
 
 def get_api_data():
     """Return current values and full-history statistics for companies 1–6."""
+    refresh_stock_cache()
+
     now = datetime.now(timezone.utc)
 
-    with sqlite3.connect(DB_PATH, timeout=30) as db:
-        row = db.execute(
-            "SELECT MIN(timestamp) FROM stock_values"
-        ).fetchone()
+    # Use the earliest database timestamp, including uncached history.
+    earliest_ms, _ = get_history_bounds()
 
-    if row and row[0]:
-        start = datetime.fromisoformat(row[0])
-
-        if start.tzinfo is None:
-            start = start.replace(tzinfo=timezone.utc)
+    if earliest_ms is not None:
+        start = datetime.fromtimestamp(
+            earliest_ms / 1000,
+            tz=timezone.utc,
+        )
     else:
         start = now
 
@@ -807,13 +1218,19 @@ def get_api_data():
             continue
 
         current_value = stock["value"]
-        stats = get_chart_stats(company_id, start, now)
+
+        stats = get_chart_stats(
+            company_id,
+            start,
+            now,
+        )
 
         median = stats["median"] if stats else None
 
         if current_value is not None and median is not None:
             difference = current_value - median
             difference_gold = abs(difference)
+
             difference_percent = get_median_comparison(
                 current_value,
                 stats,
@@ -857,6 +1274,9 @@ def get_axis_date_format(range_key, start, end):
 # == HTML dashboard ==
 
 def render_dashboard(query):
+    # Pick up any rows inserted by another process or server instance.
+    refresh_stock_cache()
+
     stocks = get_latest_stocks()
 
     latest_timestamp = max(
@@ -867,6 +1287,7 @@ def render_dashboard(query):
         ),
         default=None,
     )
+
     last_update_text = format_relative_update(latest_timestamp)
 
     (
@@ -878,19 +1299,32 @@ def render_dashboard(query):
         custom_end,
     ) = resolve_range(query)
 
-    duration_seconds = max(60, (end - start).total_seconds())
-    target_bucket_count = max(1, MAX_CHART_POINTS // 2)
+    duration_seconds = max(
+        60,
+        (end - start).total_seconds(),
+    )
+
+    target_bucket_count = max(
+        1,
+        MAX_CHART_POINTS // 2,
+    )
+
     bucket_seconds = max(
         60,
         int(duration_seconds / target_bucket_count),
     )
 
-    axis_date_format = get_axis_date_format(range_key, start, end)
+    axis_date_format = get_axis_date_format(
+        range_key,
+        start,
+        end,
+    )
 
     range_buttons = []
 
     for key, (label, _) in TIME_RANGES.items():
         active = " active" if key == range_key else ""
+
         range_buttons.append(
             f'<a class="range-button{active}" '
             f'href="{DASHBOARD_PATH}?range={key}">'
@@ -904,11 +1338,13 @@ def render_dashboard(query):
         name = html.escape(stock["name"])
         value = stock["value"]
         value_text = format_value(value)
+
         value_display = (
             f"{value_text}g"
             if value is not None
             else value_text
         )
+
         timestamp = stock["timestamp"] or ""
 
         points = get_chart_data(
@@ -917,14 +1353,31 @@ def render_dashboard(query):
             end,
             bucket_seconds,
         )
-        stats = get_chart_stats(company_id, start, end)
 
-        points_json = json.dumps(points, separators=(",", ":"))
-        stats_json = json.dumps(stats, separators=(",", ":"))
-        median_difference = get_median_comparison(value, stats)
+        stats = get_chart_stats(
+            company_id,
+            start,
+            end,
+        )
+
+        points_json = json.dumps(
+            points,
+            separators=(",", ":"),
+        )
+
+        stats_json = json.dumps(
+            stats,
+            separators=(",", ":"),
+        )
+
+        median_difference = get_median_comparison(
+            value,
+            stats,
+        )
 
         if stats and value is not None:
             absolute_difference = value - stats["median"]
+
             absolute_difference_text = (
                 format_signed_value(absolute_difference) + "g"
             )
@@ -935,15 +1388,19 @@ def render_dashboard(query):
             if median_difference >= 50:
                 comparison_class = "positive"
                 difference_class = "difference-extreme positive"
+
             elif median_difference < -50:
                 comparison_class = "negative"
                 difference_class = "difference-extreme negative"
+
             elif median_difference > 0:
                 comparison_class = "positive-muted"
                 difference_class = "difference-normal"
+
             elif median_difference < 0:
                 comparison_class = "negative-muted"
                 difference_class = "difference-normal"
+
             else:
                 comparison_class = "neutral"
                 difference_class = "difference-normal"
@@ -965,21 +1422,26 @@ def render_dashboard(query):
                 f'<span class="median-comparison">'
                 f'{comparison_html}</span>'
             )
+
         else:
             median_comparison_html = ""
 
         if median_difference is not None and median_difference >= 50:
             value_class = "value-positive"
+
             recommendation_html = (
                 '<span class="trade-icon trade-sell" '
                 'title="Verkaufssignal" aria-label="Verkaufen">−</span>'
             )
+
         elif median_difference is not None and median_difference < -50:
             value_class = "value-negative"
+
             recommendation_html = (
                 '<span class="trade-icon trade-buy" '
                 'title="Kaufsignal" aria-label="Kaufen">+</span>'
             )
+
         else:
             value_class = "value-normal"
             recommendation_html = ""
@@ -1030,8 +1492,15 @@ def render_dashboard(query):
         <div class="empty">Noch keine Unternehmen vorhanden.</div>
     """
 
-    custom_start_value = html.escape(custom_start, quote=True)
-    custom_end_value = html.escape(custom_end, quote=True)
+    custom_start_value = html.escape(
+        custom_start,
+        quote=True,
+    )
+
+    custom_end_value = html.escape(
+        custom_end,
+        quote=True,
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="de">
@@ -1812,14 +2281,18 @@ def render_dashboard(query):
                 start.getMonth(),
                 start.getDate()
             );
+
             date.setHours(0, 0, 0, 0);
 
             if (config.step === 1) {{
-                if (date.getTime() < minTime) date.setDate(date.getDate() + 1);
+                if (date.getTime() < minTime) {{
+                    date.setDate(date.getDate() + 1);
+                }}
             }} else {{
                 const dayNumber = Math.floor(
                     date.getTime() / (24 * 60 * 60 * 1000)
                 );
+
                 const offset = (
                     config.step - (dayNumber % config.step)
                 ) % config.step;
@@ -1840,9 +2313,13 @@ def render_dashboard(query):
         }}
 
         if (config.unit === "month") {{
-            const monthIndex = start.getFullYear() * 12 + start.getMonth();
-            const alignedMonth =
-                Math.ceil(monthIndex / config.step) * config.step;
+            const monthIndex = (
+                start.getFullYear() * 12 + start.getMonth()
+            );
+
+            const alignedMonth = (
+                Math.ceil(monthIndex / config.step) * config.step
+            );
 
             date = new Date(
                 Math.floor(alignedMonth / 12),
@@ -1982,7 +2459,9 @@ def render_dashboard(query):
         const timeSpan = Math.max(1, maxTime - minTime);
 
         function xFor(timestamp) {{
-            return left + ((timestamp - minTime) / timeSpan) * plotWidth;
+            return left + (
+                (timestamp - minTime) / timeSpan
+            ) * plotWidth;
         }}
 
         function yFor(value) {{
@@ -2019,8 +2498,16 @@ def render_dashboard(query):
             }}, numberFormat.format(value)));
         }}
 
-        const tickFormat = getTickFormat(rangeKey, maxTime - minTime);
-        const ticks = getAlignedTicks(minTime, maxTime, rangeKey);
+        const tickFormat = getTickFormat(
+            rangeKey,
+            maxTime - minTime,
+        );
+
+        const ticks = getAlignedTicks(
+            minTime,
+            maxTime,
+            rangeKey,
+        );
 
         ticks.forEach(function (timestamp) {{
             const x = xFor(timestamp);
@@ -2109,6 +2596,7 @@ def render_dashboard(query):
 
         const medianCoordinates = coordinates.map(function (point, index) {{
             const halfWindow = Math.floor(MEDIAN_WINDOW / 2);
+
             const windowStart = Math.max(
                 0,
                 Math.min(
@@ -2116,6 +2604,7 @@ def render_dashboard(query):
                     coordinates.length - MEDIAN_WINDOW
                 )
             );
+
             const windowEnd = Math.min(
                 coordinates.length,
                 windowStart + MEDIAN_WINDOW
@@ -2225,6 +2714,7 @@ def render_dashboard(query):
             value.textContent = numberFormat.format(nearest.value) + "g";
 
             const date = document.createElement("div");
+
             date.textContent = dateFormats.tooltip.format(
                 new Date(nearest.timestamp)
             );
@@ -2237,7 +2727,10 @@ def render_dashboard(query):
 
             tooltip.style.left = Math.max(
                 0,
-                Math.min(relativeX, bounds.width - tooltipWidth)
+                Math.min(
+                    relativeX,
+                    bounds.width - tooltipWidth,
+                )
             ) + "px";
         }}
 
@@ -2270,6 +2763,7 @@ class StockHandler(BaseHTTPRequestHandler):
         if parsed.path == OVERVIEW_PATH:
             try:
                 payload, etag = get_cached_overview_png()
+
             except Exception:
                 log.exception("Failed to generate stock overview image")
                 self.send_error(500, "Internal Server Error")
@@ -2277,7 +2771,10 @@ class StockHandler(BaseHTTPRequestHandler):
 
             if self.headers.get("If-None-Match") == etag:
                 self.send_response(304)
-                self.send_header("Cache-Control", "no-cache, must-revalidate")
+                self.send_header(
+                    "Cache-Control",
+                    "no-cache, must-revalidate",
+                )
                 self.send_header("ETag", etag)
                 self.end_headers()
                 return
@@ -2285,7 +2782,10 @@ class StockHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "image/png")
             self.send_header("Content-Length", str(len(payload)))
-            self.send_header("Cache-Control", "no-cache, must-revalidate")
+            self.send_header(
+                "Cache-Control",
+                "no-cache, must-revalidate",
+            )
             self.send_header("ETag", etag)
             self.end_headers()
             self.wfile.write(payload)
@@ -2297,6 +2797,7 @@ class StockHandler(BaseHTTPRequestHandler):
                     get_api_data(),
                     ensure_ascii=False,
                 ).encode("utf-8")
+
             except Exception:
                 log.exception("Failed to generate stock API response")
                 self.send_error(500, "Internal Server Error")
@@ -2321,13 +2822,17 @@ class StockHandler(BaseHTTPRequestHandler):
 
         try:
             page = render_dashboard(query).encode("utf-8")
+
         except Exception:
             log.exception("Failed to render dashboard")
             self.send_error(500, "Internal Server Error")
             return
 
         self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header(
+            "Content-Type",
+            "text/html; charset=utf-8",
+        )
         self.send_header("Content-Length", str(len(page)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
@@ -2346,13 +2851,20 @@ class StockHandler(BaseHTTPRequestHandler):
 def main():
     init_db()
 
+    # Load the initial historical cache before starting the HTTP server.
+    refresh_stock_cache()
+
     threading.Thread(
         target=stock_collector,
         name="stock-collector",
         daemon=True,
     ).start()
 
-    server = ThreadingHTTPServer((HOST, PORT), StockHandler)
+    server = ThreadingHTTPServer(
+        (HOST, PORT),
+        StockHandler,
+    )
+
     log.info(
         "Server listening on http://%s:%d%s",
         HOST,
@@ -2362,8 +2874,10 @@ def main():
 
     try:
         server.serve_forever()
+
     except KeyboardInterrupt:
         log.info("Shutting down")
+
     finally:
         server.server_close()
 
