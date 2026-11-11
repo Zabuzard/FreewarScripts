@@ -6,7 +6,7 @@
 // @include     *.freewar.de/freewar/internal/friset.php*
 // @require     https://zabuzard.github.io/FreewarScripts/resources/coordinate_resource.js
 // @require     https://zabuzard.github.io/FreewarScripts/resources/secure_locations.js
-// @version     1
+// @version     2
 // @grant       none
 // ==/UserScript==
 
