@@ -291,7 +291,6 @@
         for (var i = 0; i < textNodes.length; i++) {
             var textNode = textNodes[i];
 
-            // Find the top-level node containing the target username.
             var lineStart = textNode;
 
             while (
@@ -301,7 +300,6 @@
                 lineStart = lineStart.parentNode;
             }
 
-            // Collect text from this row until the next line break.
             var lineText = "";
             var linePart = lineStart;
 
@@ -401,6 +399,61 @@
         playGravediggerNotification();
     });
 
+    function copyGravediggerNpcName(npc) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(npc).catch(function (error) {
+                console.error("Gravedigger clipboard failed:", error);
+                copyGravediggerNpcNameFallback(npc);
+            });
+
+            return;
+        }
+
+        copyGravediggerNpcNameFallback(npc);
+    }
+
+    function copyGravediggerNpcNameFallback(npc) {
+        var textarea = document.createElement("textarea");
+
+        textarea.value = npc;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+
+        document.body.appendChild(textarea);
+
+        textarea.select();
+
+        try {
+            document.execCommand("copy");
+        } catch (error) {
+            console.error("Gravedigger clipboard fallback failed:", error);
+        }
+
+        document.body.removeChild(textarea);
+    }
+
+    function makeGravediggerNpcClickable(message, npcElement) {
+        if (npcElement.dataset.gravediggerClickable) {
+            return;
+        }
+
+        npcElement.dataset.gravediggerClickable = "true";
+        npcElement.style.cursor = "pointer";
+        npcElement.style.textDecoration = "underline";
+        npcElement.title = "NPC-Namen kopieren";
+
+        npcElement.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            var npc = npcElement.textContent.trim();
+
+            if (npc) {
+                copyGravediggerNpcName(npc);
+            }
+        });
+    }
+
     function highlightDeathMessage(message) {
         message.style.backgroundColor =
             "rgba(255, 120, 120, 0.3)";
@@ -417,11 +470,14 @@
         }
 
         var username = boldElements[0].textContent.trim();
-        var npc = boldElements[1].textContent.trim();
+        var npcElement = boldElements[1];
+        var npc = npcElement.textContent.trim();
 
         if (!username || !npc) {
             return;
         }
+
+        makeGravediggerNpcClickable(message, npcElement);
 
         var currentTarget = getGravediggerTarget();
         var isNewTarget =
@@ -622,7 +678,6 @@
         highlightMessages(frameDocument);
     }
 
-    // Clean up an expired target.
     getGravediggerTarget();
 
     observeChatFrame();
