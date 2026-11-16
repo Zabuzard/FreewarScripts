@@ -399,58 +399,27 @@
         playGravediggerNotification();
     });
 
-    function copyGravediggerNpcName(npc) {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(npc).catch(function (error) {
-                console.error("Gravedigger clipboard failed:", error);
-                copyGravediggerNpcNameFallback(npc);
-            });
-
-            return;
-        }
-
-        copyGravediggerNpcNameFallback(npc);
-    }
-
-    function copyGravediggerNpcNameFallback(npc) {
-        var textarea = document.createElement("textarea");
-
-        textarea.value = npc;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-
-        document.body.appendChild(textarea);
-
-        textarea.select();
-
-        try {
-            document.execCommand("copy");
-        } catch (error) {
-            console.error("Gravedigger clipboard fallback failed:", error);
-        }
-
-        document.body.removeChild(textarea);
-    }
-
     function makeGravediggerNpcClickable(message, npcElement) {
         if (npcElement.dataset.gravediggerClickable) {
             return;
         }
 
         npcElement.dataset.gravediggerClickable = "true";
-        npcElement.style.cursor = "pointer";
+        npcElement.style.cursor = "text";
+        npcElement.style.userSelect = "text";
         npcElement.style.textDecoration = "underline";
-        npcElement.title = "NPC-Namen kopieren";
+        npcElement.title = "Doppelklicken, um NPC-Namen auszuwählen";
 
-        npcElement.addEventListener("click", function (event) {
+        npcElement.addEventListener("dblclick", function (event) {
             event.preventDefault();
             event.stopPropagation();
 
-            var npc = npcElement.textContent.trim();
+            var selection = npcElement.ownerDocument.defaultView.getSelection();
+            var range = npcElement.ownerDocument.createRange();
 
-            if (npc) {
-                copyGravediggerNpcName(npc);
-            }
+            range.selectNodeContents(npcElement);
+            selection.removeAllRanges();
+            selection.addRange(range);
         });
     }
 
