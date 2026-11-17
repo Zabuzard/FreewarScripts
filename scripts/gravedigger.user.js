@@ -171,6 +171,19 @@
         };
     }
 
+    function clearGravediggerTargetPosition() {
+        var target = getGravediggerTarget();
+
+        if (!target) {
+            return;
+        }
+
+        delete target.x;
+        delete target.y;
+
+        saveGravediggerTarget(target);
+    }
+
     function updateGravediggerTargetPosition(direction) {
         var target = getGravediggerTarget();
 
@@ -473,10 +486,6 @@
     }
 
     function highlightMovementMessage(message) {
-        if (message.classList.contains("gravedigger-movement")) {
-            return;
-        }
-
         var movementMatch = message.textContent.match(
             GRAVEDIGGER_MOVEMENT_PATTERN
         );
@@ -488,9 +497,11 @@
         var direction = movementMatch[2];
         var updated = updateGravediggerTargetPosition(direction);
 
-        message.classList.add("gravedigger-movement");
-        message.style.backgroundColor =
-            "rgba(120, 180, 255, 0.3)";
+        if (!message.classList.contains("gravedigger-movement")) {
+            message.classList.add("gravedigger-movement");
+            message.style.backgroundColor =
+                "rgba(120, 180, 255, 0.3)";
+        }
 
         if (updated) {
             var updatedTarget = getGravediggerTarget();
@@ -503,21 +514,30 @@
 
     function highlightMessages(frameDocument) {
         var messages = frameDocument.querySelectorAll("p");
+
+        // Process death messages first to establish the current target.
+        for (var i = 0; i < messages.length; i++) {
+            var message = messages[i];
+
+            if (GRAVEDIGGER_PATTERN.test(message.textContent)) {
+                highlightDeathMessage(message);
+            }
+        }
+
         var target = getGravediggerTarget();
+
+        // Directional coordinates always belong to the current chatlog.
+        clearGravediggerTargetPosition();
+
+        if (!target || !target.username) {
+            return;
+        }
+
         var latestMovementMessage = null;
 
         for (var i = 0; i < messages.length; i++) {
             var message = messages[i];
             var text = message.textContent;
-
-            if (GRAVEDIGGER_PATTERN.test(text)) {
-                highlightDeathMessage(message);
-                continue;
-            }
-
-            if (!target || !target.username) {
-                continue;
-            }
 
             var boldElement = message.querySelector("b");
 
