@@ -452,23 +452,20 @@
         npcElement.dataset.gravediggerClickable = "true";
         npcElement.style.cursor = "text";
         npcElement.style.userSelect = "text";
+        npcElement.style.webkitUserSelect = "text";
         npcElement.style.textDecoration = "underline";
-        npcElement.title = "Doppelklicken, um NPC-Namen auszuwählen";
+        npcElement.title = "Klicken, um NPC-Namen auszuwählen";
 
-        npcElement.addEventListener("mousedown", function (event) {
-            if (event.detail === 2) {
-                event.preventDefault();
-            }
-        });
-
-        npcElement.addEventListener("dblclick", function (event) {
+        npcElement.addEventListener("click", function (event) {
             event.preventDefault();
             event.stopPropagation();
 
-            var selection = npcElement.ownerDocument.defaultView.getSelection();
+            var frameWindow = npcElement.ownerDocument.defaultView;
+            var selection = frameWindow.getSelection();
             var range = npcElement.ownerDocument.createRange();
 
             range.selectNodeContents(npcElement);
+
             selection.removeAllRanges();
             selection.addRange(range);
         });
