@@ -410,6 +410,12 @@
         npcElement.style.textDecoration = "underline";
         npcElement.title = "Doppelklicken, um NPC-Namen auszuwählen";
 
+        npcElement.addEventListener("mousedown", function (event) {
+            if (event.detail === 2) {
+                event.preventDefault();
+            }
+        });
+
         npcElement.addEventListener("dblclick", function (event) {
             event.preventDefault();
             event.stopPropagation();
