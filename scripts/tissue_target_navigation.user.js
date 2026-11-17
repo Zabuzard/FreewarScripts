@@ -605,6 +605,33 @@
         }
     }
 
+    function highlightTissueItemLine(lineStart, lineEnd) {
+        var node = lineStart;
+
+        while (node && node !== lineEnd) {
+            var nextNode = node.nextSibling;
+
+            if (node.nodeType === Node.TEXT_NODE) {
+                var span = node.ownerDocument.createElement("span");
+
+                span.style.backgroundColor =
+                    "rgba(136, 206, 127, 0.3)";
+
+                span.dataset.tissueHighlighted = "true";
+
+                node.parentNode.replaceChild(span, node);
+                span.appendChild(node);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                node.style.backgroundColor =
+                    "rgba(136, 206, 127, 0.3)";
+
+                node.dataset.tissueHighlighted = "true";
+            }
+
+            node = nextNode;
+        }
+    }
+
     function scanItemFrame(frameDocument) {
         var bodyText = frameDocument.body.innerText;
 
@@ -668,6 +695,11 @@
 
             var x = parseInt(coordinateMatch[1], 10);
             var y = parseInt(coordinateMatch[2], 10);
+
+            highlightTissueItemLine(
+                lineStart,
+                linePart
+            );
 
             saveNavigationTarget(x, y);
 
