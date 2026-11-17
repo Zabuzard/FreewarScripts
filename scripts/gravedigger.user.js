@@ -249,6 +249,33 @@
         }
     }
 
+    function highlightGravediggerItemLine(lineStart, lineEnd) {
+        var node = lineStart;
+
+        while (node && node !== lineEnd) {
+            var nextNode = node.nextSibling;
+
+            if (node.nodeType === 3) {
+                var span = node.ownerDocument.createElement("span");
+
+                span.style.backgroundColor =
+                    "rgba(120, 180, 255, 0.3)";
+
+                span.dataset.gravediggerHighlighted = "true";
+
+                node.parentNode.replaceChild(span, node);
+                span.appendChild(node);
+            } else if (node.nodeType === 1) {
+                node.style.backgroundColor =
+                    "rgba(120, 180, 255, 0.3)";
+
+                node.dataset.gravediggerHighlighted = "true";
+            }
+
+            node = nextNode;
+        }
+    }
+
     function scanItemFrame() {
         var target = getGravediggerTarget();
 
@@ -333,6 +360,11 @@
 
             var x = parseInt(coordinateMatch[1], 10);
             var y = parseInt(coordinateMatch[2], 10);
+
+            highlightGravediggerItemLine(
+                lineStart,
+                linePart
+            );
 
             saveNavigationTarget(x, y);
 
@@ -515,7 +547,6 @@
     function highlightMessages(frameDocument) {
         var messages = frameDocument.querySelectorAll("p");
 
-        // Process death messages first to establish the current target.
         for (var i = 0; i < messages.length; i++) {
             var message = messages[i];
 
@@ -526,7 +557,6 @@
 
         var target = getGravediggerTarget();
 
-        // Directional coordinates always belong to the current chatlog.
         clearGravediggerTargetPosition();
 
         if (!target || !target.username) {
