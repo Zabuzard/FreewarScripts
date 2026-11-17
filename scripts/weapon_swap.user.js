@@ -10,7 +10,7 @@
   // Configure your weapons here
   var attackWeapon = { name: "lebendige Doppelklinge", id: 823575165 };
   var defenseWeapon = { name: "Goldplattenschild", id: 302894989 };
-  var divingSuit = { name: "Taucheranzug", id: 247183416 };
+  var divingSuit = { name: "Seetanganzug", id: 831521798 };
 
   var weaponRow = document.getElementById("listrow_attackw");
   var defenseRow = document.getElementById("listrow_defensew");
